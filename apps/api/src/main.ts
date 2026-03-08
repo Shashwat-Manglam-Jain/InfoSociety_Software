@@ -25,6 +25,7 @@ async function bootstrap() {
     .setVersion("1.0.0")
     .addBearerAuth()
     .addTag("auth")
+    .addTag("billing")
     .addTag("monitoring")
     .addTag("health")
     .addTag("customers")

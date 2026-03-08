@@ -1,0 +1,44 @@
+<svg width="960" height="720" viewBox="0 0 960 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="120" y1="80" x2="840" y2="640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A4E7A"/>
+      <stop offset="1" stop-color="#1180BF"/>
+    </linearGradient>
+    <linearGradient id="card" x1="132" y1="160" x2="760" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#DDF1FF"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="150" y1="142" x2="300" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFA73D"/>
+      <stop offset="1" stop-color="#FF7A00"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" rx="42" fill="url(#bg)"/>
+  <circle cx="130" cy="108" r="190" fill="#FFFFFF" fill-opacity="0.12"/>
+  <circle cx="846" cy="596" r="240" fill="#FFFFFF" fill-opacity="0.09"/>
+  <rect x="108" y="132" width="744" height="456" rx="30" fill="url(#card)"/>
+  <rect x="150" y="178" width="260" height="172" rx="22" fill="#0F3554"/>
+  <circle cx="218" cy="246" r="30" fill="url(#accent)"/>
+  <rect x="266" y="228" width="110" height="13" rx="6.5" fill="#C4DCF1"/>
+  <rect x="266" y="252" width="72" height="13" rx="6.5" fill="#9FC5E2"/>
+  <rect x="184" y="298" width="192" height="14" rx="7" fill="#29587D"/>
+  <rect x="450" y="178" width="362" height="62" rx="16" fill="#EDF7FF"/>
+  <rect x="472" y="199" width="160" height="14" rx="7" fill="#89B5D9"/>
+  <rect x="654" y="199" width="130" height="14" rx="7" fill="#D3E8F8"/>
+  <rect x="450" y="262" width="362" height="146" rx="16" fill="#F4FAFF"/>
+  <rect x="476" y="286" width="20" height="86" rx="10" fill="#7CC5FF"/>
+  <rect x="514" y="320" width="20" height="52" rx="10" fill="#4BA2E4"/>
+  <rect x="552" y="300" width="20" height="72" rx="10" fill="#266FA9"/>
+  <rect x="590" y="270" width="20" height="102" rx="10" fill="#FF9A2E"/>
+  <path d="M634 356L664 314L694 334L724 286L754 304L786 246" stroke="#1C5E90" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="150" y="374" width="662" height="174" rx="18" fill="#FFFFFF"/>
+  <rect x="182" y="408" width="198" height="102" rx="14" fill="#EAF6FF"/>
+  <rect x="406" y="408" width="198" height="102" rx="14" fill="#EAF6FF"/>
+  <rect x="630" y="408" width="150" height="102" rx="14" fill="#EAF6FF"/>
+  <rect x="206" y="438" width="104" height="16" rx="8" fill="#6D9EC5"/>
+  <rect x="430" y="438" width="104" height="16" rx="8" fill="#6D9EC5"/>
+  <rect x="654" y="438" width="84" height="16" rx="8" fill="#6D9EC5"/>
+  <rect x="206" y="466" width="146" height="16" rx="8" fill="#B9D8EE"/>
+  <rect x="430" y="466" width="146" height="16" rx="8" fill="#B9D8EE"/>
+  <rect x="654" y="466" width="110" height="16" rx="8" fill="#B9D8EE"/>
+</svg>

@@ -12,6 +12,7 @@ declare global {
 export function AdsenseBanner() {
   const adClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
   const adSlot = process.env.NEXT_PUBLIC_ADSENSE_SLOT;
+  const isDev = process.env.NODE_ENV !== "production";
 
   useEffect(() => {
     if (!adClient || !adSlot) {
@@ -46,6 +47,7 @@ export function AdsenseBanner() {
         data-ad-slot={adSlot}
         data-ad-format="auto"
         data-full-width-responsive="true"
+        data-adtest={isDev ? "on" : undefined}
       />
     </>
   );

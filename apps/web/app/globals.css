@@ -1,3 +1,16 @@
+:root {
+  --surface-0: #f4f9ff;
+  --surface-1: #ffffff;
+  --ink-900: #10253d;
+  --ink-700: #294a6a;
+  --sky-700: #0e6da6;
+  --sky-500: #2c95d4;
+  --accent-500: #ff8f1f;
+  --accent-600: #e87506;
+  --font-heading: "Palatino Linotype", "Book Antiqua", "Georgia", serif;
+  --font-body: "Trebuchet MS", "Segoe UI", "Tahoma", sans-serif;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -7,10 +20,51 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background: radial-gradient(circle at top right, #daeefe, #eef5fb 42%);
+  color: var(--ink-900);
+  background:
+    radial-gradient(900px 420px at 8% -6%, #dbedff 18%, transparent 68%),
+    radial-gradient(780px 400px at 92% 0%, #d6f0ff 12%, transparent 64%),
+    linear-gradient(180deg, #f7fcff 0%, #ecf5ff 52%, #f4f9ff 100%);
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.surface-glass {
+  background: linear-gradient(180deg, #ffffff 0%, #f4fbff 100%);
+  border: 1px solid #d4e8f8;
+  box-shadow: 0 18px 36px rgba(17, 83, 126, 0.12);
+}
+
+.fade-rise {
+  animation: fade-rise 560ms ease-out both;
+}
+
+.float-soft {
+  animation: float-soft 4.6s ease-in-out infinite;
+}
+
+@keyframes fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }

@@ -1,7 +1,16 @@
-import type { AuthUser, LoginResponse, MonitoringOverview } from "../types";
+import type { AuthSubscription, AuthUser, BillingPlansResponse, LoginResponse, MonitoringOverview } from "../types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
+
+export type RegisterClientPayload = {
+  username: string;
+  password: string;
+  fullName: string;
+  societyCode: string;
+  phone?: string;
+  address?: string;
+};
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
@@ -50,6 +59,18 @@ export async function login(username: string, password: string): Promise<LoginRe
   return parseResponse<LoginResponse>(response);
 }
 
+export async function registerClient(payload: RegisterClientPayload): Promise<LoginResponse> {
+  const response = await fetch(`${API_BASE}/auth/register/client`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  return parseResponse<LoginResponse>(response);
+}
+
 export async function getMe(token: string): Promise<AuthUser> {
   const response = await fetch(`${API_BASE}/auth/me`, {
     headers: {
@@ -70,6 +91,26 @@ export async function getMonitoringOverview(token: string): Promise<MonitoringOv
   });
 
   return parseResponse<MonitoringOverview>(response);
+}
+
+export async function getBillingPlans(): Promise<BillingPlansResponse> {
+  const response = await fetch(`${API_BASE}/billing/plans`, {
+    cache: "no-store"
+  });
+
+  return parseResponse<BillingPlansResponse>(response);
+}
+
+export async function getMySubscription(token: string): Promise<AuthSubscription> {
+  return apiRequest<AuthSubscription>(token, "GET", "/billing/me");
+}
+
+export async function upgradeToPremium(token: string) {
+  return apiRequest<{ message: string; subscription: AuthSubscription }>(token, "POST", "/billing/upgrade", {});
+}
+
+export async function cancelPremium(token: string) {
+  return apiRequest<{ message: string; subscription: AuthSubscription }>(token, "POST", "/billing/cancel", {});
 }
 
 export async function getUserDirectory(token: string) {

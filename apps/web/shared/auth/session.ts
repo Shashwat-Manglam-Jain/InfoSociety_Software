@@ -13,7 +13,21 @@ export function getSession(): Session | null {
   }
 
   try {
-    return JSON.parse(value) as Session;
+    const parsed = JSON.parse(value) as Partial<Session>;
+
+    if (!parsed.accessToken || !parsed.role || !parsed.username || !parsed.fullName) {
+      window.localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+
+    return {
+      accessToken: parsed.accessToken,
+      role: parsed.role,
+      username: parsed.username,
+      fullName: parsed.fullName,
+      societyCode: parsed.societyCode ?? null,
+      subscriptionPlan: parsed.subscriptionPlan ?? null
+    };
   } catch {
     window.localStorage.removeItem(SESSION_KEY);
     return null;

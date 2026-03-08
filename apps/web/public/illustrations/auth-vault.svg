@@ -1,0 +1,26 @@
+<svg width="760" height="520" viewBox="0 0 760 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="authbg" x1="58" y1="40" x2="712" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B4268"/>
+      <stop offset="1" stop-color="#0E78B5"/>
+    </linearGradient>
+    <linearGradient id="door" x1="256" y1="128" x2="524" y2="430" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EAF7FF"/>
+      <stop offset="1" stop-color="#D5ECFB"/>
+    </linearGradient>
+  </defs>
+  <rect width="760" height="520" rx="34" fill="url(#authbg)"/>
+  <circle cx="88" cy="84" r="118" fill="#FFFFFF" fill-opacity="0.1"/>
+  <circle cx="682" cy="470" r="148" fill="#FFFFFF" fill-opacity="0.08"/>
+  <rect x="160" y="90" width="440" height="340" rx="30" fill="#F6FCFF"/>
+  <rect x="224" y="128" width="312" height="262" rx="22" fill="url(#door)"/>
+  <circle cx="380" cy="262" r="74" fill="#0E78B5"/>
+  <circle cx="380" cy="262" r="56" fill="#F7FCFF"/>
+  <circle cx="380" cy="262" r="12" fill="#0E78B5"/>
+  <path d="M380 206V240M380 284V318M324 262H358M402 262H436" stroke="#0E78B5" stroke-width="10" stroke-linecap="round"/>
+  <rect x="286" y="332" width="188" height="28" rx="14" fill="#D7ECFB"/>
+  <rect x="300" y="340" width="88" height="12" rx="6" fill="#8CB8D9"/>
+  <rect x="398" y="340" width="62" height="12" rx="6" fill="#BBD9EE"/>
+  <path d="M112 396C160 326 190 312 248 296" stroke="#FFB35B" stroke-width="12" stroke-linecap="round"/>
+  <path d="M648 148C598 198 560 218 520 230" stroke="#FFB35B" stroke-width="12" stroke-linecap="round"/>
+</svg>

@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { UserRole } from "@prisma/client";
+import { SubscriptionPlan, SubscriptionStatus, UserRole } from "@prisma/client";
 import { compare, hash } from "bcryptjs";
 import { PrismaService } from "../../common/database/prisma.service";
 import { LoginDto } from "./dto/login.dto";
@@ -22,7 +22,8 @@ export class AuthService {
       where: { username: dto.username },
       include: {
         society: true,
-        customerProfile: true
+        customerProfile: true,
+        subscription: true
       }
     });
 
@@ -50,7 +51,8 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         society: user.society,
-        customerProfile: user.customerProfile
+        customerProfile: user.customerProfile,
+        subscription: this.formatSubscription(user.subscription)
       }
     };
   }
@@ -104,7 +106,29 @@ export class AuthService {
         }
       });
 
-      return user;
+      await tx.subscription.create({
+        data: {
+          userId: user.id,
+          plan: SubscriptionPlan.FREE,
+          status: SubscriptionStatus.ACTIVE,
+          monthlyPrice: 0
+        }
+      });
+
+      const userWithSubscription = await tx.user.findUnique({
+        where: { id: user.id },
+        include: {
+          society: true,
+          customerProfile: true,
+          subscription: true
+        }
+      });
+
+      if (!userWithSubscription) {
+        throw new UnauthorizedException("Failed to provision subscription profile");
+      }
+
+      return userWithSubscription;
     });
 
     return {
@@ -121,7 +145,8 @@ export class AuthService {
         fullName: created.fullName,
         role: created.role,
         society: created.society,
-        customerProfile: created.customerProfile
+        customerProfile: created.customerProfile,
+        subscription: this.formatSubscription(created.subscription)
       }
     };
   }
@@ -158,12 +183,34 @@ export class AuthService {
       }
     });
 
+    await this.prisma.subscription.create({
+      data: {
+        userId: user.id,
+        plan: SubscriptionPlan.FREE,
+        status: SubscriptionStatus.ACTIVE,
+        monthlyPrice: 0
+      }
+    });
+
+    const withSubscription = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        society: true,
+        subscription: true
+      }
+    });
+
+    if (!withSubscription) {
+      throw new UnauthorizedException("Failed to load agent profile");
+    }
+
     return {
-      id: user.id,
-      username: user.username,
-      fullName: user.fullName,
-      role: user.role,
-      society: user.society
+      id: withSubscription.id,
+      username: withSubscription.username,
+      fullName: withSubscription.fullName,
+      role: withSubscription.role,
+      society: withSubscription.society,
+      subscription: this.formatSubscription(withSubscription.subscription)
     };
   }
 
@@ -172,7 +219,8 @@ export class AuthService {
       where: { id: currentUser.sub },
       include: {
         society: true,
-        customerProfile: true
+        customerProfile: true,
+        subscription: true
       }
     });
 
@@ -187,7 +235,8 @@ export class AuthService {
       role: user.role,
       isActive: user.isActive,
       society: user.society,
-      customerProfile: user.customerProfile
+      customerProfile: user.customerProfile,
+      subscription: this.formatSubscription(user.subscription)
     };
   }
 
@@ -198,5 +247,38 @@ export class AuthService {
       secret: this.configService.get<string>("JWT_SECRET") ?? "dev-secret",
       expiresIn: Number.isFinite(expiresInSeconds) ? expiresInSeconds : 86400
     });
+  }
+
+  private formatSubscription(
+    subscription:
+      | {
+          id: string;
+          plan: SubscriptionPlan;
+          status: SubscriptionStatus;
+          monthlyPrice: { toNumber(): number } | number;
+          startsAt: Date;
+          nextBillingDate: Date | null;
+          cancelAtPeriodEnd: boolean;
+        }
+      | null
+  ) {
+    if (!subscription) {
+      return null;
+    }
+
+    const monthlyPrice =
+      typeof subscription.monthlyPrice === "number"
+        ? subscription.monthlyPrice
+        : subscription.monthlyPrice.toNumber();
+
+    return {
+      id: subscription.id,
+      plan: subscription.plan,
+      status: subscription.status,
+      monthlyPrice,
+      startsAt: subscription.startsAt,
+      nextBillingDate: subscription.nextBillingDate,
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd
+    };
   }
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Alert,
@@ -16,6 +18,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
+import Grid from "@mui/material/Grid";
 import { login } from "@/shared/api/client";
 import { setSession } from "@/shared/auth/session";
 import type { UserRole } from "@/shared/types";
@@ -59,7 +62,8 @@ export default function LoginPage() {
         role: response.user.role,
         username: response.user.username,
         fullName: response.user.fullName,
-        societyCode: response.user.society?.code ?? null
+        societyCode: response.user.society?.code ?? null,
+        subscriptionPlan: response.user.subscription?.plan ?? null
       });
 
       router.push("/dashboard");
@@ -70,53 +74,77 @@ export default function LoginPage() {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: { xs: 4, md: 8 } }}>
-      <Card>
-        <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
-          <Chip label="Secure Login" color="primary" variant="outlined" sx={{ mb: 1.4 }} />
-          <Typography variant="h4" sx={{ fontSize: { xs: "1.6rem", md: "2rem" } }}>
-            Info Banking Access
-          </Typography>
-          <Typography color="text.secondary" sx={{ mt: 0.8, mb: 2 }}>
-            Choose your role and sign in.
-          </Typography>
+    <Container maxWidth="md" sx={{ py: { xs: 4, md: 8 } }}>
+      <Card className="surface-glass fade-rise" sx={{ overflow: "hidden" }}>
+        <Grid container>
+          <Grid size={{ xs: 12, md: 5 }} sx={{ bgcolor: "#0f4f7b", color: "#fff", p: { xs: 2.2, md: 3.2 } }}>
+            <Chip label="Secure Login" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff", mb: 1.1 }} />
+            <Typography variant="h5" sx={{ color: "#fff" }}>
+              Access Your Banking Workspace
+            </Typography>
+            <Typography sx={{ color: "#d2eaff", mt: 0.8, mb: 1.6 }}>
+              Role-based login for clients, agents, and superusers.
+            </Typography>
+            <Image
+              src="/illustrations/auth-vault.svg"
+              alt="Illustration of secure vault login"
+              width={760}
+              height={520}
+              style={{ width: "100%", height: "auto", display: "block" }}
+            />
+          </Grid>
 
-          <Tabs value={role} onChange={(_, value: UserRole) => setRole(value)} variant="fullWidth" sx={{ mb: 2 }}>
-            {roleTabs.map((tab) => (
-              <Tab key={tab.value} label={tab.label} value={tab.value} />
-            ))}
-          </Tabs>
-
-          <Box component="form" onSubmit={onSubmit}>
-            <Stack spacing={1.5}>
-              <TextField
-                label="Username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                required
-                fullWidth
-              />
-              <TextField
-                label="Password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                fullWidth
-              />
-
-              <Typography variant="body2" color="text.secondary">
-                {hint}
+          <Grid size={{ xs: 12, md: 7 }}>
+            <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
+              <Typography variant="h4" sx={{ fontSize: { xs: "1.6rem", md: "2rem" } }}>
+                Info Banking Access
+              </Typography>
+              <Typography color="text.secondary" sx={{ mt: 0.8, mb: 2 }}>
+                Choose your role and sign in.
               </Typography>
 
-              {error ? <Alert severity="error">{error}</Alert> : null}
+              <Tabs value={role} onChange={(_, value: UserRole) => setRole(value)} variant="fullWidth" sx={{ mb: 2 }}>
+                {roleTabs.map((tab) => (
+                  <Tab key={tab.value} label={tab.label} value={tab.value} />
+                ))}
+              </Tabs>
 
-              <Button type="submit" variant="contained" size="large" disabled={loading}>
-                {loading ? "Signing in..." : "Sign In"}
-              </Button>
-            </Stack>
-          </Box>
-        </CardContent>
+              <Box component="form" onSubmit={onSubmit}>
+                <Stack spacing={1.5}>
+                  <TextField
+                    label="Username"
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    required
+                    fullWidth
+                  />
+                  <TextField
+                    label="Password"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                    fullWidth
+                  />
+
+                  <Typography variant="body2" color="text.secondary">
+                    {hint}
+                  </Typography>
+
+                  {error ? <Alert severity="error">{error}</Alert> : null}
+
+                  <Button type="submit" variant="contained" size="large" disabled={loading}>
+                    {loading ? "Signing in..." : "Sign In"}
+                  </Button>
+
+                  <Button component={Link} href="/register" variant="text">
+                    Create a free account
+                  </Button>
+                </Stack>
+              </Box>
+            </CardContent>
+          </Grid>
+        </Grid>
       </Card>
     </Container>
   );

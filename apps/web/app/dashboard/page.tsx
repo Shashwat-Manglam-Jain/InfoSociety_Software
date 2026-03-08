@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import LogoutIcon from "@mui/icons-material/Logout";
 import {
@@ -27,8 +28,8 @@ import Grid from "@mui/material/Grid";
 import { ModuleCard } from "@/components/ui/module-card";
 import { AdsenseBanner } from "@/components/ads/adsense-banner";
 import { modules } from "@/features/banking/module-registry";
-import { getMe, getMonitoringOverview, getUserDirectory } from "@/shared/api/client";
-import { clearSession, getSession } from "@/shared/auth/session";
+import { cancelPremium, getMe, getMonitoringOverview, getMySubscription, getUserDirectory, upgradeToPremium } from "@/shared/api/client";
+import { clearSession, getSession, setSession } from "@/shared/auth/session";
 import type { AuthUser, MonitoringOverview } from "@/shared/types";
 
 type DirectoryUser = Awaited<ReturnType<typeof getUserDirectory>>[number];
@@ -40,6 +41,9 @@ export default function DashboardPage() {
   const [directory, setDirectory] = useState<DirectoryUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [billingNotice, setBillingNotice] = useState<string | null>(null);
+  const [billingBusy, setBillingBusy] = useState<"upgrade" | "cancel" | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -52,7 +56,16 @@ export default function DashboardPage() {
 
       try {
         const profile = await getMe(session.accessToken);
-        setUser(profile);
+        const subscription = profile.subscription ?? (await getMySubscription(session.accessToken));
+        const profileWithSubscription: AuthUser = {
+          ...profile,
+          subscription
+        };
+        setUser(profileWithSubscription);
+        setSession({
+          ...session,
+          subscriptionPlan: subscription.plan
+        });
 
         if (profile.role === "SUPER_USER" || profile.role === "AGENT") {
           const [monitoring, users] = await Promise.all([
@@ -85,6 +98,76 @@ export default function DashboardPage() {
     router.replace("/login");
   }
 
+  function syncSessionPlan(plan: "FREE" | "PREMIUM") {
+    const session = getSession();
+    if (!session) {
+      return;
+    }
+
+    setSession({
+      ...session,
+      subscriptionPlan: plan
+    });
+  }
+
+  async function onUpgradeToPremium() {
+    const session = getSession();
+    if (!session) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      setActionError(null);
+      setBillingNotice(null);
+      setBillingBusy("upgrade");
+      const result = await upgradeToPremium(session.accessToken);
+      setUser((previous) =>
+        previous
+          ? {
+              ...previous,
+              subscription: result.subscription
+            }
+          : previous
+      );
+      syncSessionPlan(result.subscription.plan);
+      setBillingNotice(result.message);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Unable to upgrade plan");
+    } finally {
+      setBillingBusy(null);
+    }
+  }
+
+  async function onCancelPremium() {
+    const session = getSession();
+    if (!session) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      setActionError(null);
+      setBillingNotice(null);
+      setBillingBusy("cancel");
+      const result = await cancelPremium(session.accessToken);
+      setUser((previous) =>
+        previous
+          ? {
+              ...previous,
+              subscription: result.subscription
+            }
+          : previous
+      );
+      syncSessionPlan(result.subscription.plan);
+      setBillingNotice(result.message);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Unable to cancel premium");
+    } finally {
+      setBillingBusy(null);
+    }
+  }
+
   if (loading) {
     return (
       <Stack alignItems="center" justifyContent="center" minHeight="60vh" spacing={1}>
@@ -101,6 +184,9 @@ export default function DashboardPage() {
       </Container>
     );
   }
+
+  const isPremium = user?.subscription?.plan === "PREMIUM";
+  const showAds = !isPremium;
 
   return (
     <>
@@ -124,17 +210,81 @@ export default function DashboardPage() {
       </AppBar>
 
       <Container maxWidth="xl" sx={{ py: 3 }}>
-        <Card sx={{ mb: 2 }}>
+        <Card className="surface-glass fade-rise" sx={{ mb: 2, overflow: "hidden" }}>
           <CardContent>
-            <Stack spacing={1}>
-              <Typography variant="h5">{greeting}</Typography>
+            <Grid container spacing={2} alignItems="center">
+              <Grid size={{ xs: 12, md: 8 }}>
+                <Stack spacing={1}>
+                  <Typography variant="h5">{greeting}</Typography>
+                  <Typography color="text.secondary">
+                    Manage banking operations, monitor society activity, and execute module workflows in one place.
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip label={`Role: ${user?.role ?? "-"}`} color="primary" />
+                    <Chip label={`Society: ${user?.society?.name ?? "Global"}`} variant="outlined" />
+                    {user?.customerProfile?.customerCode ? (
+                      <Chip label={`Customer: ${user.customerProfile.customerCode}`} color="secondary" />
+                    ) : null}
+                  </Stack>
+                </Stack>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box sx={{ width: "100%", maxWidth: 320, ml: "auto" }}>
+                  <Image
+                    src="/illustrations/insights-panel.svg"
+                    alt="Illustration of monitoring dashboard"
+                    width={760}
+                    height={500}
+                    style={{ width: "100%", height: "auto", display: "block" }}
+                  />
+                </Box>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        <Card className="surface-glass" sx={{ mb: 2 }}>
+          <CardContent>
+            <Stack spacing={1.5}>
+              <Typography variant="h6">Subscription</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip label={`Role: ${user?.role ?? "-"}`} color="primary" />
-                <Chip label={`Society: ${user?.society?.name ?? "Global"}`} variant="outlined" />
-                {user?.customerProfile?.customerCode ? (
-                  <Chip label={`Customer: ${user.customerProfile.customerCode}`} color="secondary" />
+                <Chip label={`Plan: ${user?.subscription?.plan ?? "FREE"}`} color={isPremium ? "success" : "default"} />
+                <Chip label={`Status: ${user?.subscription?.status ?? "ACTIVE"}`} variant="outlined" />
+                <Chip
+                  label={`Monthly: ₹${user?.subscription?.monthlyPrice ?? 0}`}
+                  color="primary"
+                  variant="outlined"
+                />
+                {user?.subscription?.nextBillingDate ? (
+                  <Chip
+                    label={`Next Billing: ${new Date(user.subscription.nextBillingDate).toLocaleDateString()}`}
+                    variant="outlined"
+                  />
+                ) : null}
+                {user?.subscription?.cancelAtPeriodEnd ? (
+                  <Chip label="Cancellation Scheduled" color="warning" />
                 ) : null}
               </Stack>
+              {billingNotice ? <Alert severity="success">{billingNotice}</Alert> : null}
+              {actionError ? <Alert severity="error">{actionError}</Alert> : null}
+              {user && user.role !== "SUPER_USER" ? (
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  {!isPremium ? (
+                    <Button variant="contained" onClick={onUpgradeToPremium} disabled={billingBusy !== null}>
+                      {billingBusy === "upgrade" ? "Upgrading..." : "Upgrade to Premium"}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      onClick={onCancelPremium}
+                      disabled={billingBusy !== null || user?.subscription?.cancelAtPeriodEnd}
+                    >
+                      {billingBusy === "cancel" ? "Scheduling..." : "Cancel Premium at Period End"}
+                    </Button>
+                  )}
+                </Stack>
+              ) : null}
             </Stack>
           </CardContent>
         </Card>
@@ -176,7 +326,7 @@ export default function DashboardPage() {
           </Grid>
         ) : null}
 
-        {user?.role !== "SUPER_USER" ? (
+        {showAds ? (
           <Card sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} mb={1.2}>

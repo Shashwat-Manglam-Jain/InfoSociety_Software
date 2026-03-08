@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { PrismaModule } from "../common/database/prisma.module";
 import { AuthModule } from "../modules/auth/auth.module";
+import { BillingModule } from "../modules/billing/billing.module";
 import { AccountsModule } from "../modules/banking/accounts/accounts.module";
 import { AdministrationModule } from "../modules/banking/administration/administration.module";
 import { CashbookModule } from "../modules/banking/cashbook/cashbook.module";
@@ -27,6 +28,7 @@ import { AppController } from "./app.controller";
     }),
     PrismaModule,
     AuthModule,
+    BillingModule,
     HealthModule,
     CustomersModule,
     AccountsModule,

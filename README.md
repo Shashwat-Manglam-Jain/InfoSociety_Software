@@ -65,16 +65,28 @@ npm --workspace @infopath/web run test
 - PostgreSQL: localhost:5433
 - Stop DB container: `npm run db:down`
 - Module operation workspace: `http://localhost:3000/modules/<module-slug>`
+- SEO routes: `/sitemap.xml`, `/robots.txt`
+- AdSense policy routes: `/privacy-policy`, `/terms-of-service`, `/contact`, `/advertising-disclosure`
+- Registration page: `/register`
 
 ## 8. Demo Login Credentials
 - Superuser: `superuser / Super@123`
 - Agent: `agent1 / Agent@123`
 - Client: `client1 / Client@123`
+- Premium Client: `premium1 / Premium@123`
 
 ## 9. AdSense Configuration
-- Set `NEXT_PUBLIC_ADSENSE_CLIENT` and `NEXT_PUBLIC_ADSENSE_SLOT` in `apps/web/.env.local`.
-- Ads render on non-superuser dashboards by default.
-- Use ad placements that comply with Google AdSense policies.
+- Set `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_ADSENSE_CLIENT`, and `NEXT_PUBLIC_ADSENSE_SLOT` in `apps/web/.env.local`.
+- Ads render for `FREE` plan accounts by default.
+- Premium plan (`/billing/upgrade`) is monthly and ad-free in dashboard.
+- `ads.txt` is available at `/ads.txt` (update publisher ID in `apps/web/public/ads.txt`).
+- Use compliant placements only. Do not use incentivized or forced click patterns.
+
+## Subscription and Billing APIs
+- `GET /api/v1/billing/plans`: public list of Common (free) and Premium (monthly) plans
+- `GET /api/v1/billing/me`: current user subscription state
+- `POST /api/v1/billing/upgrade`: upgrade authenticated user to Premium
+- `POST /api/v1/billing/cancel`: schedule Premium cancellation at period end
 
 ## Module Coverage (Implemented Core APIs)
 - Customer & KYC
@@ -111,6 +123,7 @@ apps/
         dto/
       modules/
         auth/
+        billing/
         banking/
           accounts/
           administration/
@@ -131,6 +144,7 @@ apps/
         shared/
   web/
     app/
+      register/
       dashboard/
       login/
       modules/[slug]/

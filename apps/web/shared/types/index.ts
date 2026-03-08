@@ -1,4 +1,6 @@
 export type UserRole = "CLIENT" | "AGENT" | "SUPER_USER";
+export type SubscriptionPlan = "FREE" | "PREMIUM";
+export type SubscriptionStatus = "ACTIVE" | "PAST_DUE" | "CANCELED";
 
 export type Society = {
   id: string;
@@ -20,6 +22,17 @@ export type AuthUser = {
     lastName?: string | null;
     phone?: string | null;
   } | null;
+  subscription?: AuthSubscription | null;
+};
+
+export type AuthSubscription = {
+  id: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  monthlyPrice: number;
+  startsAt: string;
+  nextBillingDate?: string | null;
+  cancelAtPeriodEnd: boolean;
 };
 
 export type LoginResponse = {
@@ -33,6 +46,18 @@ export type Session = {
   username: string;
   fullName: string;
   societyCode: string | null;
+  subscriptionPlan: SubscriptionPlan | null;
+};
+
+export type BillingPlansResponse = {
+  currency: string;
+  plans: {
+    id: SubscriptionPlan;
+    name: string;
+    monthlyPrice: number;
+    adsEnabled: boolean;
+    description: string;
+  }[];
 };
 
 export type MonitoringOverview = {

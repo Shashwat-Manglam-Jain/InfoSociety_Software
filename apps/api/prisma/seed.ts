@@ -3,6 +3,8 @@ import {
   AccountStatus,
   AccountType,
   ReportStatus,
+  SubscriptionPlan,
+  SubscriptionStatus,
   TransactionMode,
   TransactionType,
   UserRole
@@ -88,7 +90,7 @@ async function main() {
     }
   });
 
-  await prisma.user.upsert({
+  const freeClient = await prisma.user.upsert({
     where: { username: "client1" },
     update: {
       fullName: "Demo Client",
@@ -104,6 +106,115 @@ async function main() {
       role: UserRole.CLIENT,
       societyId: hoSociety.id,
       customerId: customer.id
+    }
+  });
+
+  const premiumCustomer = await prisma.customer.upsert({
+    where: { customerCode: "SOC-HO-C00002" },
+    update: {
+      firstName: "Premium",
+      lastName: "Client",
+      phone: "8888888888",
+      kycVerified: true,
+      societyId: hoSociety.id
+    },
+    create: {
+      customerCode: "SOC-HO-C00002",
+      societyId: hoSociety.id,
+      firstName: "Premium",
+      lastName: "Client",
+      phone: "8888888888",
+      email: "premium@infopath.local",
+      address: "Premium Street",
+      kycVerified: true
+    }
+  });
+
+  const premiumClient = await prisma.user.upsert({
+    where: { username: "premium1" },
+    update: {
+      fullName: "Premium Client",
+      role: UserRole.CLIENT,
+      societyId: hoSociety.id,
+      customerId: premiumCustomer.id,
+      isActive: true
+    },
+    create: {
+      username: "premium1",
+      passwordHash: password("Premium@123"),
+      fullName: "Premium Client",
+      role: UserRole.CLIENT,
+      societyId: hoSociety.id,
+      customerId: premiumCustomer.id
+    }
+  });
+
+  await prisma.subscription.upsert({
+    where: { userId: superUser.id },
+    update: {
+      plan: SubscriptionPlan.PREMIUM,
+      status: SubscriptionStatus.ACTIVE,
+      monthlyPrice: 0,
+      cancelAtPeriodEnd: false
+    },
+    create: {
+      userId: superUser.id,
+      plan: SubscriptionPlan.PREMIUM,
+      status: SubscriptionStatus.ACTIVE,
+      monthlyPrice: 0
+    }
+  });
+
+  await prisma.subscription.upsert({
+    where: { userId: agent.id },
+    update: {
+      plan: SubscriptionPlan.PREMIUM,
+      status: SubscriptionStatus.ACTIVE,
+      monthlyPrice: 199,
+      nextBillingDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+      cancelAtPeriodEnd: false
+    },
+    create: {
+      userId: agent.id,
+      plan: SubscriptionPlan.PREMIUM,
+      status: SubscriptionStatus.ACTIVE,
+      monthlyPrice: 199,
+      nextBillingDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
+    }
+  });
+
+  await prisma.subscription.upsert({
+    where: { userId: freeClient.id },
+    update: {
+      plan: SubscriptionPlan.FREE,
+      status: SubscriptionStatus.ACTIVE,
+      monthlyPrice: 0,
+      nextBillingDate: null,
+      cancelAtPeriodEnd: false
+    },
+    create: {
+      userId: freeClient.id,
+      plan: SubscriptionPlan.FREE,
+      status: SubscriptionStatus.ACTIVE,
+      monthlyPrice: 0
+    }
+  });
+
+  await prisma.subscription.upsert({
+    where: { userId: premiumClient.id },
+    update: {
+      plan: SubscriptionPlan.PREMIUM,
+      status: SubscriptionStatus.ACTIVE,
+      monthlyPrice: 299,
+      nextBillingDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+      cancelAtPeriodEnd: false
+    },
+    create: {
+      userId: premiumClient.id,
+      plan: SubscriptionPlan.PREMIUM,
+      status: SubscriptionStatus.ACTIVE,
+      monthlyPrice: 299,
+      nextBillingDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
     }
   });
 

@@ -4,36 +4,66 @@ export const appTheme = createTheme({
   palette: {
     mode: "light",
     primary: {
-      main: "#005792"
+      main: "#0e6da6"
     },
     secondary: {
-      main: "#ff7a00"
+      main: "#ff8f1f"
     },
     background: {
-      default: "#eef5fb",
+      default: "#f4f9ff",
       paper: "#ffffff"
+    },
+    text: {
+      primary: "#10253d",
+      secondary: "#365777"
     }
   },
   shape: {
-    borderRadius: 14
+    borderRadius: 18
   },
   typography: {
-    fontFamily: '"Trebuchet MS", "Segoe UI", "Tahoma", sans-serif',
+    fontFamily: 'var(--font-body), "Segoe UI", sans-serif',
     h1: {
-      fontWeight: 700
+      fontFamily: 'var(--font-heading), sans-serif',
+      fontWeight: 700,
+      letterSpacing: "-0.02em"
     },
     h2: {
-      fontWeight: 700
+      fontFamily: 'var(--font-heading), sans-serif',
+      fontWeight: 700,
+      letterSpacing: "-0.02em"
     },
     h3: {
-      fontWeight: 600
+      fontFamily: 'var(--font-heading), sans-serif',
+      fontWeight: 650
+    },
+    h4: {
+      fontFamily: 'var(--font-heading), sans-serif',
+      fontWeight: 650
     }
   },
   components: {
     MuiCard: {
       styleOverrides: {
         root: {
-          border: "1px solid #d6e6f7"
+          border: "1px solid #d4e8f8",
+          boxShadow: "0 14px 30px rgba(21, 84, 127, 0.1)"
+        }
+      }
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          textTransform: "none",
+          fontWeight: 700
+        }
+      }
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontWeight: 600
         }
       }
     }
