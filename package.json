@@ -1,0 +1,22 @@
+{
+  "name": "infopath-solutions-banking",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace @infopath/web run dev",
+    "dev:api": "npm --workspace @infopath/api run start:dev",
+    "build:web": "npm --workspace @infopath/web run build",
+    "build:api": "npm --workspace @infopath/api run build",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "prisma:generate": "npm --workspace @infopath/api run prisma:generate",
+    "prisma:migrate": "npm --workspace @infopath/api run prisma:migrate",
+    "prisma:seed": "npm --workspace @infopath/api run prisma:seed"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
