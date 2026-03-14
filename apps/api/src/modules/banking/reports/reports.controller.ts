@@ -29,19 +29,19 @@ export class ReportsController {
     return this.service.getCatalog();
   }
 
-  @Roles(UserRole.SUPER_USER, UserRole.AGENT)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT)
   @Post("run")
   runReport(@Req() req: Request & { user: RequestUser }, @Body() dto: RunReportDto) {
     return this.service.runReport(req.user, dto);
   }
 
-  @Roles(UserRole.SUPER_USER, UserRole.AGENT)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT)
   @Get("jobs")
   listJobs(@Req() req: Request & { user: RequestUser }, @Query() query: ListReportJobsQueryDto) {
     return this.service.listJobs(req.user, query);
   }
 
-  @Roles(UserRole.SUPER_USER, UserRole.AGENT)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT)
   @Get("jobs/:id")
   getJobById(@Req() req: Request & { user: RequestUser }, @Param("id") id: string) {
     return this.service.getJobById(req.user, id);

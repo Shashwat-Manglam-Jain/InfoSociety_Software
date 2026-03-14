@@ -1,5 +1,14 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('CLIENT', 'AGENT', 'SUPER_USER');
+CREATE TYPE "UserRole" AS ENUM ('CLIENT', 'AGENT', 'SUPER_USER', 'SUPER_ADMIN');
+
+-- CreateEnum
+CREATE TYPE "SubscriptionPlan" AS ENUM ('FREE', 'PREMIUM');
+
+-- CreateEnum
+CREATE TYPE "SubscriptionStatus" AS ENUM ('ACTIVE', 'PAST_DUE', 'CANCELED');
+
+-- CreateEnum
+CREATE TYPE "SocietyStatus" AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED');
 
 -- CreateEnum
 CREATE TYPE "AccountType" AS ENUM ('SAVINGS', 'CURRENT', 'FIXED_DEPOSIT', 'RECURRING_DEPOSIT', 'LOAN', 'PIGMY', 'GENERAL');
@@ -31,12 +40,30 @@ CREATE TYPE "LockerStatus" AS ENUM ('ACTIVE', 'CLOSED', 'EXPIRED');
 -- CreateEnum
 CREATE TYPE "ReportStatus" AS ENUM ('QUEUED', 'RUNNING', 'DONE', 'FAILED');
 
+-- CreateEnum
+CREATE TYPE "PaymentMethod" AS ENUM ('UPI', 'DEBIT_CARD', 'CREDIT_CARD', 'NET_BANKING');
+
+-- CreateEnum
+CREATE TYPE "PaymentPurpose" AS ENUM ('SUBSCRIPTION', 'SERVICE_CHARGE', 'LOAN_REPAYMENT', 'DEPOSIT_INSTALLMENT');
+
+-- CreateEnum
+CREATE TYPE "PaymentRequestStatus" AS ENUM ('OPEN', 'PAID', 'EXPIRED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "PaymentTransactionStatus" AS ENUM ('PENDING', 'SUCCESS', 'FAILED', 'REFUNDED', 'CANCELLED');
+
 -- CreateTable
 CREATE TABLE "Society" (
     "id" TEXT NOT NULL,
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "status" "SocietyStatus" NOT NULL DEFAULT 'PENDING',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "billingEmail" TEXT,
+    "billingPhone" TEXT,
+    "billingAddress" TEXT,
+    "acceptsDigitalPayments" BOOLEAN NOT NULL DEFAULT false,
+    "upiId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -60,6 +87,38 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
+CREATE TABLE "Subscription" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "plan" "SubscriptionPlan" NOT NULL DEFAULT 'FREE',
+    "status" "SubscriptionStatus" NOT NULL DEFAULT 'ACTIVE',
+    "monthlyPrice" DECIMAL(10,2) NOT NULL DEFAULT 0,
+    "startsAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "nextBillingDate" TIMESTAMP(3),
+    "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Subscription_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SocietySubscription" (
+    "id" TEXT NOT NULL,
+    "societyId" TEXT NOT NULL,
+    "plan" "SubscriptionPlan" NOT NULL DEFAULT 'FREE',
+    "status" "SubscriptionStatus" NOT NULL DEFAULT 'ACTIVE',
+    "monthlyPrice" DECIMAL(10,2) NOT NULL DEFAULT 0,
+    "startsAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "nextBillingDate" TIMESTAMP(3),
+    "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SocietySubscription_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Customer" (
     "id" TEXT NOT NULL,
     "customerCode" TEXT NOT NULL,
@@ -76,6 +135,44 @@ CREATE TABLE "Customer" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Customer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PaymentRequest" (
+    "id" TEXT NOT NULL,
+    "societyId" TEXT NOT NULL,
+    "customerId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "purpose" "PaymentPurpose" NOT NULL,
+    "amount" DECIMAL(18,2) NOT NULL,
+    "status" "PaymentRequestStatus" NOT NULL DEFAULT 'OPEN',
+    "dueDate" TIMESTAMP(3),
+    "paidAt" TIMESTAMP(3),
+    "createdById" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PaymentRequest_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PaymentTransaction" (
+    "id" TEXT NOT NULL,
+    "societyId" TEXT NOT NULL,
+    "paymentRequestId" TEXT,
+    "customerId" TEXT,
+    "initiatedById" TEXT,
+    "purpose" "PaymentPurpose" NOT NULL,
+    "method" "PaymentMethod" NOT NULL,
+    "status" "PaymentTransactionStatus" NOT NULL DEFAULT 'PENDING',
+    "amount" DECIMAL(18,2) NOT NULL,
+    "gatewayReference" TEXT NOT NULL,
+    "remark" TEXT,
+    "processedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PaymentTransaction_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -299,6 +396,7 @@ CREATE TABLE "CashBookEntry" (
 -- CreateTable
 CREATE TABLE "WorkingDay" (
     "id" TEXT NOT NULL,
+    "societyId" TEXT NOT NULL,
     "date" TIMESTAMP(3) NOT NULL,
     "isDayEnd" BOOLEAN NOT NULL DEFAULT false,
     "isMonthEnd" BOOLEAN NOT NULL DEFAULT false,
@@ -344,6 +442,9 @@ CREATE UNIQUE INDEX "Society_code_key" ON "Society"("code");
 CREATE INDEX "Society_name_idx" ON "Society"("name");
 
 -- CreateIndex
+CREATE INDEX "Society_status_isActive_idx" ON "Society"("status", "isActive");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
 
 -- CreateIndex
@@ -356,6 +457,18 @@ CREATE INDEX "User_role_idx" ON "User"("role");
 CREATE INDEX "User_societyId_idx" ON "User"("societyId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Subscription_userId_key" ON "Subscription"("userId");
+
+-- CreateIndex
+CREATE INDEX "Subscription_plan_status_idx" ON "Subscription"("plan", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SocietySubscription_societyId_key" ON "SocietySubscription"("societyId");
+
+-- CreateIndex
+CREATE INDEX "SocietySubscription_plan_status_idx" ON "SocietySubscription"("plan", "status");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Customer_customerCode_key" ON "Customer"("customerCode");
 
 -- CreateIndex
@@ -363,6 +476,24 @@ CREATE INDEX "Customer_customerCode_idx" ON "Customer"("customerCode");
 
 -- CreateIndex
 CREATE INDEX "Customer_societyId_idx" ON "Customer"("societyId");
+
+-- CreateIndex
+CREATE INDEX "PaymentRequest_societyId_status_idx" ON "PaymentRequest"("societyId", "status");
+
+-- CreateIndex
+CREATE INDEX "PaymentRequest_customerId_status_idx" ON "PaymentRequest"("customerId", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PaymentTransaction_gatewayReference_key" ON "PaymentTransaction"("gatewayReference");
+
+-- CreateIndex
+CREATE INDEX "PaymentTransaction_societyId_status_createdAt_idx" ON "PaymentTransaction"("societyId", "status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PaymentTransaction_customerId_createdAt_idx" ON "PaymentTransaction"("customerId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PaymentTransaction_paymentRequestId_idx" ON "PaymentTransaction"("paymentRequestId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Account_accountNumber_key" ON "Account"("accountNumber");
@@ -446,7 +577,10 @@ CREATE INDEX "LockerVisit_lockerId_visitedAt_idx" ON "LockerVisit"("lockerId", "
 CREATE INDEX "CashBookEntry_entryDate_isPosted_idx" ON "CashBookEntry"("entryDate", "isPosted");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "WorkingDay_date_key" ON "WorkingDay"("date");
+CREATE INDEX "WorkingDay_societyId_date_idx" ON "WorkingDay"("societyId", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WorkingDay_societyId_date_key" ON "WorkingDay"("societyId", "date");
 
 -- CreateIndex
 CREATE INDEX "ReportJob_category_status_idx" ON "ReportJob"("category", "status");
@@ -461,7 +595,34 @@ ALTER TABLE "User" ADD CONSTRAINT "User_societyId_fkey" FOREIGN KEY ("societyId"
 ALTER TABLE "User" ADD CONSTRAINT "User_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SocietySubscription" ADD CONSTRAINT "SocietySubscription_societyId_fkey" FOREIGN KEY ("societyId") REFERENCES "Society"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Customer" ADD CONSTRAINT "Customer_societyId_fkey" FOREIGN KEY ("societyId") REFERENCES "Society"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentRequest" ADD CONSTRAINT "PaymentRequest_societyId_fkey" FOREIGN KEY ("societyId") REFERENCES "Society"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentRequest" ADD CONSTRAINT "PaymentRequest_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentRequest" ADD CONSTRAINT "PaymentRequest_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentTransaction" ADD CONSTRAINT "PaymentTransaction_societyId_fkey" FOREIGN KEY ("societyId") REFERENCES "Society"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentTransaction" ADD CONSTRAINT "PaymentTransaction_paymentRequestId_fkey" FOREIGN KEY ("paymentRequestId") REFERENCES "PaymentRequest"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentTransaction" ADD CONSTRAINT "PaymentTransaction_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PaymentTransaction" ADD CONSTRAINT "PaymentTransaction_initiatedById_fkey" FOREIGN KEY ("initiatedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Account" ADD CONSTRAINT "Account_societyId_fkey" FOREIGN KEY ("societyId") REFERENCES "Society"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -519,6 +680,9 @@ ALTER TABLE "LockerVisit" ADD CONSTRAINT "LockerVisit_lockerId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "CashBookEntry" ADD CONSTRAINT "CashBookEntry_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "WorkingDay" ADD CONSTRAINT "WorkingDay_societyId_fkey" FOREIGN KEY ("societyId") REFERENCES "Society"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "WorkingDay" ADD CONSTRAINT "WorkingDay_openedById_fkey" FOREIGN KEY ("openedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

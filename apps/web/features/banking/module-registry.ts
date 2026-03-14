@@ -56,8 +56,8 @@ export const modules: BankingModule[] = [
   },
   {
     slug: "investments",
-    name: "Bank Investments",
-    summary: "Other bank investments, renewal/withdrawal and maturity tracking.",
+    name: "Investments",
+    summary: "External investments, renewal/withdrawal, and maturity tracking.",
     endpoints: ["/investments", "/investments/:id/renew", "/investments/:id/withdraw"]
   },
   {

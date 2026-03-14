@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LoginPage from "./page";
 import { login } from "@/shared/api/client";
 import { setSession } from "@/shared/auth/session";
@@ -26,22 +25,22 @@ describe("LoginPage", () => {
     jest.clearAllMocks();
   });
 
-  it("switches demo hints by selected role tab", async () => {
-    const user = userEvent.setup();
+  it("switches demo hints by selected role tab", () => {
     render(<LoginPage />);
 
     expect(screen.getByText("Demo: client1 / Client@123")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Agent" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Agent" }));
     expect(screen.getByText("Demo: agent1 / Agent@123")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Superuser" }));
-    expect(screen.getByText("Demo: superuser / Super@123")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Society" }));
+    expect(screen.getByText("Demo: superuser / Super@123 (Society)")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Superadmin" }));
+    expect(screen.getByText("Demo: superadmin / Admin@123 (Platform)")).toBeInTheDocument();
   });
 
   it("stores session and redirects after successful login", async () => {
-    const user = userEvent.setup();
-
     (login as jest.Mock).mockResolvedValue({
       accessToken: "token-1",
       user: {
@@ -49,25 +48,26 @@ describe("LoginPage", () => {
         username: "agent1",
         fullName: "Agent User",
         role: "AGENT",
-        society: { code: "SOC-HO", id: "soc-1", name: "Head Office" }
+        society: { code: "SOC-HO", id: "soc-1", name: "Head Office", status: "ACTIVE" }
       }
     });
 
     render(<LoginPage />);
 
-    await user.click(screen.getByRole("tab", { name: "Agent" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Agent" }));
     const usernameInput = screen.getByRole("textbox", { name: /username/i });
     const passwordInput = screen.getByLabelText(/password/i);
 
-    await user.type(usernameInput, "agent1");
-    await user.type(passwordInput, "Agent@123");
-    await user.click(screen.getByRole("button", { name: "Sign In" }));
+    fireEvent.change(usernameInput, { target: { value: "agent1" } });
+    fireEvent.change(passwordInput, { target: { value: "Agent@123" } });
+    fireEvent.submit(screen.getByRole("button", { name: "Sign In" }).closest("form")!);
 
-    expect(login).toHaveBeenCalledWith("agent1", "Agent@123");
+    await waitFor(() => expect(login).toHaveBeenCalledWith("agent1", "Agent@123"));
     expect(setSession).toHaveBeenCalledWith(
       expect.objectContaining({
         accessToken: "token-1",
-        role: "AGENT"
+        role: "AGENT",
+        accountType: "AGENT"
       })
     );
     expect(push).toHaveBeenCalledWith("/dashboard");

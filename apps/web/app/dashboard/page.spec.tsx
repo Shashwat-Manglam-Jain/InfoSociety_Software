@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import DashboardPage from "./page";
-import { getMe } from "@/shared/api/client";
+import { getMe, getPaymentsOverview } from "@/shared/api/client";
 import { getSession } from "@/shared/auth/session";
+import { LanguageProvider } from "@/shared/i18n/language-provider";
 
 const replace = jest.fn();
 
@@ -17,6 +18,11 @@ jest.mock("@/shared/api/client", () => ({
   getMySubscription: jest.fn(),
   getMonitoringOverview: jest.fn(),
   getUserDirectory: jest.fn(),
+  getPaymentsOverview: jest.fn(),
+  listCustomers: jest.fn(),
+  updateSocietyAccess: jest.fn(),
+  createPaymentRequest: jest.fn(),
+  payPaymentRequest: jest.fn(),
   upgradeToPremium: jest.fn(),
   cancelPremium: jest.fn()
 }));
@@ -33,10 +39,26 @@ describe("DashboardPage subscription ads", () => {
     (getSession as jest.Mock).mockReturnValue({
       accessToken: "token-1",
       role: "CLIENT",
+      accountType: "CLIENT",
       username: "client1",
       fullName: "Demo Client",
       societyCode: "SOC-HO",
-      subscriptionPlan: "FREE"
+      subscriptionPlan: "FREE",
+      avatarDataUrl: null
+    });
+    (getPaymentsOverview as jest.Mock).mockResolvedValue({
+      scope: "customer",
+      society: { id: "soc-1", code: "SOC-HO", name: "Head Office", acceptsDigitalPayments: true, upiId: "soc@upi" },
+      acceptsDigitalPayments: true,
+      acceptedMethods: ["UPI", "DEBIT_CARD"],
+      totals: {
+        pendingRequests: 1,
+        completedPayments: 0,
+        totalPendingAmount: 1200,
+        totalCollectedAmount: 0
+      },
+      requests: [],
+      recentTransactions: []
     });
   });
 
@@ -46,6 +68,7 @@ describe("DashboardPage subscription ads", () => {
       username: "client1",
       fullName: "Demo Client",
       role: "CLIENT",
+      society: { id: "soc-1", code: "SOC-HO", name: "Head Office", status: "ACTIVE" },
       subscription: {
         id: "sub-1",
         plan: "FREE",
@@ -57,7 +80,11 @@ describe("DashboardPage subscription ads", () => {
       }
     });
 
-    render(<DashboardPage />);
+    render(
+      <LanguageProvider>
+        <DashboardPage />
+      </LanguageProvider>
+    );
 
     expect(await screen.findByText("Sponsored")).toBeInTheDocument();
   });
@@ -68,6 +95,7 @@ describe("DashboardPage subscription ads", () => {
       username: "premium1",
       fullName: "Premium Client",
       role: "CLIENT",
+      society: { id: "soc-1", code: "SOC-HO", name: "Head Office", status: "ACTIVE" },
       subscription: {
         id: "sub-2",
         plan: "PREMIUM",
@@ -79,7 +107,11 @@ describe("DashboardPage subscription ads", () => {
       }
     });
 
-    render(<DashboardPage />);
+    render(
+      <LanguageProvider>
+        <DashboardPage />
+      </LanguageProvider>
+    );
 
     await waitFor(() => {
       expect(screen.queryByText("Sponsored")).not.toBeInTheDocument();

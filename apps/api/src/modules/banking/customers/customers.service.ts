@@ -145,9 +145,9 @@ export class CustomersService {
   }
 
   private async resolveSociety(currentUser: RequestUser, societyCode?: string) {
-    if (currentUser.role === UserRole.AGENT) {
+    if (currentUser.role === UserRole.AGENT || currentUser.role === UserRole.SUPER_USER) {
       if (!currentUser.societyId) {
-        throw new ForbiddenException("Agent is not mapped to any society");
+        throw new ForbiddenException("Operator is not mapped to any society");
       }
 
       const society = await this.prisma.society.findUnique({ where: { id: currentUser.societyId } });
@@ -158,8 +158,12 @@ export class CustomersService {
       return society;
     }
 
+    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException("Only platform administrators can choose a different society");
+    }
+
     if (!societyCode) {
-      throw new NotFoundException("societyCode is required for super user operations");
+      throw new NotFoundException("societyCode is required for platform operations");
     }
 
     const society = await this.prisma.society.findUnique({
@@ -180,17 +184,8 @@ export class CustomersService {
       where.id = currentUser.customerId ?? "";
     }
 
-    if (currentUser.role === UserRole.AGENT) {
+    if (currentUser.role === UserRole.AGENT || currentUser.role === UserRole.SUPER_USER) {
       where.societyId = currentUser.societyId ?? "";
-    }
-
-    if (currentUser.role === UserRole.SUPER_USER && query.societyCode) {
-      const society = await this.prisma.society.findUnique({
-        where: { code: query.societyCode.trim().toUpperCase() },
-        select: { id: true }
-      });
-
-      where.societyId = society?.id ?? "";
     }
 
     if (query.q) {
@@ -206,11 +201,7 @@ export class CustomersService {
   }
 
   private ensureScope(currentUser: RequestUser, societyId: string, customerId?: string) {
-    if (currentUser.role === UserRole.SUPER_USER) {
-      return;
-    }
-
-    if (currentUser.role === UserRole.AGENT && currentUser.societyId !== societyId) {
+    if ((currentUser.role === UserRole.SUPER_USER || currentUser.role === UserRole.AGENT) && currentUser.societyId !== societyId) {
       throw new ForbiddenException("Customer belongs to another society");
     }
 

@@ -60,6 +60,10 @@ export class ChequeClearingService {
       throw new ForbiddenException("Client users cannot create cheque clearing entries");
     }
 
+    if (!dto.accountId) {
+      throw new BadRequestException("accountId is required to keep cheque clearing scoped to a society");
+    }
+
     const account = dto.accountId
       ? await this.prisma.account.findUnique({
           where: { id: dto.accountId },
@@ -74,11 +78,7 @@ export class ChequeClearingService {
       throw new NotFoundException("Account not found");
     }
 
-    if (account) {
-      this.ensureScope(currentUser, account.societyId);
-    } else if (currentUser.role === UserRole.AGENT && !currentUser.societyId) {
-      throw new ForbiddenException("Agent is not mapped to a society");
-    }
+    this.ensureScope(currentUser, account!.societyId);
 
     return this.prisma.chequeClearing.create({
       data: {
@@ -111,9 +111,11 @@ export class ChequeClearingService {
       throw new NotFoundException("Cheque clearing entry not found");
     }
 
-    if (entry.account?.societyId) {
-      this.ensureScope(currentUser, entry.account.societyId);
+    if (!entry.account?.societyId) {
+      throw new BadRequestException("Unable to resolve society for this cheque entry");
     }
+
+    this.ensureScope(currentUser, entry.account.societyId);
 
     if (entry.status !== InstrumentStatus.ENTERED) {
       throw new BadRequestException("Only entered cheque can be modified");
@@ -145,9 +147,11 @@ export class ChequeClearingService {
       throw new NotFoundException("Cheque clearing entry not found");
     }
 
-    if (entry.account?.societyId) {
-      this.ensureScope(currentUser, entry.account.societyId);
+    if (!entry.account?.societyId) {
+      throw new BadRequestException("Unable to resolve society for this cheque entry");
     }
+
+    this.ensureScope(currentUser, entry.account.societyId);
 
     return this.prisma.chequeClearing.update({
       where: { id },
@@ -170,19 +174,9 @@ export class ChequeClearingService {
       };
     }
 
-    if (currentUser.role === UserRole.AGENT) {
+    if (currentUser.role === UserRole.AGENT || currentUser.role === UserRole.SUPER_USER) {
       where.account = {
         societyId: currentUser.societyId ?? ""
-      };
-    }
-
-    if (currentUser.role === UserRole.SUPER_USER && query.societyCode) {
-      const society = await this.prisma.society.findUnique({
-        where: { code: query.societyCode.trim().toUpperCase() },
-        select: { id: true }
-      });
-      where.account = {
-        societyId: society?.id ?? ""
       };
     }
 
@@ -203,11 +197,7 @@ export class ChequeClearingService {
   }
 
   private ensureScope(currentUser: RequestUser, societyId: string) {
-    if (currentUser.role === UserRole.SUPER_USER) {
-      return;
-    }
-
-    if (currentUser.role === UserRole.AGENT && currentUser.societyId !== societyId) {
+    if ((currentUser.role === UserRole.SUPER_USER || currentUser.role === UserRole.AGENT) && currentUser.societyId !== societyId) {
       throw new ForbiddenException("Entry belongs to another society");
     }
   }

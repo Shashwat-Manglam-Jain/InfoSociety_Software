@@ -20,8 +20,9 @@ export class UsersService {
   }
 
   async getDirectory(currentUser: RequestUser) {
+    const isPlatformSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
     const where =
-      currentUser.role === UserRole.SUPER_USER
+      isPlatformSuperAdmin
         ? {}
         : {
             societyId: currentUser.societyId ?? ""

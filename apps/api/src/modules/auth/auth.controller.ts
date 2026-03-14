@@ -9,6 +9,7 @@ import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterAgentDto } from "./dto/register-agent.dto";
 import { RegisterClientDto } from "./dto/register-client.dto";
+import { RegisterSocietyDto } from "./dto/register-society.dto";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -27,8 +28,26 @@ export class AuthController {
     return this.authService.registerClient(dto);
   }
 
+  @Public()
+  @Post("register/agent/self")
+  registerAgentSelf(@Body() dto: RegisterAgentDto) {
+    return this.authService.registerAgentSelf(dto);
+  }
+
+  @Public()
+  @Post("register/society")
+  registerSociety(@Body() dto: RegisterSocietyDto) {
+    return this.authService.registerSociety(dto);
+  }
+
+  @Public()
+  @Get("societies")
+  listSocieties() {
+    return this.authService.listActiveSocieties();
+  }
+
   @ApiBearerAuth()
-  @Roles(UserRole.SUPER_USER)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER)
   @Post("register/agent")
   registerAgent(@Body() dto: RegisterAgentDto) {
     return this.authService.registerAgent(dto);

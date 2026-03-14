@@ -23,8 +23,14 @@ export class AdministrationService {
     return bankingFeatureMap["administration"].workflows;
   }
 
-  async listWorkingDays(query: ListWorkingDaysQueryDto) {
+  async listWorkingDays(currentUser: RequestUser, query: ListWorkingDaysQueryDto) {
+    this.ensureOperator(currentUser);
+
     const where: Prisma.WorkingDayWhereInput = {};
+
+    if (currentUser.role !== UserRole.SUPER_ADMIN) {
+      where.societyId = currentUser.societyId ?? "";
+    }
 
     if (query.from || query.to) {
       where.date = {};
@@ -40,6 +46,12 @@ export class AdministrationService {
       this.prisma.workingDay.findMany({
         where,
         include: {
+          society: {
+            select: {
+              code: true,
+              name: true
+            }
+          },
           openedBy: {
             select: {
               username: true,
@@ -73,14 +85,21 @@ export class AdministrationService {
   async beginWorkingDay(currentUser: RequestUser, dto: WorkingDayDto) {
     this.ensureOperator(currentUser);
 
+    const societyId = this.resolveOperatingSocietyId(currentUser);
     const date = this.toDayStart(dto.date);
     return this.prisma.workingDay.upsert({
-      where: { date },
+      where: {
+        societyId_date: {
+          societyId,
+          date
+        }
+      },
       update: {
         openedById: currentUser.sub,
         isDayEnd: false
       },
       create: {
+        societyId,
         date,
         openedById: currentUser.sub
       }
@@ -90,6 +109,7 @@ export class AdministrationService {
   async dayEnd(currentUser: RequestUser, dto: WorkingDayDto) {
     this.ensureOperator(currentUser);
 
+    const societyId = this.resolveOperatingSocietyId(currentUser);
     const date = this.toDayStart(dto.date);
     const dayEnd = new Date(date);
     dayEnd.setDate(dayEnd.getDate() + 1);
@@ -102,7 +122,7 @@ export class AdministrationService {
       }
     };
 
-    if (currentUser.role === UserRole.AGENT) {
+    if (currentUser.role !== UserRole.SUPER_ADMIN) {
       cashbookFilter.createdBy = {
         societyId: currentUser.societyId ?? ""
       };
@@ -117,12 +137,18 @@ export class AdministrationService {
     });
 
     const workingDay = await this.prisma.workingDay.upsert({
-      where: { date },
+      where: {
+        societyId_date: {
+          societyId,
+          date
+        }
+      },
       update: {
         isDayEnd: true,
         closedById: currentUser.sub
       },
       create: {
+        societyId,
         date,
         isDayEnd: true,
         openedById: currentUser.sub,
@@ -138,14 +164,21 @@ export class AdministrationService {
 
   async monthEnd(currentUser: RequestUser, dto: WorkingDayDto) {
     this.ensureOperator(currentUser);
+    const societyId = this.resolveOperatingSocietyId(currentUser);
     const date = this.toDayStart(dto.date);
     return this.prisma.workingDay.upsert({
-      where: { date },
+      where: {
+        societyId_date: {
+          societyId,
+          date
+        }
+      },
       update: {
         isMonthEnd: true,
         closedById: currentUser.sub
       },
       create: {
+        societyId,
         date,
         isMonthEnd: true,
         openedById: currentUser.sub,
@@ -156,14 +189,21 @@ export class AdministrationService {
 
   async yearEnd(currentUser: RequestUser, dto: WorkingDayDto) {
     this.ensureOperator(currentUser);
+    const societyId = this.resolveOperatingSocietyId(currentUser);
     const date = this.toDayStart(dto.date);
     return this.prisma.workingDay.upsert({
-      where: { date },
+      where: {
+        societyId_date: {
+          societyId,
+          date
+        }
+      },
       update: {
         isYearEnd: true,
         closedById: currentUser.sub
       },
       create: {
+        societyId,
         date,
         isYearEnd: true,
         openedById: currentUser.sub,
@@ -177,7 +217,7 @@ export class AdministrationService {
 
     return this.prisma.user.findMany({
       where:
-        currentUser.role === UserRole.SUPER_USER
+        currentUser.role === UserRole.SUPER_ADMIN
           ? {}
           : {
               societyId: currentUser.societyId ?? ""
@@ -217,10 +257,16 @@ export class AdministrationService {
       throw new NotFoundException("User not found");
     }
 
-    if (currentUser.role === UserRole.AGENT) {
-      if (target.role === UserRole.SUPER_USER || target.societyId !== currentUser.societyId) {
-        throw new ForbiddenException("Agent cannot modify this user");
-      }
+    if (currentUser.role !== UserRole.SUPER_ADMIN && target.societyId !== currentUser.societyId) {
+      throw new ForbiddenException("User belongs to another society");
+    }
+
+    if (target.role === UserRole.SUPER_ADMIN && currentUser.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException("Only platform administrators can modify superadmin users");
+    }
+
+    if (currentUser.role === UserRole.AGENT && target.role === UserRole.SUPER_USER) {
+      throw new ForbiddenException("Agent cannot modify this user");
     }
 
     return this.prisma.user.update({
@@ -254,7 +300,7 @@ export class AdministrationService {
       throw new NotFoundException("Account not found");
     }
 
-    if (currentUser.role === UserRole.AGENT && currentUser.societyId !== account.societyId) {
+    if (currentUser.role !== UserRole.SUPER_ADMIN && currentUser.societyId !== account.societyId) {
       throw new ForbiddenException("Account belongs to another society");
     }
 
@@ -323,7 +369,7 @@ export class AdministrationService {
       isPosted: true
     };
 
-    if (currentUser.role === UserRole.AGENT) {
+    if (currentUser.role !== UserRole.SUPER_ADMIN) {
       where.createdBy = {
         societyId: currentUser.societyId ?? ""
       };
@@ -363,6 +409,14 @@ export class AdministrationService {
     if (currentUser.role === UserRole.CLIENT) {
       throw new ForbiddenException("Client users cannot access administration controls");
     }
+  }
+
+  private resolveOperatingSocietyId(currentUser: RequestUser) {
+    if (!currentUser.societyId) {
+      throw new ForbiddenException("Operator is not mapped to a society");
+    }
+
+    return currentUser.societyId;
   }
 
   private toDayStart(date?: string): Date {

@@ -28,8 +28,8 @@ export class AdministrationController {
 
   @Roles(UserRole.SUPER_USER, UserRole.AGENT)
   @Get("working-days")
-  listWorkingDays(@Query() query: ListWorkingDaysQueryDto) {
-    return this.service.listWorkingDays(query);
+  listWorkingDays(@Req() req: Request & { user: RequestUser }, @Query() query: ListWorkingDaysQueryDto) {
+    return this.service.listWorkingDays(req.user, query);
   }
 
   @Roles(UserRole.SUPER_USER, UserRole.AGENT)

@@ -38,7 +38,7 @@ export class ReportsService {
       ...(dto.parameters ?? {}),
       requestedByRole: currentUser.role,
       requestedAt: new Date().toISOString(),
-      scope: currentUser.role === UserRole.SUPER_USER ? "all_societies" : currentUser.societyId
+      scope: currentUser.role === UserRole.SUPER_ADMIN ? "platform" : currentUser.societyId
     };
 
     const job = await this.prisma.reportJob.create({
@@ -70,7 +70,7 @@ export class ReportsService {
   async listJobs(currentUser: RequestUser, query: ListReportJobsQueryDto) {
     const where: Prisma.ReportJobWhereInput = {};
 
-    if (currentUser.role !== UserRole.SUPER_USER) {
+    if (currentUser.role !== UserRole.SUPER_ADMIN) {
       where.requestedBy = {
         societyId: currentUser.societyId ?? ""
       };
@@ -136,7 +136,7 @@ export class ReportsService {
       throw new NotFoundException("Report job not found");
     }
 
-    if (currentUser.role !== UserRole.SUPER_USER && job.requestedBy?.societyId !== currentUser.societyId) {
+    if (currentUser.role !== UserRole.SUPER_ADMIN && job.requestedBy?.societyId !== currentUser.societyId) {
       throw new ForbiddenException("Report job belongs to another society");
     }
 
