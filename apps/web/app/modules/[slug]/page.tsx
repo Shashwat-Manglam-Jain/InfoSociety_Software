@@ -3,16 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Alert, Button, Container, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Container, Stack, Typography } from "@mui/material";
+import { WorkspaceFooter } from "@/components/layout/workspace-footer";
 import { SettingsMenu } from "@/components/ui/settings-menu";
 import { getAllowedModuleSlugs, resolveAccountTypeByRole } from "@/features/banking/account-access";
+import { localizeBankingModule } from "@/features/banking/module-localization";
 import { modules } from "@/features/banking/module-registry";
 import { ModuleWorkspace } from "@/features/banking/operations/module-workspace";
 import { getSession } from "@/shared/auth/session";
+import { useLanguage } from "@/shared/i18n/language-provider";
 import type { Session } from "@/shared/types";
 
 export default function ModuleDetailPage() {
   const params = useParams<{ slug: string }>();
+  const { locale, t } = useLanguage();
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -21,7 +25,8 @@ export default function ModuleDetailPage() {
     setReady(true);
   }, []);
 
-  const module = modules.find((item) => item.slug === params.slug);
+  const baseModule = modules.find((item) => item.slug === params.slug);
+  const module = baseModule ? localizeBankingModule(baseModule, locale) : null;
   const accountType = session ? (session.accountType ?? resolveAccountTypeByRole(session.role)) : null;
   const hasAccess = accountType ? getAllowedModuleSlugs(accountType).includes(params.slug) : false;
 
@@ -68,18 +73,40 @@ export default function ModuleDetailPage() {
 
   return (
     <>
-      <Container maxWidth="lg" sx={{ pt: 2 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" useFlexGap>
-          <Typography variant="h6">Operational Workspace</Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <SettingsMenu size="small" />
-            <Button component={Link} href="/dashboard" variant="outlined">
-              Back to Dashboard
-            </Button>
-          </Stack>
-        </Stack>
+      <Container maxWidth="lg" sx={{ pt: 2.5 }}>
+        <Card className="surface-glass" sx={{ borderRadius: 3 }}>
+          <CardContent sx={{ p: { xs: 2, md: 2.4 } }}>
+            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
+              <Box>
+                <Typography variant="overline" color="text.secondary">
+                  Service Workspace
+                </Typography>
+                <Typography variant="h5" sx={{ mt: 0.4 }}>
+                  {module.name}
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.6, maxWidth: 780 }}>
+                  {module.summary}
+                </Typography>
+              </Box>
+
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Button component={Link} href="/about" variant="outlined">
+                  {t("nav.about")}
+                </Button>
+                <Button component={Link} href="/contact" variant="outlined">
+                  {t("nav.contact")}
+                </Button>
+                <SettingsMenu size="small" />
+                <Button component={Link} href="/dashboard" variant="contained">
+                  Back to Dashboard
+                </Button>
+              </Stack>
+            </Stack>
+          </CardContent>
+        </Card>
       </Container>
       <ModuleWorkspace slug={module.slug} name={module.name} summary={module.summary} />
+      <WorkspaceFooter />
     </>
   );
 }

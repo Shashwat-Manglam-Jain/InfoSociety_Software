@@ -20,42 +20,17 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { alpha } from "@mui/material/styles";
-import { appBranding } from "@/shared/config/branding";
+import {
+  getWorkspaceDefinitions,
+  getWorkspaceModules,
+  getWorkspaceUiCopy
+} from "@/features/roles/workspace-definitions";
 import { getBillingPlans } from "@/shared/api/client";
 import { useLanguage } from "@/shared/i18n/language-provider";
+import { getHomePageCopy } from "@/shared/i18n/marketing-copy";
 import { toast } from "@/shared/ui/toast";
-
-const features = [
-  {
-    icon: <SecurityIcon sx={{ fontSize: 40, color: "secondary.main" }} />,
-    title: "Secure & Compliant",
-    description: "Role-based access controls and audit trails for enterprise compliance"
-  },
-  {
-    icon: <SpeedIcon sx={{ fontSize: 40, color: "secondary.main" }} />,
-    title: "Smooth Collections",
-    description: "Capture member contributions, track dues, and follow up pending payments"
-  },
-  {
-    icon: <GroupsIcon sx={{ fontSize: 40, color: "secondary.main" }} />,
-    title: "Multi-Role Support",
-    description: "Tailored workspaces for clients, agents, and administrators"
-  },
-  {
-    icon: <AnalyticsIcon sx={{ fontSize: 40, color: "secondary.main" }} />,
-    title: "Real-time Reports",
-    description: "Operational dashboards and monitoring for leadership visibility"
-  }
-];
-
-const capabilities = [
-  "Member onboarding & verification",
-  "Society membership and accounts",
-  "Collections & interest tracking",
-  "Payment requests & receipts",
-  "Reports, statements, and exports",
-  "Role-based access & approvals"
-];
+import { getSession } from "@/shared/auth/session";
+import { useRouter } from "next/navigation";
 
 type PricingPlan = {
   id: "FREE" | "PREMIUM";
@@ -65,29 +40,72 @@ type PricingPlan = {
   highlighted?: boolean;
 };
 
-const defaultPricingPlans: PricingPlan[] = [
-  {
-    id: "FREE",
-    price: "₹0",
-    descriptionKey: "pricing.free.description",
-    features: ["Core society workflows", "Standard support", "Ad-supported"]
-  },
-  {
-    id: "PREMIUM",
-    price: "Monthly",
-    descriptionKey: "pricing.premium.description",
-    features: ["Ad-free experience", "Priority support", "Advanced features"],
-    highlighted: true
-  }
-];
-
 export default function HomePage() {
-  const { t } = useLanguage();
-  const [pricingPlans, setPricingPlans] = useState(defaultPricingPlans);
+  const { locale, t } = useLanguage();
+  const [premiumMonthlyPrice, setPremiumMonthlyPrice] = useState<number | null>(null);
+  const router = useRouter();
+  const workspaceUi = useMemo(() => getWorkspaceUiCopy(locale), [locale]);
+  const workspaces = useMemo(() => getWorkspaceDefinitions(locale), [locale]);
+  const homeCopy = useMemo(() => getHomePageCopy(locale), [locale]);
+
+  const features = useMemo(
+    () => [
+      {
+        icon: <SecurityIcon sx={{ fontSize: 40, color: "secondary.main" }} />,
+        title: homeCopy.features[0]?.title ?? "",
+        description: homeCopy.features[0]?.description ?? ""
+      },
+      {
+        icon: <SpeedIcon sx={{ fontSize: 40, color: "secondary.main" }} />,
+        title: homeCopy.features[1]?.title ?? "",
+        description: homeCopy.features[1]?.description ?? ""
+      },
+      {
+        icon: <GroupsIcon sx={{ fontSize: 40, color: "secondary.main" }} />,
+        title: homeCopy.features[2]?.title ?? "",
+        description: homeCopy.features[2]?.description ?? ""
+      },
+      {
+        icon: <AnalyticsIcon sx={{ fontSize: 40, color: "secondary.main" }} />,
+        title: homeCopy.features[3]?.title ?? "",
+        description: homeCopy.features[3]?.description ?? ""
+      }
+    ],
+    [homeCopy]
+  );
 
   const currencyFormatter = useMemo(() => {
-    return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
-  }, []);
+    const currencyLocale = locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+    return new Intl.NumberFormat(currencyLocale, { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+  }, [locale]);
+
+  const pricingPlans = useMemo<PricingPlan[]>(
+    () => [
+      {
+        id: "FREE",
+        price: "₹0",
+        descriptionKey: "pricing.free.description",
+        features: homeCopy.freePlanFeatures
+      },
+      {
+        id: "PREMIUM",
+        price:
+          premiumMonthlyPrice === null
+            ? homeCopy.premiumPriceFallback
+            : `${currencyFormatter.format(premiumMonthlyPrice)}${homeCopy.premiumPerMonthSuffix}`,
+        descriptionKey: "pricing.premium.description",
+        features: homeCopy.premiumPlanFeatures,
+        highlighted: true
+      }
+    ],
+    [currencyFormatter, homeCopy, premiumMonthlyPrice]
+  );
+
+  useEffect(() => {
+    if (getSession()) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
 
   useEffect(() => {
     let active = true;
@@ -100,16 +118,7 @@ export default function HomePage() {
         const premium = response.plans.find((plan) => plan.id === "PREMIUM");
         if (!premium) return;
 
-        setPricingPlans((current) =>
-          current.map((plan) =>
-            plan.id === "PREMIUM"
-              ? {
-                  ...plan,
-                  price: `${currencyFormatter.format(premium.monthlyPrice)}/mo`
-                }
-              : plan
-          )
-        );
+        setPremiumMonthlyPrice(premium.monthlyPrice);
       } catch {
         // Keep fallback pricing copy when API is unavailable.
       }
@@ -143,7 +152,7 @@ export default function HomePage() {
           <Grid container spacing={4} alignItems="center">
             <Grid size={{ xs: 12, md: 6 }}>
               <Typography variant="overline" sx={{ color: "rgba(255,255,255,0.8)" }}>
-                Society Savings Platform
+                {homeCopy.heroBadge}
               </Typography>
               <Typography
                 variant="h3"
@@ -154,7 +163,7 @@ export default function HomePage() {
                   lineHeight: 1.2
                 }}
               >
-                Modern Society Savings & Interest Tracking
+                {homeCopy.heroTitle}
               </Typography>
               <Typography
                 sx={{
@@ -164,7 +173,7 @@ export default function HomePage() {
                   maxWidth: 480
                 }}
               >
-                Collect savings, track interest, and manage member operations from one secure workspace. Built for societies and cooperative groups.
+                {homeCopy.heroDescription}
               </Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                 <Button
@@ -174,9 +183,9 @@ export default function HomePage() {
                   color="secondary"
                   size="large"
                   endIcon={<ArrowForwardIcon />}
-                  onClick={() => handleAction("Starting registration...")}
+                  onClick={() => handleAction(homeCopy.registerToast)}
                 >
-                  Get Started Free
+                  {homeCopy.heroPrimaryAction}
                 </Button>
                 <Button
                   component={Link}
@@ -184,9 +193,9 @@ export default function HomePage() {
                   variant="outlined"
                   size="large"
                   sx={{ color: "white", borderColor: "rgba(255,255,255,0.5)" }}
-                  onClick={() => handleAction("Redirecting to login...")}
+                  onClick={() => handleAction(homeCopy.loginToast)}
                 >
-                  Login
+                  {homeCopy.heroSecondaryAction}
                 </Button>
               </Stack>
             </Grid>
@@ -200,8 +209,14 @@ export default function HomePage() {
                   border: "1px solid rgba(255,255,255,0.2)"
                 }}
               >
+                <Typography variant="overline" sx={{ color: "rgba(255,255,255,0.72)" }}>
+                  {homeCopy.heroPanelTitle}
+                </Typography>
+                <Typography sx={{ color: "rgba(255,255,255,0.92)", mt: 0.4, mb: 2.2, maxWidth: 440 }}>
+                  {homeCopy.heroPanelDescription}
+                </Typography>
                 <Stack spacing={2}>
-                  {capabilities.slice(0, 3).map((cap) => (
+                  {homeCopy.capabilities.slice(0, 3).map((cap) => (
                     <Stack key={cap} direction="row" spacing={1} alignItems="center">
                       <CheckCircleIcon sx={{ color: "#4ECB71" }} />
                       <Typography sx={{ color: "rgba(255,255,255,0.9)" }}>{cap}</Typography>
@@ -224,7 +239,7 @@ export default function HomePage() {
             fontWeight: 700
           }}
         >
-          Why Choose Infopath
+          {homeCopy.featuresTitle}
         </Typography>
         <Typography
           color="text.secondary"
@@ -235,22 +250,18 @@ export default function HomePage() {
             mb: 4
           }}
         >
-          Purpose-built for society collections with audit-ready security and role-based controls
+          {homeCopy.featuresSubtitle}
         </Typography>
 
         <Grid container spacing={3}>
           {features.map((feature, idx) => (
             <Grid size={{ xs: 12, sm: 6, md: 3 }} key={idx}>
               <Card
+                className="surface-glass hover-lift"
                 sx={{
                   height: "100%",
                   textAlign: "center",
-                  border: "1px solid #e0e0e0",
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    transform: "translateY(-4px)",
-                    boxShadow: (theme) => `0 12px 24px ${alpha(theme.palette.secondary.main, 0.18)}`
-                  }
+                  borderRadius: 3
                 }}
               >
                 <CardContent sx={{ py: 3 }}>
@@ -272,20 +283,96 @@ export default function HomePage() {
       <Box id="modules" sx={{ bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.09), py: { xs: 6, md: 8 } }}>
         <Container maxWidth="lg">
           <Typography variant="h4" sx={{ mb: 3, fontWeight: 700 }}>
-            Complete Operations Suite
+            {homeCopy.capabilitiesTitle}
           </Typography>
-          <Grid container spacing={2}>
-            {capabilities.map((cap) => (
+          <Grid container spacing={2.2}>
+            {homeCopy.capabilities.map((cap) => (
               <Grid size={{ xs: 12, sm: 6, md: 4 }} key={cap}>
-                <Stack direction="row" spacing={1.5}>
-                  <CheckCircleIcon sx={{ color: "secondary.main", flexShrink: 0 }} />
-                  <Typography>{cap}</Typography>
-                </Stack>
+                <Card className="surface-glass hover-lift" sx={{ height: "100%", borderRadius: 2.5 }}>
+                  <CardContent sx={{ display: "flex", gap: 1.5, alignItems: "flex-start", py: 2.2 }}>
+                    <CheckCircleIcon sx={{ color: "secondary.main", flexShrink: 0, mt: 0.2 }} />
+                    <Typography>{cap}</Typography>
+                  </CardContent>
+                </Card>
               </Grid>
             ))}
           </Grid>
         </Container>
       </Box>
+
+      <Container id="workspaces" maxWidth="lg" sx={{ py: { xs: 6, md: 8 } }}>
+        <Typography
+          variant="h4"
+          sx={{
+            textAlign: "center",
+            mb: 1,
+            fontWeight: 700
+          }}
+        >
+          {workspaceUi.homeSectionTitle}
+        </Typography>
+        <Typography
+          color="text.secondary"
+          sx={{
+            textAlign: "center",
+            maxWidth: 720,
+            mx: "auto",
+            mb: 4
+          }}
+        >
+          {workspaceUi.homeSectionSubtitle}
+        </Typography>
+
+        <Grid container spacing={3}>
+          {workspaces.map((workspace) => {
+            const visibleModules = getWorkspaceModules(workspace.slug, locale);
+
+            return (
+              <Grid size={{ xs: 12, sm: 6, xl: 3 }} key={workspace.slug}>
+                <Card
+                  className="surface-glass hover-lift"
+                  sx={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column"
+                  }}
+                >
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ mb: 1.2 }}>
+                      <Chip label={workspace.badge} color="primary" size="small" />
+                      <Chip label={workspaceUi.cardModules(visibleModules.length)} variant="outlined" size="small" />
+                    </Stack>
+                    <Typography variant="h6" sx={{ mb: 1 }}>
+                      {workspace.title}
+                    </Typography>
+                    <Typography color="text.secondary" variant="body2" sx={{ mb: 1.4 }}>
+                      {workspace.subtitle}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 0.8 }}>
+                      <strong>{workspaceUi.cardScopeLabel}:</strong> {workspace.dataScope}
+                    </Typography>
+                    <Stack direction="row" spacing={0.7} flexWrap="wrap" useFlexGap>
+                      {visibleModules.slice(0, 3).map((module) => (
+                        <Chip key={module.slug} label={module.name} size="small" variant="outlined" />
+                      ))}
+                    </Stack>
+                  </CardContent>
+                  <Box sx={{ px: 2, pb: 2 }}>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button component={Link} href={workspace.href} variant="contained" fullWidth>
+                        {workspaceUi.reviewRoleButton}
+                      </Button>
+                      <Button component={Link} href={workspace.primaryAction.href} variant="outlined" fullWidth>
+                        {workspace.primaryAction.label}
+                      </Button>
+                    </Stack>
+                  </Box>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      </Container>
 
       {/* Pricing Section */}
       <Container id="plans" maxWidth="lg" sx={{ py: { xs: 6, md: 8 } }}>
@@ -370,11 +457,7 @@ export default function HomePage() {
                     href={plan.highlighted ? "/register?type=SOCIETY&plan=PREMIUM" : "/register?type=CLIENT&plan=FREE"}
                     variant={plan.highlighted ? "contained" : "outlined"}
                     fullWidth
-                    onClick={() =>
-                      handleAction(
-                        `${plan.id === "PREMIUM" ? t("pricing.premium.title") : t("pricing.free.title")} plan selected`
-                      )
-                    }
+                    onClick={() => handleAction(homeCopy.pricingSelection(plan.id === "PREMIUM" ? t("pricing.premium.title") : t("pricing.free.title")))}
                   >
                     {t("pricing.get_started")}
                   </Button>
@@ -396,10 +479,10 @@ export default function HomePage() {
       >
         <Container maxWidth="sm">
           <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>
-            Ready to Streamline Society Savings?
+            {homeCopy.ctaTitle}
           </Typography>
           <Typography sx={{ mb: 3, fontSize: "1.05rem" }}>
-            Join societies running {appBranding.productShortName}
+            {homeCopy.ctaSubtitle}
           </Typography>
           <Button
             component={Link}
@@ -412,9 +495,9 @@ export default function HomePage() {
               color: "secondary.main",
               "&:hover": { bgcolor: (theme) => alpha(theme.palette.background.paper, 0.9) }
             }}
-            onClick={() => handleAction("Starting free account setup...")}
+            onClick={() => handleAction(homeCopy.ctaToast)}
           >
-            Start Your Free Account
+            {homeCopy.ctaButton}
           </Button>
         </Container>
       </Box>

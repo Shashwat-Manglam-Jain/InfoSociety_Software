@@ -1,6 +1,6 @@
-"use client";
+ "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Suspense, FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -64,7 +64,7 @@ function calculatePasswordStrength(password: string): { score: number; label: st
   return { score: 5, label: "Very Strong", color: "success" };
 }
 
-export default function RegisterPage() {
+function RegisterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
@@ -143,7 +143,7 @@ export default function RegisterPage() {
   useEffect(() => {
     if (accountType === "SOCIETY") {
       if (!planExplicit) {
-        setSelectedPlan("PREMIUM");
+        setSelectedPlan("FREE");
       }
       return;
     }
@@ -264,22 +264,10 @@ export default function RegisterPage() {
       let subscriptionPlan: SubscriptionPlan | null = response.user.subscription?.plan ?? null;
 
       if (accountType === "SOCIETY" && selectedPlan === "PREMIUM") {
-        try {
-          toast.info(t("register.plan.upgrade_pending"));
-          const upgrade = await upgradeToPremium(response.accessToken, {
-            paymentMethod: billingMethod,
-            note: "Activated during registration"
-          });
-          subscriptionPlan = upgrade.subscription.plan;
-          toast.success(upgrade.message);
-        } catch (caught) {
-          const upgradeMessage = caught instanceof Error ? caught.message : "Unable to activate Premium plan";
-          console.error("Premium upgrade failed after society registration", { caught, upgradeMessage });
-          setError(upgradeMessage);
-          toast.error(upgradeMessage);
-          setLoading(false);
-          return;
-        }
+        // Redirection logic to separate payment page instead of an instant inline upgrade
+        toast.info("Redirecting to secure checkout for Premium activation");
+        router.push(`/checkout?token=${encodeURIComponent(response.accessToken)}&method=${billingMethod}`);
+        return; // Halt here so we don't proceed to dashboard directly
       }
 
       setSession({
@@ -318,14 +306,32 @@ export default function RegisterPage() {
           >
             <Chip label="Create Account" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff", mb: 1.2 }} />
             <Typography variant="h5" sx={{ color: "#fff" }}>
-              Structured Onboarding for New Users
+              {accountType === "CLIENT" && "Join Your Society Portal"}
+              {accountType === "AGENT" && "Agent Portal Registration"}
+              {accountType === "SOCIETY" && "Initialize Society Platform"}
             </Typography>
             <Typography sx={{ mt: 0.8, color: "rgba(255,255,255,0.86)", mb: 2 }}>
-              Accounts are created inside approved societies. Plan access is managed at the society level by your admin.
+              {accountType === "CLIENT" && "Access your personal accounts, deposits, and loans securely."}
+              {accountType === "AGENT" && "Process daily transactions, manage client portfolios, and track collections."}
+              {accountType === "SOCIETY" && "Set up your society, configure modules, and manage branches and clients centrally."}
             </Typography>
             <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ mb: 1.6 }}>
-              <Chip label="No setup fee" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
-              <Chip label="Society-managed access" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+              {accountType === "SOCIETY" ? (
+                <>
+                  <Chip label="Full Platform Access" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                  <Chip label="Branch Control" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                </>
+              ) : accountType === "AGENT" ? (
+                <>
+                  <Chip label="Operational Workflows" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                  <Chip label="Pigmy Collections" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                </>
+              ) : (
+                <>
+                  <Chip label="No setup fee" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                  <Chip label="Society-managed access" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                </>
+              )}
             </Stack>
             <Image
               src="/illustrations/insights-panel.svg"
@@ -728,5 +734,13 @@ export default function RegisterPage() {
       </Card>
 
     </Container>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterPageInner />
+    </Suspense>
   );
 }

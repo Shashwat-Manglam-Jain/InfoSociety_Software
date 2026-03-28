@@ -82,11 +82,24 @@ export class MonitoringService {
       data: {
         ...(dto.status !== undefined ? { status: dto.status } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-        ...(dto.billingEmail !== undefined ? { billingEmail: dto.billingEmail.trim() } : {}),
-        ...(dto.billingPhone !== undefined ? { billingPhone: dto.billingPhone.trim() } : {}),
-        ...(dto.billingAddress !== undefined ? { billingAddress: dto.billingAddress.trim() } : {}),
+        ...(dto.billingEmail !== undefined ? { billingEmail: dto.billingEmail == null ? null : dto.billingEmail.trim() } : {}),
+        ...(dto.billingPhone !== undefined ? { billingPhone: dto.billingPhone == null ? null : dto.billingPhone.trim() } : {}),
+        ...(dto.billingAddress !== undefined ? { billingAddress: dto.billingAddress == null ? null : dto.billingAddress.trim() } : {}),
         ...(dto.acceptsDigitalPayments !== undefined ? { acceptsDigitalPayments: dto.acceptsDigitalPayments } : {}),
-        ...(dto.upiId !== undefined ? { upiId: dto.upiId.trim() } : {})
+        ...(dto.upiId !== undefined ? { upiId: dto.upiId == null ? null : dto.upiId.trim() } : {}),
+        ...(dto.panNo !== undefined ? { panNo: dto.panNo == null ? null : dto.panNo.trim().toUpperCase() } : {}),
+        ...(dto.tanNo !== undefined ? { tanNo: dto.tanNo == null ? null : dto.tanNo.trim().toUpperCase() } : {}),
+        ...(dto.gstNo !== undefined ? { gstNo: dto.gstNo == null ? null : dto.gstNo.trim().toUpperCase() } : {}),
+        ...(dto.category !== undefined ? { category: dto.category == null ? null : dto.category.trim() } : {}),
+        ...(dto.authorizedCapital !== undefined ? { authorizedCapital: dto.authorizedCapital ?? null } : {}),
+        ...(dto.paidUpCapital !== undefined ? { paidUpCapital: dto.paidUpCapital ?? null } : {}),
+        ...(dto.shareNominalValue !== undefined ? { shareNominalValue: dto.shareNominalValue ?? null } : {}),
+        ...(dto.registrationDate !== undefined ? { registrationDate: dto.registrationDate == null ? null : new Date(dto.registrationDate) } : {}),
+        ...(dto.registrationNumber !== undefined ? { registrationNumber: dto.registrationNumber == null ? null : dto.registrationNumber.trim() } : {}),
+        ...(dto.registrationState !== undefined ? { registrationState: dto.registrationState == null ? null : dto.registrationState.trim() } : {}),
+        ...(dto.registrationAuthority !== undefined
+          ? { registrationAuthority: dto.registrationAuthority == null ? null : dto.registrationAuthority.trim() }
+          : {})
       }
     });
   }

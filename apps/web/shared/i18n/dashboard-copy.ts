@@ -1,0 +1,359 @@
+import type { AppAccountType, UserRole } from "@/shared/types";
+import type { AppLocale } from "./translations";
+
+type DashboardCopy = {
+  loadError: string;
+  roleFocus: Record<AppAccountType, string>;
+  heroPanelTitles: Record<AppAccountType, string>;
+  heroDescriptions: {
+    platformMetrics: (vars: { societies: string; customers: string; accounts: string }) => string;
+    societyMetrics: (vars: { customers: string; accounts: string; transactions: string }) => string;
+    agent: string;
+    client: string;
+    fallback: string;
+  };
+  priorityWorkspaceTitle: string;
+  priorityWorkspaceSubtitles: Record<AppAccountType, string>;
+  operationalAreaTitle: string;
+  operationalAreaSubtitles: Record<AppAccountType, string>;
+  openWorkspace: string;
+  signedInRoleLabel: string;
+  institutionLabel: string;
+  platformScopeLabel: string;
+  institutionCaption: string;
+  platformScopeCaption: string;
+  supportLabel: string;
+  supportCaption: string;
+  customerProfileLabel: string;
+  customerProfileCaption: string;
+  businessSnapshotLabel: string;
+  portfolioSnapshotLabel: string;
+  businessSnapshotCaption: string;
+  portfolioSnapshotCaption: string;
+  institutionProfileTitle: string;
+  institutionProfileDescription: string;
+  branchManagementTitle: string;
+  branchManagementDescription: string;
+  teamTitles: {
+    society: string;
+    platform: string;
+  };
+  teamSubtitles: {
+    society: string;
+    platform: string;
+  };
+  teamCounts: {
+    clients: string;
+    agents: string;
+    societyAdmins: string;
+    platformAdmins: string;
+    activeUsers: string;
+  };
+  recentAccessRecords: string;
+  activityStatus: {
+    active: string;
+    inactive: string;
+  };
+  directoryRoleLabels: Record<UserRole, string>;
+  snapshotTitle: string;
+  snapshotSubtitles: {
+    society: string;
+    platform: string;
+  };
+  snapshotMetrics: {
+    societies: string;
+    customers: string;
+    accounts: string;
+    transactions: string;
+    collectedVolume: string;
+  };
+};
+
+const dashboardCopy: Record<AppLocale, DashboardCopy> = {
+  en: {
+    loadError: "Unable to load dashboard",
+    roleFocus: {
+      CLIENT: "Review your accounts, deposits, loans, and personal service history from one member-friendly workspace.",
+      AGENT: "Serve members, complete branch work, and keep daily banking operations moving with confidence.",
+      SOCIETY: "Oversee society operations, configuration, reporting, and team access from one control centre.",
+      PLATFORM: "Monitor societies, governance activity, and portfolio visibility across the platform."
+    },
+    heroPanelTitles: {
+      CLIENT: "Member Workspace",
+      AGENT: "Operations Desk",
+      SOCIETY: "Society Control Centre",
+      PLATFORM: "Platform Governance"
+    },
+    heroDescriptions: {
+      platformMetrics: ({ societies, customers, accounts }) =>
+        `${societies} societies, ${customers} customers, and ${accounts} accounts are visible in your governance scope.`,
+      societyMetrics: ({ customers, accounts, transactions }) =>
+        `${customers} customers, ${accounts} accounts, and ${transactions} transactions are active inside this society workspace.`,
+      agent: "Open customer service, account handling, transactions, and reporting from one practical operations desk.",
+      client: "Keep your personal banking journey simple with direct access to balances, deposits, loans, and activity.",
+      fallback: "Open the right tools for the current workspace."
+    },
+    priorityWorkspaceTitle: "Priority Workspaces",
+    priorityWorkspaceSubtitles: {
+      CLIENT: "Start with the services you use most often and open more areas only when you need them.",
+      AGENT: "Open the desks and service areas used most often during day-to-day member operations.",
+      SOCIETY: "Move between administration and core banking areas from one clean management dashboard.",
+      PLATFORM: "Open governance, reporting, and monitoring areas relevant to platform oversight."
+    },
+    operationalAreaTitle: "Operational Areas",
+    operationalAreaSubtitles: {
+      CLIENT: "Additional personal banking areas remain available whenever you need them.",
+      AGENT: "Every operational area below respects your assigned service scope.",
+      SOCIETY: "These areas keep society operations, administration, and review activities within one place.",
+      PLATFORM: "Portfolio workspaces stay focused on governance and visibility, not branch-level transaction entry."
+    },
+    openWorkspace: "Open workspace",
+    signedInRoleLabel: "Signed-in role",
+    institutionLabel: "Institution",
+    platformScopeLabel: "Platform scope",
+    institutionCaption: "Your available actions remain limited to this assigned society workspace.",
+    platformScopeCaption: "Review societies, administrators, and reporting across the active platform portfolio.",
+    supportLabel: "Support & policy",
+    supportCaption: "About, contact, privacy, and policy guidance remain available from every workspace.",
+    customerProfileLabel: "Customer profile",
+    customerProfileCaption: "Use your personal profile to review balances, service activity, and statements.",
+    businessSnapshotLabel: "Business snapshot",
+    portfolioSnapshotLabel: "Portfolio snapshot",
+    businessSnapshotCaption: "Keep an eye on customer growth, account volume, and transaction activity across the current society.",
+    portfolioSnapshotCaption: "Track institutions, customer growth, and overall platform activity from one place.",
+    institutionProfileTitle: "Institution Profile",
+    institutionProfileDescription: "Maintain society identity, registration, billing, and compliance details from one dedicated page.",
+    branchManagementTitle: "Branch Management",
+    branchManagementDescription: "Manage branch locations, operating services, routing details, and branch readiness.",
+    teamTitles: {
+      society: "Society Team Visibility",
+      platform: "Platform Access Visibility"
+    },
+    teamSubtitles: {
+      society: "Review who is operating under this society and keep access aligned with the right responsibilities.",
+      platform: "Review how access is distributed across platform admins, society admins, agents, and clients."
+    },
+    teamCounts: {
+      clients: "clients",
+      agents: "agents",
+      societyAdmins: "society admins",
+      platformAdmins: "platform admins",
+      activeUsers: "active users"
+    },
+    recentAccessRecords: "Recent access records",
+    activityStatus: {
+      active: "Active",
+      inactive: "Inactive"
+    },
+    directoryRoleLabels: {
+      CLIENT: "Client",
+      AGENT: "Agent",
+      SUPER_USER: "Society Admin",
+      SUPER_ADMIN: "Platform Admin"
+    },
+    snapshotTitle: "Operational Snapshot",
+    snapshotSubtitles: {
+      society: "Key operating metrics for the current society workspace.",
+      platform: "Key portfolio metrics across the current governance scope."
+    },
+    snapshotMetrics: {
+      societies: "Societies",
+      customers: "Customers",
+      accounts: "Accounts",
+      transactions: "Transactions",
+      collectedVolume: "Collected volume"
+    }
+  },
+  hi: {
+    loadError: "डैशबोर्ड लोड नहीं हो सका",
+    roleFocus: {
+      CLIENT: "एक सदस्य-केंद्रित वर्कस्पेस से अपने खाते, जमा, ऋण और व्यक्तिगत सेवा इतिहास की समीक्षा करें।",
+      AGENT: "सदस्यों की सेवा करें, शाखा कार्य पूरे करें, और दैनिक बैंकिंग संचालन को आत्मविश्वास से आगे बढ़ाएँ।",
+      SOCIETY: "एक कंट्रोल सेंटर से सोसाइटी ऑपरेशन्स, कॉन्फ़िगरेशन, रिपोर्टिंग और टीम एक्सेस को संभालें।",
+      PLATFORM: "पूरे प्लेटफ़ॉर्म पर सोसाइटी, गवर्नेंस गतिविधि और पोर्टफोलियो विज़िबिलिटी की निगरानी करें।"
+    },
+    heroPanelTitles: {
+      CLIENT: "सदस्य वर्कस्पेस",
+      AGENT: "ऑपरेशन्स डेस्क",
+      SOCIETY: "सोसाइटी कंट्रोल सेंटर",
+      PLATFORM: "प्लेटफ़ॉर्म गवर्नेंस"
+    },
+    heroDescriptions: {
+      platformMetrics: ({ societies, customers, accounts }) =>
+        `आपके गवर्नेंस स्कोप में ${societies} सोसाइटी, ${customers} ग्राहक और ${accounts} खाते दिखाई दे रहे हैं।`,
+      societyMetrics: ({ customers, accounts, transactions }) =>
+        `इस सोसाइटी वर्कस्पेस में ${customers} ग्राहक, ${accounts} खाते और ${transactions} ट्रांजैक्शन सक्रिय हैं।`,
+      agent: "एक व्यावहारिक ऑपरेशन्स डेस्क से ग्राहक सेवा, खाता कार्य, ट्रांजैक्शन और रिपोर्टिंग खोलें।",
+      client: "बैलेंस, जमा, ऋण और गतिविधि तक सीधे पहुँच के साथ अपनी व्यक्तिगत बैंकिंग यात्रा सरल रखें।",
+      fallback: "मौजूदा वर्कस्पेस के लिए सही टूल खोलें।"
+    },
+    priorityWorkspaceTitle: "प्राथमिक वर्कस्पेस",
+    priorityWorkspaceSubtitles: {
+      CLIENT: "उन सेवाओं से शुरू करें जिन्हें आप सबसे अधिक उपयोग करते हैं और ज़रूरत पड़ने पर अन्य क्षेत्र खोलें।",
+      AGENT: "दैनिक सदस्य ऑपरेशन्स में सबसे अधिक उपयोग होने वाले डेस्क और सेवा क्षेत्र खोलें।",
+      SOCIETY: "एक साफ मैनेजमेंट डैशबोर्ड से प्रशासन और मुख्य बैंकिंग क्षेत्रों के बीच जाएँ।",
+      PLATFORM: "प्लेटफ़ॉर्म निगरानी के लिए प्रासंगिक गवर्नेंस, रिपोर्टिंग और मॉनिटरिंग क्षेत्र खोलें।"
+    },
+    operationalAreaTitle: "ऑपरेशनल क्षेत्र",
+    operationalAreaSubtitles: {
+      CLIENT: "अन्य व्यक्तिगत बैंकिंग क्षेत्र आवश्यकता होने पर हमेशा उपलब्ध रहते हैं।",
+      AGENT: "नीचे दिया गया हर ऑपरेशनल क्षेत्र आपकी सौंपे गए सेवा सीमा का पालन करता है।",
+      SOCIETY: "ये क्षेत्र सोसाइटी ऑपरेशन्स, प्रशासन और समीक्षा गतिविधियों को एक ही जगह में रखते हैं।",
+      PLATFORM: "पोर्टफोलियो वर्कस्पेस गवर्नेंस और विज़िबिलिटी पर केंद्रित रहते हैं, शाखा-स्तरीय ट्रांजैक्शन एंट्री पर नहीं।"
+    },
+    openWorkspace: "वर्कस्पेस खोलें",
+    signedInRoleLabel: "साइन-इन भूमिका",
+    institutionLabel: "संस्था",
+    platformScopeLabel: "प्लेटफ़ॉर्म स्कोप",
+    institutionCaption: "आपकी उपलब्ध कार्रवाइयाँ इस असाइन किए गए सोसाइटी वर्कस्पेस तक सीमित रहती हैं।",
+    platformScopeCaption: "सक्रिय प्लेटफ़ॉर्म पोर्टफोलियो में सोसाइटी, प्रशासक और रिपोर्टिंग की समीक्षा करें।",
+    supportLabel: "सपोर्ट और नीति",
+    supportCaption: "हर वर्कस्पेस से हमारे बारे में, संपर्क, गोपनीयता और नीति मार्गदर्शन उपलब्ध रहता है।",
+    customerProfileLabel: "कस्टमर प्रोफाइल",
+    customerProfileCaption: "अपने व्यक्तिगत प्रोफाइल से बैलेंस, सेवा गतिविधि और स्टेटमेंट की समीक्षा करें।",
+    businessSnapshotLabel: "व्यवसाय स्नैपशॉट",
+    portfolioSnapshotLabel: "पोर्टफोलियो स्नैपशॉट",
+    businessSnapshotCaption: "मौजूदा सोसाइटी में ग्राहक वृद्धि, खातों की मात्रा और ट्रांजैक्शन गतिविधि पर नज़र रखें।",
+    portfolioSnapshotCaption: "संस्थानों, ग्राहक वृद्धि और कुल प्लेटफ़ॉर्म गतिविधि को एक जगह से ट्रैक करें।",
+    institutionProfileTitle: "संस्था प्रोफाइल",
+    institutionProfileDescription: "एक समर्पित पेज से सोसाइटी पहचान, पंजीकरण, बिलिंग और अनुपालन विवरण संभालें।",
+    branchManagementTitle: "शाखा प्रबंधन",
+    branchManagementDescription: "शाखा स्थान, सेवाएँ, रूटिंग विवरण और शाखा तत्परता प्रबंधित करें।",
+    teamTitles: {
+      society: "सोसाइटी टीम विज़िबिलिटी",
+      platform: "प्लेटफ़ॉर्म एक्सेस विज़िबिलिटी"
+    },
+    teamSubtitles: {
+      society: "देखें कि इस सोसाइटी के अंतर्गत कौन काम कर रहा है और सही ज़िम्मेदारियों के साथ एक्सेस मिलान बनाए रखें।",
+      platform: "देखें कि प्लेटफ़ॉर्म एडमिन, सोसाइटी एडमिन, एजेंट और क्लाइंट के बीच एक्सेस कैसे वितरित है।"
+    },
+    teamCounts: {
+      clients: "क्लाइंट",
+      agents: "एजेंट",
+      societyAdmins: "सोसाइटी एडमिन",
+      platformAdmins: "प्लेटफ़ॉर्म एडमिन",
+      activeUsers: "सक्रिय उपयोगकर्ता"
+    },
+    recentAccessRecords: "हाल के एक्सेस रिकॉर्ड",
+    activityStatus: {
+      active: "सक्रिय",
+      inactive: "निष्क्रिय"
+    },
+    directoryRoleLabels: {
+      CLIENT: "क्लाइंट",
+      AGENT: "एजेंट",
+      SUPER_USER: "सोसाइटी एडमिन",
+      SUPER_ADMIN: "प्लेटफ़ॉर्म एडमिन"
+    },
+    snapshotTitle: "ऑपरेशनल स्नैपशॉट",
+    snapshotSubtitles: {
+      society: "मौजूदा सोसाइटी वर्कस्पेस के प्रमुख ऑपरेटिंग मेट्रिक्स।",
+      platform: "मौजूदा गवर्नेंस स्कोप के प्रमुख पोर्टफोलियो मेट्रिक्स।"
+    },
+    snapshotMetrics: {
+      societies: "सोसाइटी",
+      customers: "ग्राहक",
+      accounts: "खाते",
+      transactions: "ट्रांजैक्शन",
+      collectedVolume: "संग्रहित राशि"
+    }
+  },
+  mr: {
+    loadError: "डॅशबोर्ड लोड होऊ शकला नाही",
+    roleFocus: {
+      CLIENT: "एका सदस्य-केंद्रित वर्कस्पेसमधून तुमची खाती, ठेवी, कर्जे आणि वैयक्तिक सेवा इतिहास पाहा.",
+      AGENT: "सदस्यांना सेवा द्या, शाखेची कामे पूर्ण करा आणि दैनंदिन बँकिंग ऑपरेशन्स आत्मविश्वासाने पुढे न्या.",
+      SOCIETY: "एका कंट्रोल सेंटरमधून सोसायटी ऑपरेशन्स, कॉन्फिगरेशन, रिपोर्टिंग आणि टीम ॲक्सेस सांभाळा.",
+      PLATFORM: "संपूर्ण प्लॅटफॉर्मवरील सोसायट्या, गव्हर्नन्स ॲक्टिव्हिटी आणि पोर्टफोलिओ दृश्यमानता मॉनिटर करा."
+    },
+    heroPanelTitles: {
+      CLIENT: "सदस्य वर्कस्पेस",
+      AGENT: "ऑपरेशन्स डेस्क",
+      SOCIETY: "सोसायटी कंट्रोल सेंटर",
+      PLATFORM: "प्लॅटफॉर्म गव्हर्नन्स"
+    },
+    heroDescriptions: {
+      platformMetrics: ({ societies, customers, accounts }) =>
+        `तुमच्या गव्हर्नन्स स्कोपमध्ये ${societies} सोसायट्या, ${customers} ग्राहक आणि ${accounts} खाती दिसत आहेत.`,
+      societyMetrics: ({ customers, accounts, transactions }) =>
+        `या सोसायटी वर्कस्पेसमध्ये ${customers} ग्राहक, ${accounts} खाती आणि ${transactions} व्यवहार सक्रिय आहेत.`,
+      agent: "एका व्यवहार्य ऑपरेशन्स डेस्कमधून ग्राहक सेवा, खाते प्रक्रिया, व्यवहार आणि रिपोर्टिंग उघडा.",
+      client: "शिल्लक, ठेवी, कर्जे आणि अॅक्टिव्हिटीपर्यंत थेट प्रवेशासह तुमचा वैयक्तिक बँकिंग प्रवास सोपा ठेवा.",
+      fallback: "सध्याच्या वर्कस्पेससाठी योग्य साधने उघडा."
+    },
+    priorityWorkspaceTitle: "प्राथमिक वर्कस्पेसेस",
+    priorityWorkspaceSubtitles: {
+      CLIENT: "तुम्ही सर्वाधिक वापरत असलेल्या सेवांपासून सुरू करा आणि गरज पडल्यास इतर क्षेत्रे उघडा.",
+      AGENT: "दैनंदिन सदस्य ऑपरेशन्समध्ये सर्वाधिक वापरले जाणारे डेस्क आणि सेवा क्षेत्रे उघडा.",
+      SOCIETY: "एका स्वच्छ व्यवस्थापन डॅशबोर्डमधून प्रशासन आणि मुख्य बँकिंग क्षेत्रांमध्ये सहज जा.",
+      PLATFORM: "प्लॅटफॉर्म देखरेखीशी संबंधित गव्हर्नन्स, रिपोर्टिंग आणि मॉनिटरिंग क्षेत्रे उघडा."
+    },
+    operationalAreaTitle: "ऑपरेशनल क्षेत्रे",
+    operationalAreaSubtitles: {
+      CLIENT: "अतिरिक्त वैयक्तिक बँकिंग क्षेत्रे गरज पडल्यास नेहमी उपलब्ध राहतात.",
+      AGENT: "खालील प्रत्येक ऑपरेशनल क्षेत्र तुमच्या नियुक्त सेवा स्कोपचे पालन करते.",
+      SOCIETY: "ही क्षेत्रे सोसायटी ऑपरेशन्स, प्रशासन आणि पुनरावलोकन क्रिया एका ठिकाणी ठेवतात.",
+      PLATFORM: "पोर्टफोलिओ वर्कस्पेसेस गव्हर्नन्स आणि दृश्यमानतेवर लक्ष केंद्रित करतात, शाखास्तरीय व्यवहार नोंदीवर नाहीत."
+    },
+    openWorkspace: "वर्कस्पेस उघडा",
+    signedInRoleLabel: "साइन-इन भूमिका",
+    institutionLabel: "संस्था",
+    platformScopeLabel: "प्लॅटफॉर्म स्कोप",
+    institutionCaption: "तुमच्या उपलब्ध कृती या नियुक्त सोसायटी वर्कस्पेसपुरत्याच मर्यादित राहतात.",
+    platformScopeCaption: "सक्रिय प्लॅटफॉर्म पोर्टफोलिओमधील सोसायट्या, प्रशासक आणि रिपोर्टिंगचे पुनरावलोकन करा.",
+    supportLabel: "सपोर्ट आणि धोरण",
+    supportCaption: "प्रत्येक वर्कस्पेसमधून माहिती, संपर्क, गोपनीयता आणि धोरण मार्गदर्शन उपलब्ध राहते.",
+    customerProfileLabel: "ग्राहक प्रोफाइल",
+    customerProfileCaption: "तुमच्या वैयक्तिक प्रोफाइलमधून शिल्लक, सेवा अॅक्टिव्हिटी आणि स्टेटमेंट्स पाहा.",
+    businessSnapshotLabel: "व्यवसाय स्नॅपशॉट",
+    portfolioSnapshotLabel: "पोर्टफोलिओ स्नॅपशॉट",
+    businessSnapshotCaption: "सध्याच्या सोसायटीतील ग्राहक वाढ, खात्यांचे प्रमाण आणि व्यवहार अॅक्टिव्हिटीवर लक्ष ठेवा.",
+    portfolioSnapshotCaption: "संस्था, ग्राहक वाढ आणि एकूण प्लॅटफॉर्म अॅक्टिव्हिटी एका ठिकाणाहून ट्रॅक करा.",
+    institutionProfileTitle: "संस्था प्रोफाइल",
+    institutionProfileDescription: "एका समर्पित पानावरून सोसायटीची ओळख, नोंदणी, बिलिंग आणि अनुपालन तपशील सांभाळा.",
+    branchManagementTitle: "शाखा व्यवस्थापन",
+    branchManagementDescription: "शाखांचे स्थान, ऑपरेटिंग सेवा, राऊटिंग तपशील आणि शाखा तयारी व्यवस्थापित करा.",
+    teamTitles: {
+      society: "सोसायटी टीम दृश्यमानता",
+      platform: "प्लॅटफॉर्म ॲक्सेस दृश्यमानता"
+    },
+    teamSubtitles: {
+      society: "या सोसायटीखाली कोण काम करत आहे ते पाहा आणि योग्य जबाबदाऱ्यांनुसार प्रवेश कायम ठेवा.",
+      platform: "प्लॅटफॉर्म अॅडमिन, सोसायटी अॅडमिन, एजंट आणि क्लायंट यांच्यात प्रवेश कसा वितरित आहे ते पाहा."
+    },
+    teamCounts: {
+      clients: "क्लायंट्स",
+      agents: "एजंट्स",
+      societyAdmins: "सोसायटी अॅडमिन्स",
+      platformAdmins: "प्लॅटफॉर्म अॅडमिन्स",
+      activeUsers: "सक्रिय वापरकर्ते"
+    },
+    recentAccessRecords: "अलीकडील ॲक्सेस रेकॉर्ड्स",
+    activityStatus: {
+      active: "सक्रिय",
+      inactive: "निष्क्रिय"
+    },
+    directoryRoleLabels: {
+      CLIENT: "क्लायंट",
+      AGENT: "एजंट",
+      SUPER_USER: "सोसायटी अॅडमिन",
+      SUPER_ADMIN: "प्लॅटफॉर्म अॅडमिन"
+    },
+    snapshotTitle: "ऑपरेशनल स्नॅपशॉट",
+    snapshotSubtitles: {
+      society: "सध्याच्या सोसायटी वर्कस्पेससाठीचे प्रमुख ऑपरेटिंग मेट्रिक्स.",
+      platform: "सध्याच्या गव्हर्नन्स स्कोपसाठीचे प्रमुख पोर्टफोलिओ मेट्रिक्स."
+    },
+    snapshotMetrics: {
+      societies: "सोसायट्या",
+      customers: "ग्राहक",
+      accounts: "खाती",
+      transactions: "व्यवहार",
+      collectedVolume: "संकलित रक्कम"
+    }
+  }
+};
+
+export function getDashboardCopy(locale: AppLocale) {
+  return dashboardCopy[locale] ?? dashboardCopy.en;
+}

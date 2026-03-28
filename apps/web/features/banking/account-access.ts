@@ -2,7 +2,8 @@ import type { BankingModule } from "./module-registry";
 import type { AppAccountType, UserRole } from "@/shared/types";
 
 const moduleAccessByAccountType: Record<AppAccountType, string[]> = {
-  CLIENT: ["customers", "accounts", "deposits", "loans", "transactions", "locker"],
+  // Self-service members: only their own banking operations, no master data
+  CLIENT: ["accounts", "deposits", "loans", "transactions", "locker"],
   AGENT: [
     "customers",
     "accounts",

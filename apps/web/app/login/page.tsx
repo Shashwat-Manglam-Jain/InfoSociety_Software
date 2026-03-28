@@ -114,19 +114,13 @@ export default function LoginPage() {
 
     try {
       const response = await login(username, password);
-
-      if (response.user.role !== role) {
-        const message = `This account is ${response.user.role}. Choose the matching login tab.`;
-        setError(message);
-        toast.error(message);
-        setLoading(false);
-        return;
-      }
+      // Automatically derive the correct display role from the backend token
+      const actualRole = response.user.role;
 
       setSession({
         accessToken: response.accessToken,
-        role: response.user.role,
-        accountType: role === "SUPER_ADMIN" ? "PLATFORM" : role === "SUPER_USER" ? "SOCIETY" : role,
+        role: actualRole,
+        accountType: actualRole === "SUPER_ADMIN" ? "PLATFORM" : actualRole === "SUPER_USER" ? "SOCIETY" : actualRole,
         username: response.user.username,
         fullName: response.user.fullName,
         societyCode: response.user.society?.code ?? null,
@@ -159,14 +153,34 @@ export default function LoginPage() {
           >
             <Chip label="Secure Login" sx={{ bgcolor: "rgba(255,255,255,0.16)", color: "#fff", mb: 1.1 }} />
             <Typography variant="h5" sx={{ color: "#fff" }}>
-              Secure Staff and Client Access
+              {role === "CLIENT" && "Client Dashboard Access"}
+              {role === "AGENT" && "Agent Workspace Access"}
+              {role === "SUPER_USER" && "Society Admin Interface"}
+              {role === "SUPER_ADMIN" && "Platform Control Center"}
             </Typography>
             <Typography sx={{ color: "rgba(255,255,255,0.86)", mt: 0.8, mb: 1.6 }}>
-              Authenticate by role and continue with your assigned workflow.
+              {role === "CLIENT" && "View your passbook and manage your personal accounts securely."}
+              {role === "AGENT" && "Access the collection portal and operational banking features."}
+              {role === "SUPER_USER" && "Manage your branches, customer profiles, and society operations."}
+              {role === "SUPER_ADMIN" && "System diagnostics and overarching global platform management."}
             </Typography>
             <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ mb: 1.6 }}>
-              <Chip label="Audit-ready workflows" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
-              <Chip label="Quick access" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+              {role === "SUPER_USER" ? (
+                <>
+                  <Chip label="Admin Control" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                  <Chip label="Master Settings" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                </>
+              ) : role === "CLIENT" ? (
+                <>
+                  <Chip label="Private Access" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                  <Chip label="Statement View" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                </>
+              ) : (
+                <>
+                  <Chip label="Audit-ready workflows" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                  <Chip label="Quick access" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                </>
+              )}
             </Stack>
             <Image
               src="/illustrations/auth-vault.svg"

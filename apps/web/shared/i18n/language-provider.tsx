@@ -15,13 +15,16 @@ type LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-function resolveInitialLocale(): AppLocale {
-  if (typeof window === "undefined") return defaultLocale;
-
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored && localeOptions.some((option) => option.code === stored)) {
-    return stored as AppLocale;
+function parseLocale(value: string | null): AppLocale | null {
+  if (value && localeOptions.some((option) => option.code === value)) {
+    return value as AppLocale;
   }
+
+  return null;
+}
+
+function resolveBrowserLocale(): AppLocale {
+  if (typeof window === "undefined") return defaultLocale;
 
   const browser = window.navigator.language?.toLowerCase() ?? "";
   if (browser.startsWith("hi")) return "hi";
@@ -31,7 +34,21 @@ function resolveInitialLocale(): AppLocale {
 }
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<AppLocale>(() => resolveInitialLocale());
+  const [locale, setLocaleState] = useState<AppLocale>(defaultLocale);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let preferred = defaultLocale;
+
+    try {
+      preferred = parseLocale(window.localStorage.getItem(STORAGE_KEY)) ?? resolveBrowserLocale();
+    } catch {
+      preferred = resolveBrowserLocale();
+    }
+
+    setLocaleState((current) => (current === preferred ? current : preferred));
+  }, []);
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -42,7 +59,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const setLocale = useCallback((next: AppLocale) => {
     setLocaleState(next);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, next);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, next);
+      } catch {
+        // Ignore storage write failures (private mode, quota, etc.)
+      }
     }
   }, []);
 
@@ -72,4 +93,3 @@ export function useLanguage() {
 
   return ctx;
 }
-

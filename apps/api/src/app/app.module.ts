@@ -17,6 +17,8 @@ import { InvestmentsModule } from "../modules/banking/investments/investments.mo
 import { LoansModule } from "../modules/banking/loans/loans.module";
 import { LockerModule } from "../modules/banking/locker/locker.module";
 import { MonitoringModule } from "../modules/banking/monitoring/monitoring.module";
+import { BranchesModule } from "../modules/banking/branches/branches.module";
+import { HeadsModule } from "../modules/banking/heads/heads.module";
 import { ReportsModule } from "../modules/banking/reports/reports.module";
 import { TransactionsModule } from "../modules/banking/transactions/transactions.module";
 import { UsersModule } from "../modules/banking/users/users.module";
@@ -46,7 +48,9 @@ import { AppController } from "./app.controller";
     AdministrationModule,
     ReportsModule,
     UsersModule,
-    MonitoringModule
+    MonitoringModule,
+    BranchesModule,
+    HeadsModule
   ],
   controllers: [AppController]
 })

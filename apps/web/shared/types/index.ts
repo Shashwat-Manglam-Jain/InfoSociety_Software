@@ -19,6 +19,40 @@ export type Society = {
   upiId?: string | null;
   billingEmail?: string | null;
   billingPhone?: string | null;
+  billingAddress?: string | null;
+  panNo?: string | null;
+  tanNo?: string | null;
+  gstNo?: string | null;
+  category?: string | null;
+  authorizedCapital?: number | null;
+  paidUpCapital?: number | null;
+  shareNominalValue?: number | null;
+  registrationDate?: string | Date | null;
+  registrationNumber?: string | null;
+  registrationState?: string | null;
+  registrationAuthority?: string | null;
+};
+
+export type Branch = {
+  id: string;
+  code: string;
+  name: string;
+  isHead: boolean;
+  isActive: boolean;
+  societyId: string;
+  openingDate?: string | Date | null;
+  contactEmail?: string | null;
+  contactNo?: string | null;
+  rechargeService: boolean;
+  neftImpsService: boolean;
+  ifscCode?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  country?: string | null;
+  lockerFacility: boolean;
 };
 
 export type AuthSubscription = {

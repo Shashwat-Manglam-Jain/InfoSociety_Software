@@ -32,12 +32,25 @@ type NavLink = {
   labelKey: TranslationKey;
 };
 
+type WorkspaceLink = {
+  href: string;
+  labelKey: TranslationKey;
+};
+
 const navLinks: NavLink[] = [
   { href: "/", labelKey: "nav.home" },
   { href: "/#plans", labelKey: "nav.plans" },
   { href: "/#modules", labelKey: "nav.modules" },
   { href: "/about", labelKey: "nav.about" },
   { href: "/contact", labelKey: "nav.contact" }
+];
+
+const workspaceLinks: WorkspaceLink[] = [
+  { href: "/workspaces", labelKey: "nav.workspaces.overview" },
+  { href: "/workspaces/client", labelKey: "nav.workspaces.client" },
+  { href: "/workspaces/agent", labelKey: "nav.workspaces.agent" },
+  { href: "/workspaces/society-admin", labelKey: "nav.workspaces.society" },
+  { href: "/workspaces/platform-admin", labelKey: "nav.workspaces.platform" }
 ];
 
 const workspaceRoutePrefixes = ["/dashboard", "/modules"];
@@ -61,6 +74,7 @@ export function SiteNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const [registerAnchor, setRegisterAnchor] = useState<null | HTMLElement>(null);
+  const [workspaceAnchor, setWorkspaceAnchor] = useState<null | HTMLElement>(null);
   const hideNavbar = isWorkspaceRoute(pathname);
 
   useEffect(() => {
@@ -74,10 +88,6 @@ export function SiteNavbar() {
     return subscribeToSession(syncSession);
   }, []);
 
-  if (hideNavbar) {
-    return null;
-  }
-
   const authActions = useMemo(() => {
     if (hasSession) {
       return [{ href: "/dashboard", labelKey: "nav.dashboard" as const }];
@@ -86,7 +96,13 @@ export function SiteNavbar() {
     return [{ href: "/login", labelKey: "nav.login" as const }];
   }, [hasSession]);
 
+  if (hideNavbar) {
+    return null;
+  }
+
   const registerMenuOpen = Boolean(registerAnchor);
+  const workspaceMenuOpen = Boolean(workspaceAnchor);
+  const workspaceNavActive = pathname === "/workspaces" || pathname.startsWith("/workspaces/");
 
   return (
     <AppBar
@@ -161,6 +177,43 @@ export function SiteNavbar() {
                 </Button>
               );
             })}
+
+            <Button
+              color={workspaceNavActive ? "secondary" : "inherit"}
+              endIcon={<ExpandMoreRoundedIcon />}
+              onClick={(event) => setWorkspaceAnchor(event.currentTarget)}
+              sx={{
+                px: 1.5,
+                borderRadius: "8px",
+                border: (theme) =>
+                  workspaceNavActive ? `1px solid ${alpha(theme.palette.secondary.main, 0.35)}` : "1px solid transparent",
+                background: (theme) =>
+                  workspaceNavActive
+                    ? `linear-gradient(180deg, ${alpha(theme.palette.secondary.main, 0.12)} 0%, ${alpha(theme.palette.secondary.main, 0.22)} 100%)`
+                    : "transparent"
+              }}
+            >
+              {t("nav.workspaces")}
+            </Button>
+            <Menu
+              anchorEl={workspaceAnchor}
+              open={workspaceMenuOpen}
+              onClose={() => setWorkspaceAnchor(null)}
+              transformOrigin={{ horizontal: "left", vertical: "top" }}
+              anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
+            >
+              {workspaceLinks.map((item, index) => (
+                <MenuItem
+                  key={item.href}
+                  component={Link}
+                  href={item.href}
+                  selected={pathname === item.href}
+                  onClick={() => setWorkspaceAnchor(null)}
+                >
+                  {index === 0 ? <strong>{t(item.labelKey)}</strong> : t(item.labelKey)}
+                </MenuItem>
+              ))}
+            </Menu>
           </Stack>
 
           <Stack direction="row" spacing={1} sx={{ ml: "auto", display: { xs: "none", md: "flex" } }}>
@@ -252,6 +305,25 @@ export function SiteNavbar() {
                 onClick={() => setMobileOpen(false)}
               >
                 {t(link.labelKey)}
+              </Button>
+            ))}
+          </Stack>
+          <Divider sx={{ my: 1.5 }} />
+          <Stack spacing={0.5}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800, px: 1 }}>
+              {t("nav.workspaces")}
+            </Typography>
+            {workspaceLinks.map((item) => (
+              <Button
+                key={item.href}
+                component={Link}
+                href={item.href}
+                sx={{ justifyContent: "flex-start" }}
+                color={pathname === item.href ? "secondary" : "inherit"}
+                variant={pathname === item.href ? "contained" : "text"}
+                onClick={() => setMobileOpen(false)}
+              >
+                {t(item.labelKey)}
               </Button>
             ))}
           </Stack>

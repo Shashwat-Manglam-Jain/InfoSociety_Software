@@ -6,14 +6,8 @@ import { Box, Button, Container, Divider, Stack, Typography } from "@mui/materia
 import { alpha } from "@mui/material/styles";
 import Grid from "@mui/material/Grid";
 import { appBranding } from "@/shared/config/branding";
-
-const links = [
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
-  { href: "/privacy-policy", label: "Privacy Policy" },
-  { href: "/terms-of-service", label: "Terms of Service" },
-  { href: "/advertising-disclosure", label: "Advertising Disclosure" }
-] as const;
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getFooterCopy } from "@/shared/i18n/marketing-copy";
 
 const workspaceRoutePrefixes = ["/dashboard", "/modules"];
 
@@ -23,6 +17,16 @@ function isWorkspaceRoute(pathname: string) {
 
 export function SiteFooter() {
   const pathname = usePathname() ?? "/";
+  const { locale } = useLanguage();
+  const footerCopy = getFooterCopy(locale);
+
+  const links = [
+    { href: "/about", label: footerCopy.aboutLabel },
+    { href: "/contact", label: footerCopy.contactLabel },
+    { href: "/privacy-policy", label: footerCopy.privacyLabel },
+    { href: "/terms-of-service", label: footerCopy.termsLabel },
+    { href: "/advertising-disclosure", label: footerCopy.advertisingLabel }
+  ] as const;
 
   if (isWorkspaceRoute(pathname)) {
     return null;
@@ -32,7 +36,7 @@ export function SiteFooter() {
     <Box
       component="footer"
       sx={{
-        mt: 6,
+        mt: 0,
         py: { xs: 3, md: 4 },
         borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`,
         background: (theme) =>
@@ -47,10 +51,10 @@ export function SiteFooter() {
               {appBranding.productName}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mt: 0.5 }}>
-              {appBranding.footerSummary}
+              {footerCopy.summary}
             </Typography>
             <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-              Frontend and API work together across onboarding, operations, monitoring, and reporting.
+              {footerCopy.publicOperationsNote}
             </Typography>
           </Grid>
 
@@ -77,8 +81,7 @@ export function SiteFooter() {
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between">
           <Typography variant="caption" color="text.secondary">
-            Ads are shown for monetization. Please interact only when genuinely interested. Invalid traffic and forced clicks
-            are not permitted.
+            {footerCopy.adsNotice}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             © {new Date().getFullYear()} {appBranding.companyName}

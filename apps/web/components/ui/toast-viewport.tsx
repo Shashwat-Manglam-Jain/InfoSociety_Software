@@ -17,9 +17,12 @@ export function ToastViewport() {
   }, [active]);
 
   useEffect(() => {
-    return subscribeToToasts((toast) => {
+    const unsubscribe = subscribeToToasts((toast) => {
       setQueue((prev) => [...prev, toast]);
     });
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {

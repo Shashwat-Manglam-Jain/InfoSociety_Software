@@ -1,157 +1,311 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
+import ContactMailOutlinedIcon from "@mui/icons-material/ContactMailOutlined";
+import DomainIcon from "@mui/icons-material/Domain";
+import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import LogoutIcon from "@mui/icons-material/Logout";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ErrorIcon from "@mui/icons-material/Error";
-import {
-  Alert,
-  AppBar,
-  Avatar,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  Container,
-  MenuItem,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
-  Toolbar,
-  Typography
-} from "@mui/material";
+import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
+import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
+import WidgetsRoundedIcon from "@mui/icons-material/WidgetsRounded";
+import { Alert, AppBar, Avatar, Box, Button, Card, CardContent, Chip, Container, Skeleton, Stack, Toolbar, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid";
-import { AdsenseBanner } from "@/components/ads/adsense-banner";
+import { alpha } from "@mui/material/styles";
+import { useRouter } from "next/navigation";
 import { ModuleCard } from "@/components/ui/module-card";
 import { SettingsMenu } from "@/components/ui/settings-menu";
+import { WorkspaceFooter } from "@/components/layout/workspace-footer";
 import { getAccessibleModules, resolveAccountTypeByRole } from "@/features/banking/account-access";
-import { modules } from "@/features/banking/module-registry";
+import { localizeBankingModule } from "@/features/banking/module-localization";
+import { modules, type BankingModule } from "@/features/banking/module-registry";
+import { getMe } from "@/shared/api/client";
+import { getMonitoringOverview } from "@/shared/api/monitoring";
+import { getUserDirectory, type UserDirectoryEntry } from "@/shared/api/users";
+import { clearSession, getSession } from "@/shared/auth/session";
 import { appBranding } from "@/shared/config/branding";
-import {
-  cancelPremium,
-  createPaymentRequest,
-  getMe,
-  getMonitoringOverview,
-  getMySubscription,
-  getPaymentsOverview,
-  getUserDirectory,
-  listCustomers,
-  payPaymentRequest,
-  updateSocietyAccess,
-  upgradeToPremium
-} from "@/shared/api/client";
-import { clearSession, getSession, setSession } from "@/shared/auth/session";
-import { toast } from "@/shared/ui/toast";
-import type {
-  AppAccountType,
-  AuthUser,
-  MonitoringOverview,
-  PaymentMethod,
-  PaymentPurpose,
-  PaymentsOverview
-} from "@/shared/types";
+import { getDashboardCopy } from "@/shared/i18n/dashboard-copy";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import type { TranslationKey } from "@/shared/i18n/translations";
+import type { AppAccountType, AuthUser, MonitoringOverview } from "@/shared/types";
 
-type DirectoryUser = Awaited<ReturnType<typeof getUserDirectory>>[number];
-type CustomerDirectory = Awaited<ReturnType<typeof listCustomers>>["rows"];
+const accountTypeLabelKeys: Record<AppAccountType, TranslationKey> = {
+  CLIENT: "account.client",
+  AGENT: "account.agent",
+  SOCIETY: "account.society",
+  PLATFORM: "account.platform"
+};
 
-const balanceFormatter = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 0
-});
+const featuredModuleSlugsByAccountType: Record<AppAccountType, string[]> = {
+  CLIENT: ["accounts", "deposits", "loans", "transactions"],
+  AGENT: ["customers", "transactions", "accounts", "reports"],
+  SOCIETY: ["customers", "accounts", "reports", "monitoring"],
+  PLATFORM: ["monitoring", "users", "reports"]
+};
 
-const dateFormatter = new Intl.DateTimeFormat("en-IN", {
-  dateStyle: "medium"
-});
+type SummaryCardItem = {
+  key: string;
+  label: string;
+  value: string;
+  caption: string;
+  icon: ReactNode;
+};
 
-const paymentMethodOptions: PaymentMethod[] = ["UPI", "DEBIT_CARD", "CREDIT_CARD", "NET_BANKING"];
-const paymentPurposeOptions: Array<{ label: string; value: PaymentPurpose }> = [
-  { label: "Service Charge", value: "SERVICE_CHARGE" },
-  { label: "Loan Repayment", value: "LOAN_REPAYMENT" },
-  { label: "Deposit Installment", value: "DEPOSIT_INSTALLMENT" }
-];
+type ActionCardItem = {
+  key: string;
+  title: string;
+  description: string;
+  href: string;
+  icon: ReactNode;
+  ctaLabel: string;
+};
 
-function formatDate(value?: string | Date | null) {
-  return value ? dateFormatter.format(new Date(value)) : "-";
+function formatDirectoryRole(role: string, roleLabels: Record<string, string>) {
+  return roleLabels[role] ?? role;
 }
 
-function formatRoleLabel(role?: string) {
-  if (!role) {
-    return "-";
+function formatIndianNumber(value: number) {
+  return value.toLocaleString("en-IN");
+}
+
+function getRoleFocus(accountType: AppAccountType, dashboardCopy: ReturnType<typeof getDashboardCopy>) {
+  return dashboardCopy.roleFocus[accountType];
+}
+
+function getHeroPanelTitle(accountType: AppAccountType, dashboardCopy: ReturnType<typeof getDashboardCopy>) {
+  return dashboardCopy.heroPanelTitles[accountType];
+}
+
+function getHeroPanelDescription(
+  accountType: AppAccountType,
+  monitoringOverview: MonitoringOverview | null,
+  dashboardCopy: ReturnType<typeof getDashboardCopy>
+) {
+  if (accountType === "PLATFORM" && monitoringOverview) {
+    return dashboardCopy.heroDescriptions.platformMetrics({
+      societies: formatIndianNumber(monitoringOverview.totals.societies),
+      customers: formatIndianNumber(monitoringOverview.totals.customers),
+      accounts: formatIndianNumber(monitoringOverview.totals.accounts)
+    });
   }
 
-  return role.replaceAll("_", " ");
+  if (accountType === "SOCIETY" && monitoringOverview) {
+    return dashboardCopy.heroDescriptions.societyMetrics({
+      customers: formatIndianNumber(monitoringOverview.totals.customers),
+      accounts: formatIndianNumber(monitoringOverview.totals.accounts),
+      transactions: formatIndianNumber(monitoringOverview.totals.transactions)
+    });
+  }
+
+  if (accountType === "AGENT") {
+    return dashboardCopy.heroDescriptions.agent;
+  }
+
+  if (accountType === "CLIENT") {
+    return dashboardCopy.heroDescriptions.client;
+  }
+
+  return dashboardCopy.heroDescriptions.fallback;
+}
+
+function getSectionSubtitle(accountType: AppAccountType, dashboardCopy: ReturnType<typeof getDashboardCopy>) {
+  return dashboardCopy.priorityWorkspaceSubtitles[accountType];
+}
+
+function getServiceAreaSubtitle(accountType: AppAccountType, dashboardCopy: ReturnType<typeof getDashboardCopy>) {
+  return dashboardCopy.operationalAreaSubtitles[accountType];
+}
+
+function getModuleIcon(slug: string) {
+  switch (slug) {
+    case "customers":
+    case "users":
+      return <ManageAccountsRoundedIcon color="primary" />;
+    case "monitoring":
+    case "reports":
+      return <InsightsRoundedIcon color="primary" />;
+    case "accounts":
+    case "deposits":
+    case "loans":
+      return <AccountBalanceIcon color="primary" />;
+    default:
+      return <WidgetsRoundedIcon color="primary" />;
+  }
+}
+
+function SummaryCard({ item }: { item: SummaryCardItem }) {
+  return (
+    <Card className="surface-glass hover-lift" sx={{ height: "100%", borderRadius: 3, overflow: "hidden", position: "relative" }}>
+      <Box
+        sx={{
+          position: "absolute",
+          inset: "0 0 auto 0",
+          height: 3,
+          background: (theme) =>
+            `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.72)} 0%, ${alpha(theme.palette.secondary.main, 0.72)} 100%)`
+        }}
+      />
+      <CardContent>
+        <Stack direction="row" spacing={1.2} alignItems="flex-start">
+          <Box
+            sx={{
+              p: 1,
+              borderRadius: 2,
+              bgcolor: (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "light" ? 0.1 : 0.18)
+            }}
+          >
+            {item.icon}
+          </Box>
+          <Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.6 }}>
+              {item.label}
+            </Typography>
+            <Typography variant="h5" sx={{ lineHeight: 1.1 }}>
+              {item.value}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.8 }}>
+              {item.caption}
+            </Typography>
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <Box sx={{ py: { xs: 3, md: 4 } }}>
+      <Container maxWidth="xl">
+        <Card className="surface-vibrant fade-rise" sx={{ mb: 2.5, borderRadius: 3, overflow: "hidden" }}>
+          <CardContent sx={{ p: { xs: 2.2, md: 3.2 } }}>
+            <Grid container spacing={2.2}>
+              <Grid size={{ xs: 12, lg: 8 }}>
+                <Stack spacing={1.3}>
+                  <Skeleton variant="rounded" width={130} height={28} />
+                  <Skeleton variant="text" width="70%" height={52} />
+                  <Skeleton variant="text" width="88%" height={28} />
+                  <Skeleton variant="text" width="62%" height={28} />
+                  <Stack direction="row" spacing={1}>
+                    <Skeleton variant="rounded" width={110} height={32} />
+                    <Skeleton variant="rounded" width={140} height={32} />
+                  </Stack>
+                </Stack>
+              </Grid>
+              <Grid size={{ xs: 12, lg: 4 }}>
+                <Card className="surface-glass" sx={{ borderRadius: 2.5 }}>
+                  <CardContent>
+                    <Skeleton variant="text" width="45%" height={24} />
+                    <Skeleton variant="text" width="68%" height={36} />
+                    <Skeleton variant="text" width="100%" height={24} />
+                    <Skeleton variant="text" width="85%" height={24} />
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        <Grid container spacing={2} sx={{ mb: 2.5 }}>
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Grid key={index} size={{ xs: 12, sm: 6, xl: 3 }}>
+              <Card className="surface-glass" sx={{ borderRadius: 3 }}>
+                <CardContent>
+                  <Skeleton variant="text" width="40%" height={24} />
+                  <Skeleton variant="text" width="60%" height={38} />
+                  <Skeleton variant="text" width="92%" height={22} />
+                  <Skeleton variant="text" width="78%" height={22} />
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+
+        <Card className="surface-glass" sx={{ borderRadius: 3, mb: 2.5 }}>
+          <CardContent sx={{ p: { xs: 2.2, md: 3 } }}>
+            <Skeleton variant="text" width={220} height={40} />
+            <Skeleton variant="text" width="58%" height={24} sx={{ mb: 2.2 }} />
+            <Grid container spacing={2}>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Grid key={index} size={{ xs: 12, md: 6, xl: 4 }}>
+                  <Card className="surface-glass" sx={{ borderRadius: 3 }}>
+                    <CardContent>
+                      <Skeleton variant="rounded" width={48} height={48} />
+                      <Skeleton variant="text" width="68%" height={32} sx={{ mt: 1.2 }} />
+                      <Skeleton variant="text" width="100%" height={24} />
+                      <Skeleton variant="text" width="92%" height={24} />
+                      <Skeleton variant="rounded" width="100%" height={40} sx={{ mt: 2 }} />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
+  );
+}
+
+function ActionCard({ item }: { item: ActionCardItem }) {
+  return (
+    <Card className="surface-glass hover-lift" sx={{ height: "100%", borderRadius: 3, overflow: "hidden" }}>
+      <CardContent sx={{ display: "flex", flexDirection: "column", height: "100%", p: 2.3 }}>
+        <Stack direction="row" spacing={1.1} alignItems="flex-start" sx={{ mb: 1.2 }}>
+          <Box
+            sx={{
+              p: 1.1,
+              borderRadius: 2.4,
+              background: (theme) =>
+                `linear-gradient(145deg, ${alpha(theme.palette.primary.main, theme.palette.mode === "light" ? 0.14 : 0.24)} 0%, ${alpha(theme.palette.secondary.main, theme.palette.mode === "light" ? 0.12 : 0.22)} 100%)`
+            }}
+          >
+            {item.icon}
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontSize: "1.04rem" }}>
+              {item.title}
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 0.6 }}>
+              {item.description}
+            </Typography>
+          </Box>
+        </Stack>
+
+        <Box
+          sx={{
+            mt: "auto",
+            pt: 1.5,
+            borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.8)}`
+          }}
+        >
+          <Button component={Link} href={item.href} variant="contained" fullWidth>
+            {item.ctaLabel}
+          </Button>
+        </Box>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { locale, t } = useLanguage();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accountType, setAccountType] = useState<AppAccountType>("CLIENT");
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
-  const [overview, setOverview] = useState<MonitoringOverview | null>(null);
-  const [directory, setDirectory] = useState<DirectoryUser[]>([]);
-  const [customers, setCustomers] = useState<CustomerDirectory>([]);
-  const [paymentsOverview, setPaymentsOverview] = useState<PaymentsOverview | null>(null);
+  const [directoryEntries, setDirectoryEntries] = useState<UserDirectoryEntry[]>([]);
+  const [monitoringOverview, setMonitoringOverview] = useState<MonitoringOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [billingNotice, setBillingNotice] = useState<string | null>(null);
-  const [billingError, setBillingError] = useState<string | null>(null);
-  const [billingBusy, setBillingBusy] = useState<"upgrade" | "cancel" | null>(null);
-  const [billingMethod, setBillingMethod] = useState<PaymentMethod>("UPI");
-  const [societyActionNotice, setSocietyActionNotice] = useState<string | null>(null);
-  const [societyActionError, setSocietyActionError] = useState<string | null>(null);
-  const [societyActionBusyId, setSocietyActionBusyId] = useState<string | null>(null);
-  const [paymentsNotice, setPaymentsNotice] = useState<string | null>(null);
-  const [paymentsError, setPaymentsError] = useState<string | null>(null);
-  const [creatingPaymentRequest, setCreatingPaymentRequest] = useState(false);
-  const [payingRequestId, setPayingRequestId] = useState<string | null>(null);
-  const [paymentMethodByRequest, setPaymentMethodByRequest] = useState<Record<string, PaymentMethod>>({});
-  const [societyConfig, setSocietyConfig] = useState({
-    upiId: "",
-    acceptsDigitalPayments: false
-  });
-  const [paymentRequestForm, setPaymentRequestForm] = useState({
-    customerId: "",
-    title: "",
-    purpose: "SERVICE_CHARGE" as PaymentPurpose,
-    amount: "",
-    dueDate: "",
-    description: ""
-  });
-
-  async function refreshData(accessToken: string, baseUser?: AuthUser | null, baseAccountType?: AppAccountType) {
-    const [payments, monitoringResult, directoryResult, customersResult] = await Promise.all([
-      getPaymentsOverview(accessToken),
-      baseUser && ["SUPER_ADMIN", "SUPER_USER", "AGENT"].includes(baseUser.role) ? getMonitoringOverview(accessToken) : Promise.resolve(null),
-      baseUser && ["SUPER_ADMIN", "SUPER_USER", "AGENT"].includes(baseUser.role) ? getUserDirectory(accessToken) : Promise.resolve([] as DirectoryUser[]),
-      baseAccountType === "SOCIETY" || baseAccountType === "AGENT" ? listCustomers(accessToken) : Promise.resolve({ page: 1, limit: 50, total: 0, rows: [] })
-    ]);
-
-    setPaymentsOverview(payments);
-    setOverview(monitoringResult);
-    setDirectory(directoryResult);
-    setCustomers(customersResult.rows);
-    setSocietyConfig({
-      upiId: payments.society?.upiId ?? "",
-      acceptsDigitalPayments: payments.acceptsDigitalPayments
-    });
-  }
+  const dashboardCopy = useMemo(() => getDashboardCopy(locale), [locale]);
 
   useEffect(() => {
     let active = true;
 
     async function loadData() {
       const session = getSession();
-
       if (!session) {
         router.replace("/login");
         return;
@@ -164,30 +318,44 @@ export default function DashboardPage() {
 
       try {
         const profile = await getMe(session.accessToken);
-        const subscription = profile.subscription ?? (await getMySubscription(session.accessToken));
-        const resolvedAccountType = session.accountType ?? resolveAccountTypeByRole(profile.role);
-        const profileWithSubscription: AuthUser = {
-          ...profile,
-          subscription
-        };
 
         if (!active) {
           return;
         }
 
-        setUser(profileWithSubscription);
+        const resolvedAccountType = session.accountType ?? resolveAccountTypeByRole(profile.role);
+        setUser(profile);
         setAccountType(resolvedAccountType);
-        setSession({
-          ...session,
-          accountType: resolvedAccountType,
-          subscriptionPlan: subscription.plan
-        });
+        setError(null);
+        setDirectoryEntries([]);
+        setMonitoringOverview(null);
 
-        await refreshData(session.accessToken, profileWithSubscription, resolvedAccountType);
-      } catch (caught) {
-        if (active) {
-          setError(caught instanceof Error ? caught.message : "Unable to load dashboard");
+        if (resolvedAccountType === "SOCIETY" || resolvedAccountType === "PLATFORM") {
+          const [directoryResult, overviewResult] = await Promise.allSettled([
+            getUserDirectory(session.accessToken),
+            getMonitoringOverview(session.accessToken)
+          ]);
+
+          if (!active) {
+            return;
+          }
+
+          if (directoryResult.status === "fulfilled") {
+            setDirectoryEntries(directoryResult.value);
+          }
+
+          if (overviewResult.status === "fulfilled") {
+            setMonitoringOverview(overviewResult.value);
+          }
         }
+      } catch (caught) {
+        if (!active) {
+          return;
+        }
+
+        setError(caught instanceof Error ? caught.message : dashboardCopy.loadError);
+        clearSession();
+        router.replace("/login");
       } finally {
         if (active) {
           setLoading(false);
@@ -200,287 +368,145 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [router]);
+  }, [dashboardCopy.loadError, router]);
 
-  const greeting = useMemo(() => {
-    if (!user) {
-      return "Welcome";
+  const accountTypeLabel = t(accountTypeLabelKeys[accountType]);
+  const localizedModules = useMemo(
+    () => getAccessibleModules(modules, accountType).map((module) => localizeBankingModule(module, locale)),
+    [accountType, locale]
+  );
+  const moduleLookup = useMemo(
+    () => new Map(localizedModules.map((module) => [module.slug, module])),
+    [localizedModules]
+  );
+  const isSocietyAdmin = accountType === "SOCIETY";
+  const isPlatformAdmin = accountType === "PLATFORM";
+  const accessCaption =
+    user?.society?.name ??
+    (isPlatformAdmin ? dashboardCopy.platformScopeLabel : appBranding.companyName);
+  const teamSummary = useMemo(
+    () => ({
+      clients: directoryEntries.filter((entry) => entry.role === "CLIENT").length,
+      agents: directoryEntries.filter((entry) => entry.role === "AGENT").length,
+      societyAdmins: directoryEntries.filter((entry) => entry.role === "SUPER_USER").length,
+      platformAdmins: directoryEntries.filter((entry) => entry.role === "SUPER_ADMIN").length,
+      activeUsers: directoryEntries.filter((entry) => entry.isActive).length,
+      recentEntries: directoryEntries.slice(0, 5)
+    }),
+    [directoryEntries]
+  );
+
+  const featuredModules = useMemo(() => {
+    const desired = featuredModuleSlugsByAccountType[accountType];
+    return desired
+      .map((slug) => moduleLookup.get(slug))
+      .filter((module): module is BankingModule => Boolean(module));
+  }, [accountType, moduleLookup]);
+
+  const featuredActions = useMemo<ActionCardItem[]>(() => {
+    const moduleCards = featuredModules.map((module) => ({
+      key: module.slug,
+      title: module.name,
+      description: module.summary,
+      href: `/modules/${module.slug}`,
+      icon: getModuleIcon(module.slug),
+      ctaLabel: dashboardCopy.openWorkspace
+    }));
+
+    if (!isSocietyAdmin) {
+      return moduleCards;
     }
-
-    if (user.role === "SUPER_ADMIN") {
-      return `Welcome, Platform ${user.fullName}`;
-    }
-
-    return `Welcome, ${user.fullName}`;
-  }, [user]);
-
-  const workspaceCopy = useMemo(() => {
-    if (accountType === "PLATFORM") {
-      return {
-        title: "Platform Superadmin Workspace",
-        summary: "Approve societies, manage access plans, and track collection performance across the full platform.",
-        features: ["Society Approval", "Portfolio Visibility", "Platform Controls"]
-      };
-    }
-
-    if (accountType === "SOCIETY") {
-      return {
-        title: "Society Control Workspace",
-        summary: "Run society operations, monitor members, manage plan features, and handle digital collections from one dashboard.",
-        features: ["Plan Controls", "Member Collections", "Operational Monitoring"]
-      };
-    }
-
-    if (accountType === "AGENT") {
-      return {
-        title: "Agent Operation Workspace",
-        summary: "Execute day-to-day member operations, create service payment requests, and follow collections for your society.",
-        features: ["Service Desk", "Collection Requests", "Daily Workflow Actions"]
-      };
-    }
-
-    return {
-      title: "Consumer Self-Service Workspace",
-      summary: "Review your savings, see society requests, and pay dues using digital methods from the same software.",
-      features: ["My Profile", "Pending Payments", "Savings & Interest Tracking"]
-    };
-  }, [accountType]);
-
-  const visibleModules = useMemo(() => getAccessibleModules(modules, accountType), [accountType]);
-  const quickAccessModules = useMemo(() => visibleModules.slice(0, 4), [visibleModules]);
-  const isPremium = user?.subscription?.plan === "PREMIUM";
-  const canManageSocietyBilling = user?.role === "SUPER_USER";
-  const canCreatePaymentRequests = user?.role === "SUPER_USER" || user?.role === "AGENT";
-  const canApproveSocieties = user?.role === "SUPER_ADMIN";
-  const showAds = !isPremium && accountType !== "PLATFORM";
-
-  const workspaceStats = useMemo(() => {
-    const paymentTotal = paymentsOverview?.totals.totalCollectedAmount ?? 0;
 
     return [
       {
-        label: "Accessible Modules",
-        value: String(visibleModules.length),
-        caption: "Role-based workspaces available now"
+        key: "society-profile",
+        title: dashboardCopy.institutionProfileTitle,
+        description: dashboardCopy.institutionProfileDescription,
+        href: "/dashboard/society",
+        icon: <DomainIcon color="primary" />,
+        ctaLabel: dashboardCopy.openWorkspace
       },
       {
-        label: "Current Plan",
-        value: isPremium ? "Premium" : "Common",
-        caption: user?.subscription?.scope === "SOCIETY" ? "Society-wide subscription" : "Role-based access scope"
+        key: "branch-management",
+        title: dashboardCopy.branchManagementTitle,
+        description: dashboardCopy.branchManagementDescription,
+        href: "/dashboard/branches",
+        icon: <AccountBalanceIcon color="primary" />,
+        ctaLabel: dashboardCopy.openWorkspace
+      },
+      ...moduleCards
+    ];
+  }, [dashboardCopy, featuredModules, isSocietyAdmin]);
+
+  const featuredModuleSlugs = useMemo(
+    () => new Set(featuredModules.map((module) => module.slug)),
+    [featuredModules]
+  );
+  const remainingModules = useMemo(
+    () => localizedModules.filter((module) => !featuredModuleSlugs.has(module.slug)),
+    [featuredModuleSlugs, localizedModules]
+  );
+
+  const summaryCards = useMemo<SummaryCardItem[]>(() => {
+    const cards: SummaryCardItem[] = [
+      {
+        key: "role",
+        label: dashboardCopy.signedInRoleLabel,
+        value: accountTypeLabel,
+        caption: user?.fullName
+          ? `${user.fullName} · ${getRoleFocus(accountType, dashboardCopy)}`
+          : getRoleFocus(accountType, dashboardCopy),
+        icon: <ShieldRoundedIcon color="primary" />
       },
       {
-        label: "Operating Scope",
-        value: accountType === "PLATFORM" ? "All Societies" : user?.society?.code ?? "Consumer",
-        caption: accountType === "PLATFORM" ? "Central platform administration" : user?.society?.name ?? "Member self-service"
+        key: "scope",
+        label: isPlatformAdmin ? dashboardCopy.platformScopeLabel : dashboardCopy.institutionLabel,
+        value: accessCaption,
+        caption: isPlatformAdmin ? dashboardCopy.platformScopeCaption : dashboardCopy.institutionCaption,
+        icon: <DomainIcon color="primary" />
       },
       {
-        label: "Collections",
-        value: balanceFormatter.format(paymentTotal),
-        caption: paymentsOverview ? `${paymentsOverview.totals.completedPayments} successful digital payments` : "No payment summary"
+        key: "support",
+        label: dashboardCopy.supportLabel,
+        value: appBranding.supportEmail,
+        caption: dashboardCopy.supportCaption,
+        icon: <ContactMailOutlinedIcon color="primary" />
       }
     ];
-  }, [accountType, isPremium, paymentsOverview, user, visibleModules.length]);
+
+    if (accountType === "CLIENT" && user?.customerProfile?.customerCode) {
+      cards.push({
+        key: "customer-code",
+        label: dashboardCopy.customerProfileLabel,
+        value: user.customerProfile.customerCode,
+        caption: dashboardCopy.customerProfileCaption,
+        icon: <ManageAccountsRoundedIcon color="primary" />
+      });
+      return cards;
+    }
+
+    if (monitoringOverview) {
+      cards.push({
+        key: "snapshot",
+        label: isPlatformAdmin ? dashboardCopy.portfolioSnapshotLabel : dashboardCopy.businessSnapshotLabel,
+        value: isPlatformAdmin
+          ? `${formatIndianNumber(monitoringOverview.totals.societies)} ${dashboardCopy.snapshotMetrics.societies.toLowerCase()} · ${formatIndianNumber(monitoringOverview.totals.customers)} ${dashboardCopy.snapshotMetrics.customers.toLowerCase()}`
+          : `${formatIndianNumber(monitoringOverview.totals.customers)} ${dashboardCopy.snapshotMetrics.customers.toLowerCase()} · ${formatIndianNumber(monitoringOverview.totals.accounts)} ${dashboardCopy.snapshotMetrics.accounts.toLowerCase()}`,
+        caption: isPlatformAdmin ? dashboardCopy.portfolioSnapshotCaption : dashboardCopy.businessSnapshotCaption,
+        icon: <InsightsRoundedIcon color="primary" />
+      });
+    }
+
+    return cards;
+  }, [accessCaption, accountType, accountTypeLabel, dashboardCopy, isPlatformAdmin, monitoringOverview, user]);
 
   function onLogout() {
     clearSession();
     router.replace("/login");
   }
 
-  async function reloadAfterAction() {
-    const session = getSession();
-    if (!session) {
-      router.replace("/login");
-      return;
-    }
-
-    const profile = await getMe(session.accessToken);
-    const subscription = profile.subscription ?? (await getMySubscription(session.accessToken));
-    const resolvedAccountType = session.accountType ?? resolveAccountTypeByRole(profile.role);
-    const profileWithSubscription: AuthUser = {
-      ...profile,
-      subscription
-    };
-
-    setUser(profileWithSubscription);
-    setAccountType(resolvedAccountType);
-    setSession({
-      ...session,
-      accountType: resolvedAccountType,
-      subscriptionPlan: subscription.plan
-    });
-
-    await refreshData(session.accessToken, profileWithSubscription, resolvedAccountType);
-  }
-
-  async function onUpgradeToPremium() {
-    const session = getSession();
-    if (!session) {
-      router.replace("/login");
-      return;
-    }
-
-    try {
-      setBillingBusy("upgrade");
-      setBillingNotice(null);
-      setBillingError(null);
-      const result = await upgradeToPremium(session.accessToken, { paymentMethod: billingMethod });
-      setBillingNotice(result.message);
-      toast.success("Society upgraded to Premium successfully!");
-      await reloadAfterAction();
-    } catch (caught) {
-      const errorMsg = caught instanceof Error ? caught.message : "Unable to upgrade society plan";
-      setBillingError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setBillingBusy(null);
-    }
-  }
-
-  async function onCancelPremium() {
-    const session = getSession();
-    if (!session) {
-      router.replace("/login");
-      return;
-    }
-
-    try {
-      setBillingBusy("cancel");
-      setBillingNotice(null);
-      setBillingError(null);
-      const result = await cancelPremium(session.accessToken);
-      setBillingNotice(result.message);
-      toast.success("Premium subscription cancelled");
-      await reloadAfterAction();
-    } catch (caught) {
-      const errorMsg = caught instanceof Error ? caught.message : "Unable to cancel society premium";
-      setBillingError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setBillingBusy(null);
-    }
-  }
-
-  async function onToggleSocietyStatus(societyId: string, isActive: boolean) {
-    const session = getSession();
-    if (!session) {
-      router.replace("/login");
-      return;
-    }
-
-    try {
-      setSocietyActionBusyId(societyId);
-      setSocietyActionNotice(null);
-      setSocietyActionError(null);
-      await updateSocietyAccess(session.accessToken, societyId, {
-        status: isActive ? "SUSPENDED" : "ACTIVE",
-        isActive: !isActive
-      });
-      const message = isActive ? "Society suspended successfully" : "Society activated successfully";
-      setSocietyActionNotice(message);
-      toast.success(message);
-      await reloadAfterAction();
-    } catch (caught) {
-      const errorMsg = caught instanceof Error ? caught.message : "Unable to update society access";
-      setSocietyActionError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setSocietyActionBusyId(null);
-    }
-  }
-
-  async function onUpdateSocietyPayments() {
-    const session = getSession();
-    const societyId = overview?.societies[0]?.id;
-
-    if (!session || !societyId) {
-      return;
-    }
-
-    try {
-      setSocietyActionBusyId(societyId);
-      setSocietyActionNotice(null);
-      setSocietyActionError(null);
-      await updateSocietyAccess(session.accessToken, societyId, {
-        acceptsDigitalPayments: societyConfig.acceptsDigitalPayments,
-        upiId: societyConfig.upiId.trim() || undefined
-      });
-      setSocietyActionNotice("Society payment settings updated");
-      toast.success("Payment settings updated successfully");
-      await reloadAfterAction();
-    } catch (caught) {
-      const errorMsg = caught instanceof Error ? caught.message : "Unable to update society settings";
-      setSocietyActionError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setSocietyActionBusyId(null);
-    }
-  }
-
-  async function onCreatePaymentRequest() {
-    const session = getSession();
-    if (!session) {
-      router.replace("/login");
-      return;
-    }
-
-    try {
-      setCreatingPaymentRequest(true);
-      setPaymentsNotice(null);
-      setPaymentsError(null);
-      await createPaymentRequest(session.accessToken, {
-        customerId: paymentRequestForm.customerId,
-        title: paymentRequestForm.title,
-        description: paymentRequestForm.description || undefined,
-        purpose: paymentRequestForm.purpose,
-        amount: Number(paymentRequestForm.amount),
-        dueDate: paymentRequestForm.dueDate || undefined
-      });
-      setPaymentsNotice("Payment request created successfully");
-      toast.success("Payment request created successfully");
-      setPaymentRequestForm({
-        customerId: "",
-        title: "",
-        purpose: "SERVICE_CHARGE",
-        amount: "",
-        dueDate: "",
-        description: ""
-      });
-      await reloadAfterAction();
-    } catch (caught) {
-      setPaymentsError(caught instanceof Error ? caught.message : "Unable to create payment request");
-    } finally {
-      setCreatingPaymentRequest(false);
-    }
-  }
-
-  async function onPayRequest(requestId: string) {
-    const session = getSession();
-    if (!session) {
-      router.replace("/login");
-      return;
-    }
-
-    try {
-      setPayingRequestId(requestId);
-      setPaymentsNotice(null);
-      setPaymentsError(null);
-      await payPaymentRequest(session.accessToken, requestId, paymentMethodByRequest[requestId] ?? "UPI");
-      setPaymentsNotice("Payment completed successfully");
-      await reloadAfterAction();
-    } catch (caught) {
-      setPaymentsError(caught instanceof Error ? caught.message : "Unable to complete payment");
-    } finally {
-      setPayingRequestId(null);
-    }
-  }
-
   if (loading) {
-    return (
-      <Stack alignItems="center" justifyContent="center" minHeight="60vh" spacing={1}>
-        <CircularProgress />
-        <Typography>Loading dashboard...</Typography>
-      </Stack>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
@@ -497,691 +523,298 @@ export default function DashboardPage() {
         position="sticky"
         elevation={0}
         sx={{
+          color: "#fff",
+          backdropFilter: "blur(18px)",
+          borderBottom: (theme) => `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
           background: (theme) =>
-            `linear-gradient(140deg, ${theme.palette.secondary.dark} 0%, ${theme.palette.secondary.main} 55%, ${theme.palette.secondary.light} 100%)`,
-          borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-          color: "#fff"
+            `linear-gradient(135deg, ${alpha(theme.palette.primary.dark, 0.96)} 0%, ${alpha(theme.palette.primary.main, 0.92)} 52%, ${alpha(theme.palette.secondary.main, 0.94)} 100%)`
         }}
       >
-        <Toolbar sx={{ minHeight: 70 }}>
-          <Stack direction="row" spacing={1.2} alignItems="center" sx={{ flexGrow: 1 }}>
-            <Avatar src={avatarDataUrl ?? undefined} sx={{ bgcolor: "#ff8f2e", boxShadow: "0 8px 18px rgba(14, 32, 47, 0.34)" }}>
+        <Toolbar sx={{ minHeight: 72, gap: 1.5, flexWrap: "wrap", py: 1.2 }}>
+          <Stack direction="row" spacing={1.2} alignItems="center" sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Avatar
+              src={avatarDataUrl ?? undefined}
+              sx={{
+                bgcolor: (theme) => alpha(theme.palette.common.white, 0.14),
+                boxShadow: (theme) => `0 10px 24px ${alpha(theme.palette.common.black, 0.24)}`
+              }}
+            >
               {user?.fullName?.[0] ?? "I"}
             </Avatar>
-            <Box>
-              <Typography variant="subtitle1" fontWeight={700} lineHeight={1.1}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle1" fontWeight={700} lineHeight={1.1} noWrap>
                 {appBranding.productShortName}
               </Typography>
-              <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.82)" }}>
-                {accountType} Workspace
+              <Typography variant="caption" sx={{ color: "rgba(255, 255, 255, 0.82)" }} noWrap>
+                {t("dashboard.workspace.caption", { accountType: accountTypeLabel })}
               </Typography>
             </Box>
-	          </Stack>
-	          <Stack direction="row" spacing={1} alignItems="center">
-	            <SettingsMenu size="small" />
-	            <Button color="inherit" startIcon={<LogoutIcon />} onClick={onLogout}>
-	              Logout
-	            </Button>
-	          </Stack>
-	        </Toolbar>
-	      </AppBar>
+          </Stack>
 
-      <Container
-        maxWidth="xl"
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Button component={Link} href="/about" sx={{ color: "#fff", borderColor: "rgba(255,255,255,0.16)" }} variant="outlined">
+              {t("nav.about")}
+            </Button>
+            <Button component={Link} href="/contact" sx={{ color: "#fff", borderColor: "rgba(255,255,255,0.16)" }} variant="outlined">
+              {t("nav.contact")}
+            </Button>
+            <SettingsMenu size="small" />
+            <Button
+              startIcon={<LogoutIcon />}
+              onClick={onLogout}
+              variant="contained"
+              sx={{
+                color: "#fff",
+                px: 1.6,
+                background: (theme) =>
+                  `linear-gradient(135deg, ${alpha(theme.palette.secondary.dark, 0.86)} 0%, ${alpha(theme.palette.secondary.main, 0.98)} 100%)`,
+                border: (theme) => `1px solid ${alpha(theme.palette.common.white, 0.16)}`,
+                boxShadow: "none",
+                "&:hover": {
+                  boxShadow: "none",
+                  background: (theme) =>
+                    `linear-gradient(135deg, ${alpha(theme.palette.secondary.dark, 0.94)} 0%, ${alpha(theme.palette.secondary.main, 1)} 100%)`
+                }
+              }}
+            >
+              {t("dashboard.logout")}
+            </Button>
+          </Stack>
+        </Toolbar>
+      </AppBar>
+
+      <Box
         sx={{
-          py: 3,
-          minHeight: "calc(100vh - 92px)",
-          background: "linear-gradient(180deg, #f8fafb 0%, #f2f4f8 55%, #ffffff 100%)",
-          color: "text.primary"
+          position: "relative",
+          py: { xs: 3, md: 4 },
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            inset: 0,
+            background: (theme) =>
+              `radial-gradient(80% 60% at 0% 0%, ${alpha(theme.palette.primary.main, theme.palette.mode === "light" ? 0.12 : 0.18)} 0%, transparent 70%),
+              radial-gradient(65% 55% at 100% 10%, ${alpha(theme.palette.secondary.main, theme.palette.mode === "light" ? 0.1 : 0.16)} 0%, transparent 72%)`,
+            pointerEvents: "none"
+          }
         }}
       >
-        <Card
-          className="surface-glass fade-rise hover-lift"
-          sx={{
-            mb: 2,
-            overflow: "hidden",
-            borderRadius: 3,
-            border: "1px solid rgba(52, 84, 209, 0.15)",
-            boxShadow: "0 14px 24px rgba(15, 23, 42, 0.12)",
-            background: "linear-gradient(135deg, rgba(232,242,255,0.94), rgba(255,255,255,0.85))"
-          }}
-        >
-          <CardContent>
-            <Grid container spacing={2} alignItems="center">
-              <Grid size={{ xs: 12, md: 8 }}>
-                <Stack spacing={1}>
-                  <Typography variant="h5">{greeting}</Typography>
-                  <Typography variant="subtitle1" fontWeight={700}>
-                    {workspaceCopy.title}
-                  </Typography>
-                  <Typography color="text.secondary">{workspaceCopy.summary}</Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                            <Chip label={`Role: ${formatRoleLabel(user?.role)}`} color="secondary" />
-                    <Chip label={`Plan: ${user?.subscription?.plan ?? "FREE"}`} color="secondary" variant="outlined" />
-                    <Chip label={`Scope: ${user?.subscription?.scope ?? "SOCIETY"}`} color="secondary" variant="outlined" />
-                    {user?.society?.name ? <Chip label={`Society: ${user.society.name}`} variant="outlined" /> : null}
-                    {workspaceCopy.features.map((feature) => (
-                      <Chip key={feature} label={feature} size="small" />
-                    ))}
+        <Container maxWidth="xl" sx={{ position: "relative" }}>
+          <Card
+            className="surface-vibrant fade-rise"
+            sx={{
+              mb: 2.5,
+              overflow: "hidden",
+              borderRadius: 3,
+              background: (theme) =>
+                `linear-gradient(145deg, ${alpha(theme.palette.background.paper, theme.palette.mode === "light" ? 0.96 : 0.9)} 0%, ${alpha(theme.palette.background.paper, theme.palette.mode === "light" ? 0.8 : 0.84)} 100%)`
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2.2, md: 3.2 } }}>
+              <Grid container spacing={2.2} alignItems="center">
+                <Grid size={{ xs: 12, lg: 8 }}>
+                  <Stack spacing={1.4}>
+                    <Chip label={t("dashboard.hero.badge")} color="secondary" variant="outlined" sx={{ width: "fit-content" }} />
+
+                    <Box>
+                      <Typography variant="h4" className="section-title" sx={{ mb: 0.8 }}>
+                        {t("dashboard.hero.greeting", { name: user?.fullName ?? appBranding.productShortName })}
+                      </Typography>
+                      <Typography color="text.secondary" sx={{ maxWidth: 760 }}>
+                        {getRoleFocus(accountType, dashboardCopy)}
+                      </Typography>
+                    </Box>
+
+                    <Stack direction="row" spacing={0.9} flexWrap="wrap" useFlexGap>
+                      <Chip label={accountTypeLabel} color="primary" />
+                      {user?.society?.code ? <Chip label={user.society.code} variant="outlined" /> : null}
+                      {user?.society?.name ? <Chip label={user.society.name} variant="outlined" /> : null}
+                    </Stack>
                   </Stack>
+                </Grid>
+
+                <Grid size={{ xs: 12, lg: 4 }}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      height: "100%",
+                      borderRadius: 2.5,
+                      background: (theme) =>
+                        `linear-gradient(180deg, ${alpha(theme.palette.primary.main, theme.palette.mode === "light" ? 0.08 : 0.18)} 0%, ${alpha(theme.palette.background.paper, 0.72)} 100%)`
+                    }}
+                  >
+                    <CardContent>
+                      <Typography variant="overline" color="text.secondary">
+                        {appBranding.productName}
+                      </Typography>
+                      <Typography variant="h6" sx={{ mb: 0.8 }}>
+                        {getHeroPanelTitle(accountType, dashboardCopy)}
+                      </Typography>
+                      <Typography color="text.secondary">{getHeroPanelDescription(accountType, monitoringOverview, dashboardCopy)}</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+
+          <Grid container spacing={2} sx={{ mb: 2.5 }}>
+            {summaryCards.map((item) => (
+              <Grid key={item.key} size={{ xs: 12, sm: 6, xl: 3 }}>
+                <SummaryCard item={item} />
+              </Grid>
+            ))}
+          </Grid>
+
+          {featuredActions.length > 0 ? (
+            <Card className="surface-glass" sx={{ mb: 2.5, borderRadius: 3 }}>
+              <CardContent sx={{ p: { xs: 2.2, md: 3 } }}>
+                <Stack spacing={0.8} sx={{ mb: 2.2 }}>
+                  <Typography variant="h5" className="section-title">
+                    {dashboardCopy.priorityWorkspaceTitle}
+                  </Typography>
+                  <Typography color="text.secondary">{getSectionSubtitle(accountType, dashboardCopy)}</Typography>
                 </Stack>
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Box sx={{ width: "100%", maxWidth: 320, ml: "auto" }}>
-                  <Image
-                    src="/illustrations/insights-panel.svg"
-                    alt="Illustration of monitoring dashboard"
-                    width={760}
-                    height={500}
-                    style={{ width: "100%", height: "auto", display: "block" }}
-                  />
-                </Box>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
 
-        <Grid container spacing={2} mb={2}>
-          {workspaceStats.map((item) => (
-            <Grid key={item.label} size={{ xs: 12, sm: 6, xl: 3 }}>
-              <Card
-                className="surface-glass hover-lift"
-                sx={{
-                  height: "100%",
-                  minHeight: 160,
-                  borderRadius: 2.5,
-                  border: "1px solid rgba(145,158,171,0.25)",
-                  boxShadow: "0 10px 18px rgba(0,0,0,0.07)",
-                  background: "rgba(255,255,255,0.95)"
-                }}
-              >
-                <CardContent>
-                  <Typography color="text.secondary" variant="body2">
-                    {item.label}
-                  </Typography>
-                  <Typography variant="h5" sx={{ mt: 0.6, lineHeight: 1.1 }}>
-                    {item.value}
-                  </Typography>
-                  <Typography color="text.secondary" variant="body2" sx={{ mt: 0.6 }}>
-                    {item.caption}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-
-        <Grid container spacing={2} mb={2}>
-          <Grid size={{ xs: 12, lg: 8 }}>
-            <Card
-              className="surface-glass hover-lift"
-              sx={{
-                height: "100%",
-                minHeight: 250,
-                borderRadius: 2.5,
-                border: "1px solid rgba(145,158,171,0.25)",
-                boxShadow: "0 12px 24px rgba(15,23,42,0.08)",
-                background: "rgba(255,255,255,0.95)"
-              }}
-            >
-              <CardContent>
-                <Typography variant="h6">Quick Access</Typography>
-                <Typography color="text.secondary" sx={{ mt: 0.4, mb: 1.4 }}>
-                  Move quickly across the workflows most relevant to your role.
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {quickAccessModules.map((module) => (
-                    <Button key={module.slug} component={Link} href={`/modules/${module.slug}`} variant="outlined">
-                      {module.name}
-                    </Button>
+                <Grid container spacing={2}>
+                  {featuredActions.map((item) => (
+                    <Grid key={item.key} size={{ xs: 12, md: 6, xl: 4 }}>
+                      <ActionCard item={item} />
+                    </Grid>
                   ))}
-                </Stack>
+                </Grid>
               </CardContent>
             </Card>
-          </Grid>
-          <Grid size={{ xs: 12, lg: 4 }}>
-            <Card
-              className="surface-glass hover-lift"
-              sx={{
-                height: "100%",
-                minHeight: 250,
-                borderRadius: 2.5,
-                border: "1px solid rgba(145,158,171,0.25)",
-                boxShadow: "0 12px 24px rgba(15,23,42,0.08)",
-                background: "rgba(255,255,255,0.95)"
-              }}
-            >
-              <CardContent>
-                <Typography variant="h6">Subscription Snapshot</Typography>
-                <Stack spacing={0.8} sx={{ mt: 1.2 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Subscription scope <strong>{user?.subscription?.scope ?? "SOCIETY"}</strong>
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Monthly amount <strong>{balanceFormatter.format(user?.subscription?.monthlyPrice ?? 0)}</strong>
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Next billing <strong>{formatDate(user?.subscription?.nextBillingDate)}</strong>
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Experience <strong>{isPremium ? "Premium ad-free" : "Common with sponsored placements"}</strong>
-                  </Typography>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+          ) : null}
 
-        <Card
-          className="surface-glass hover-lift"
-          sx={{
-            mb: 2,
-            minHeight: 280,
-            borderRadius: 2.5,
-            border: "1px solid rgba(145,158,171,0.25)",
-            boxShadow: "0 12px 24px rgba(15,23,42,0.08)",
-            background: "rgba(255,255,255,0.96)"
-          }}
-        >
-          <CardContent>
-            <Stack spacing={1.2}>
-              <Typography variant="h6">Society Subscription</Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip label={`Plan: ${user?.subscription?.plan ?? "FREE"}`} color={isPremium ? "success" : "default"} />
-                <Chip label={`Status: ${user?.subscription?.status ?? "ACTIVE"}`} variant="outlined" />
-                <Chip label={`Scope: ${user?.subscription?.scope ?? "SOCIETY"}`} variant="outlined" />
-                <Chip label={`Monthly: ${balanceFormatter.format(user?.subscription?.monthlyPrice ?? 0)}`} variant="outlined" />
-                <Chip label={`Next Billing: ${formatDate(user?.subscription?.nextBillingDate)}`} variant="outlined" />
-              </Stack>
-              {billingNotice ? <Alert severity="success">{billingNotice}</Alert> : null}
-              {billingError ? <Alert severity="error">{billingError}</Alert> : null}
-              {canManageSocietyBilling ? (
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems={{ md: "center" }}>
-                  <TextField
-                    select
-                    size="small"
-                    label="Preferred Payment"
-                    value={billingMethod}
-                    onChange={(event) => setBillingMethod(event.target.value as PaymentMethod)}
-                    sx={{ minWidth: 200 }}
-                  >
-                    {paymentMethodOptions.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {option.replaceAll("_", " ")}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  {!isPremium ? (
-                    <Button variant="contained" onClick={onUpgradeToPremium} disabled={billingBusy !== null}>
-                      {billingBusy === "upgrade" ? "Activating..." : "Activate Society Premium"}
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outlined"
-                      color="warning"
-                      onClick={onCancelPremium}
-                      disabled={billingBusy !== null || user?.subscription?.cancelAtPeriodEnd}
-                    >
-                      {billingBusy === "cancel" ? "Scheduling..." : "Cancel at Period End"}
-                    </Button>
-                  )}
-                </Stack>
-              ) : null}
-            </Stack>
-          </CardContent>
-        </Card>
+          {(isSocietyAdmin || isPlatformAdmin) && (directoryEntries.length > 0 || monitoringOverview) ? (
+            <Grid container spacing={2} sx={{ mb: 2.5 }}>
+              <Grid size={{ xs: 12, lg: 7 }}>
+                <Card className="surface-glass" sx={{ height: "100%", borderRadius: 3 }}>
+                  <CardContent sx={{ p: { xs: 2.2, md: 3 } }}>
+                    <Stack spacing={0.8} sx={{ mb: 2 }}>
+                      <Typography variant="h5" className="section-title">
+                        {isPlatformAdmin ? dashboardCopy.teamTitles.platform : dashboardCopy.teamTitles.society}
+                      </Typography>
+                      <Typography color="text.secondary">
+                        {isPlatformAdmin ? dashboardCopy.teamSubtitles.platform : dashboardCopy.teamSubtitles.society}
+                      </Typography>
+                    </Stack>
 
-        {showAds ? (
-          <Card className="surface-glass hover-lift" sx={{ mb: 2 }}>
-            <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} mb={1.2}>
-                Sponsored
-              </Typography>
-              <AdsenseBanner />
-            </CardContent>
-          </Card>
-        ) : null}
+                    <Stack direction="row" spacing={0.9} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+                      <Chip label={`${teamSummary.clients} ${dashboardCopy.teamCounts.clients}`} color="primary" />
+                      <Chip label={`${teamSummary.agents} ${dashboardCopy.teamCounts.agents}`} color="primary" variant="outlined" />
+                      <Chip label={`${teamSummary.societyAdmins} ${dashboardCopy.teamCounts.societyAdmins}`} variant="outlined" />
+                      {isPlatformAdmin ? <Chip label={`${teamSummary.platformAdmins} ${dashboardCopy.teamCounts.platformAdmins}`} variant="outlined" /> : null}
+                      <Chip label={`${teamSummary.activeUsers} ${dashboardCopy.teamCounts.activeUsers}`} color="secondary" variant="outlined" />
+                    </Stack>
 
-        {paymentsOverview ? (
-          <Grid container spacing={2} mb={2}>
-            <Grid size={{ xs: 12, lg: 7 }}>
-              <Card className="surface-glass hover-lift" sx={{ height: "100%" }}>
-                <CardContent>
-                  <Typography variant="h6">Digital Payments</Typography>
-                  <Typography color="text.secondary" sx={{ mt: 0.4, mb: 1.2 }}>
-                    {paymentsOverview.scope === "platform"
-                      ? "Track platform-wide collections and digital-payment readiness."
-                      : paymentsOverview.scope === "society"
-                        ? "Manage society collections and digital payment settings."
-                        : "Pay your society requests securely from the same app."}
-                  </Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.2 }}>
-                    <Chip label={`Pending: ${paymentsOverview.totals.pendingRequests}`} color="warning" />
-                    <Chip label={`Completed: ${paymentsOverview.totals.completedPayments}`} color="success" />
-                    <Chip label={`Pending Amount: ${balanceFormatter.format(paymentsOverview.totals.totalPendingAmount)}`} variant="outlined" />
-                    <Chip label={`Collected: ${balanceFormatter.format(paymentsOverview.totals.totalCollectedAmount)}`} variant="outlined" />
-                    {paymentsOverview.society?.upiId ? <Chip label={`UPI: ${paymentsOverview.society.upiId}`} variant="outlined" /> : null}
-                  </Stack>
-                  {paymentsNotice ? <Alert severity="success" sx={{ mb: 1.2 }}>{paymentsNotice}</Alert> : null}
-                  {paymentsError ? <Alert severity="error" sx={{ mb: 1.2 }}>{paymentsError}</Alert> : null}
-                  <Box sx={{ overflowX: "auto" }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Request</TableCell>
-                          <TableCell>Purpose</TableCell>
-                          <TableCell>Amount</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell>Due</TableCell>
-                          <TableCell>Action</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {paymentsOverview.requests.slice(0, 6).map((request) => (
-                          <TableRow key={request.id}>
-                            <TableCell>
-                              <Typography fontWeight={700}>{request.title}</Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {request.customer.fullName}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>{request.purpose.replaceAll("_", " ")}</TableCell>
-                            <TableCell>{balanceFormatter.format(request.amount)}</TableCell>
-                            <TableCell>{request.status}</TableCell>
-                            <TableCell>{formatDate(request.dueDate)}</TableCell>
-                            <TableCell>
-                              {accountType === "CLIENT" && request.status === "OPEN" ? (
-                                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                                  <TextField
-                                    select
-                                    size="small"
-                                    value={paymentMethodByRequest[request.id] ?? "UPI"}
-                                    onChange={(event) =>
-                                      setPaymentMethodByRequest((previous) => ({
-                                        ...previous,
-                                        [request.id]: event.target.value as PaymentMethod
-                                      }))
-                                    }
-                                    sx={{ minWidth: 130 }}
-                                  >
-                                    {paymentsOverview.acceptedMethods.map((method) => (
-                                      <MenuItem key={method} value={method}>
-                                        {method.replaceAll("_", " ")}
-                                      </MenuItem>
-                                    ))}
-                                  </TextField>
-                                  <Button
-                                    variant="contained"
-                                    size="small"
-                                    onClick={() => void onPayRequest(request.id)}
-                                    disabled={payingRequestId === request.id || !paymentsOverview.acceptsDigitalPayments}
-                                  >
-                                    {payingRequestId === request.id ? "Processing..." : "Pay Now"}
-                                  </Button>
-                                </Stack>
-                              ) : (
-                                <Typography variant="caption" color="text.secondary">
-                                  {request.status === "PAID" ? "Paid" : "Managed by society"}
-                                </Typography>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        {paymentsOverview.requests.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6}>
-                              <Typography color="text.secondary">No payment requests available.</Typography>
-                            </TableCell>
-                          </TableRow>
-                        ) : null}
-                      </TableBody>
-                    </Table>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, lg: 5 }}>
-              <Card className="surface-glass hover-lift" sx={{ height: "100%" }}>
-                <CardContent>
-                  <Typography variant="h6">Recent Transactions</Typography>
-                  <Stack spacing={1.1} sx={{ mt: 1.3 }}>
-                    {paymentsOverview.recentTransactions.slice(0, 6).map((transaction) => (
-                      <Stack key={transaction.id} direction="row" justifyContent="space-between" spacing={1}>
-                        <Box>
-                          <Typography fontWeight={700}>{balanceFormatter.format(transaction.amount)}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {transaction.method.replaceAll("_", " ")} · {transaction.society.name}
-                          </Typography>
-                        </Box>
-                        <Chip size="small" label={transaction.status} color={transaction.status === "SUCCESS" ? "success" : "default"} />
-                      </Stack>
-                    ))}
-                    {paymentsOverview.recentTransactions.length === 0 ? (
-                      <Typography color="text.secondary">No payment transactions recorded yet.</Typography>
-                    ) : null}
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        ) : null}
-
-        {canCreatePaymentRequests ? (
-          <Card className="surface-glass hover-lift" sx={{ mb: 2 }}>
-            <CardContent>
-              <Typography variant="h6">Create Member Payment Request</Typography>
-              <Typography color="text.secondary" sx={{ mt: 0.4, mb: 1.4 }}>
-                Raise service charges, loan repayments, or installment requests for your members.
-              </Typography>
-              <Grid container spacing={1.5}>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    select
-                    fullWidth
-                    label="Member"
-                    value={paymentRequestForm.customerId}
-                    onChange={(event) => setPaymentRequestForm((previous) => ({ ...previous, customerId: event.target.value }))}
-                  >
-                    {customers.map((customer) => (
-                      <MenuItem key={customer.id} value={customer.id}>
-                        {[customer.firstName, customer.lastName].filter(Boolean).join(" ")} ({customer.customerCode})
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="Request Title"
-                    value={paymentRequestForm.title}
-                    onChange={(event) => setPaymentRequestForm((previous) => ({ ...previous, title: event.target.value }))}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    select
-                    fullWidth
-                    label="Purpose"
-                    value={paymentRequestForm.purpose}
-                    onChange={(event) =>
-                      setPaymentRequestForm((previous) => ({ ...previous, purpose: event.target.value as PaymentPurpose }))
-                    }
-                  >
-                    {paymentPurposeOptions.map((purpose) => (
-                      <MenuItem key={purpose.value} value={purpose.value}>
-                        {purpose.label}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
-                  <TextField
-                    fullWidth
-                    label="Amount"
-                    type="number"
-                    value={paymentRequestForm.amount}
-                    onChange={(event) => setPaymentRequestForm((previous) => ({ ...previous, amount: event.target.value }))}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
-                  <TextField
-                    fullWidth
-                    label="Due Date"
-                    type="date"
-                    value={paymentRequestForm.dueDate}
-                    onChange={(event) => setPaymentRequestForm((previous) => ({ ...previous, dueDate: event.target.value }))}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Description"
-                    value={paymentRequestForm.description}
-                    onChange={(event) => setPaymentRequestForm((previous) => ({ ...previous, description: event.target.value }))}
-                  />
-                </Grid>
+                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                      {dashboardCopy.recentAccessRecords}
+                    </Typography>
+                    <Stack spacing={1.1}>
+                      {teamSummary.recentEntries.map((entry) => (
+                        <Stack
+                          key={entry.id}
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1}
+                          justifyContent="space-between"
+                          sx={{
+                            p: 1.4,
+                            borderRadius: 2,
+                            border: "1px solid rgba(148, 163, 184, 0.16)",
+                            bgcolor: "rgba(255,255,255,0.02)"
+                          }}
+                        >
+                          <Box>
+                            <Typography fontWeight={700}>{entry.fullName}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {formatDirectoryRole(entry.role, dashboardCopy.directoryRoleLabels)}
+                              {entry.society?.name ? ` · ${entry.society.name}` : ""}
+                            </Typography>
+                          </Box>
+                          <Chip
+                            label={entry.isActive ? dashboardCopy.activityStatus.active : dashboardCopy.activityStatus.inactive}
+                            color={entry.isActive ? "success" : "default"}
+                            size="small"
+                            variant={entry.isActive ? "filled" : "outlined"}
+                          />
+                        </Stack>
+                      ))}
+                    </Stack>
+                  </CardContent>
+                </Card>
               </Grid>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} sx={{ mt: 1.5 }}>
-                <Button
-                  variant="contained"
-                  onClick={() => void onCreatePaymentRequest()}
-                  disabled={
-                    creatingPaymentRequest ||
-                    !paymentsOverview?.acceptsDigitalPayments ||
-                    !paymentRequestForm.customerId ||
-                    !paymentRequestForm.title ||
-                    !paymentRequestForm.amount
-                  }
-                >
-                  {creatingPaymentRequest ? "Creating..." : "Create Payment Request"}
-                </Button>
-                {!paymentsOverview?.acceptsDigitalPayments ? (
-                  <Typography variant="body2" color="text.secondary">
-                    Enable digital payments for this society before raising payment requests.
-                  </Typography>
-                ) : null}
-              </Stack>
-            </CardContent>
-          </Card>
-        ) : null}
 
-        {accountType === "SOCIETY" && overview?.societies[0] ? (
-          <Card className="surface-glass hover-lift" sx={{ mb: 2 }}>
-            <CardContent>
-              <Typography variant="h6">Society Payment Settings</Typography>
-              {societyActionNotice ? <Alert severity="success" sx={{ mt: 1.2 }}>{societyActionNotice}</Alert> : null}
-              {societyActionError ? <Alert severity="error" sx={{ mt: 1.2 }}>{societyActionError}</Alert> : null}
-              <Grid container spacing={1.5} sx={{ mt: 0.2 }}>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="Society UPI ID"
-                    value={societyConfig.upiId}
-                    onChange={(event) => setSocietyConfig((previous) => ({ ...previous, upiId: event.target.value }))}
-                    helperText="Example: society@upi"
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    select
-                    fullWidth
-                    label="Digital Payments"
-                    value={societyConfig.acceptsDigitalPayments ? "enabled" : "disabled"}
-                    onChange={(event) =>
-                      setSocietyConfig((previous) => ({
-                        ...previous,
-                        acceptsDigitalPayments: event.target.value === "enabled"
-                      }))
-                    }
-                  >
-                    <MenuItem value="enabled">Enabled</MenuItem>
-                    <MenuItem value="disabled">Disabled</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <Button
-                    variant="contained"
-                    sx={{ mt: { xs: 0, md: 1 } }}
-                    onClick={() => void onUpdateSocietyPayments()}
-                    disabled={societyActionBusyId === overview.societies[0].id}
-                  >
-                    {societyActionBusyId === overview.societies[0].id ? "Saving..." : "Save Payment Settings"}
-                  </Button>
-                </Grid>
+              <Grid size={{ xs: 12, lg: 5 }}>
+                <Card className="surface-glass" sx={{ height: "100%", borderRadius: 3 }}>
+                  <CardContent sx={{ p: { xs: 2.2, md: 3 } }}>
+                    <Stack spacing={0.8} sx={{ mb: 2 }}>
+                      <Typography variant="h5" className="section-title">
+                        {dashboardCopy.snapshotTitle}
+                      </Typography>
+                      <Typography color="text.secondary">
+                        {isPlatformAdmin ? dashboardCopy.snapshotSubtitles.platform : dashboardCopy.snapshotSubtitles.society}
+                      </Typography>
+                    </Stack>
+
+                    <Grid container spacing={1.5}>
+                      {[
+                        {
+                          label: isPlatformAdmin ? dashboardCopy.snapshotMetrics.societies : dashboardCopy.snapshotMetrics.customers,
+                          value: monitoringOverview ? String(isPlatformAdmin ? monitoringOverview.totals.societies : monitoringOverview.totals.customers) : "0"
+                        },
+                        {
+                          label: dashboardCopy.snapshotMetrics.accounts,
+                          value: monitoringOverview ? String(monitoringOverview.totals.accounts) : "0"
+                        },
+                        {
+                          label: dashboardCopy.snapshotMetrics.transactions,
+                          value: monitoringOverview ? String(monitoringOverview.totals.transactions) : "0"
+                        },
+                        {
+                          label: dashboardCopy.snapshotMetrics.collectedVolume,
+                          value: monitoringOverview ? `₹${formatIndianNumber(Math.round(monitoringOverview.totals.successfulPaymentVolume))}` : "₹0"
+                        }
+                      ].map((item) => (
+                        <Grid key={item.label} size={{ xs: 12, sm: 6 }}>
+                          <Box className="surface-glass" sx={{ p: 1.5, borderRadius: 2, height: "100%" }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {item.label}
+                            </Typography>
+                            <Typography variant="h5" sx={{ mt: 0.6 }}>
+                              {item.value}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          ) : null}
+
+          <Card className="surface-glass" sx={{ borderRadius: 3 }}>
+            <CardContent sx={{ p: { xs: 2.2, md: 3 } }}>
+              <Stack spacing={0.8} sx={{ mb: 2.2 }}>
+                <Typography variant="h5" className="section-title">
+                  {dashboardCopy.operationalAreaTitle}
+                </Typography>
+                <Typography color="text.secondary">{getServiceAreaSubtitle(accountType, dashboardCopy)}</Typography>
+              </Stack>
+
+              <Grid container spacing={2}>
+                {(remainingModules.length > 0 ? remainingModules : localizedModules).map((module) => (
+                  <Grid key={module.slug} size={{ xs: 12, md: 6, xl: 4 }}>
+                    <ModuleCard module={module} />
+                  </Grid>
+                ))}
               </Grid>
             </CardContent>
           </Card>
-        ) : null}
-
-        {overview ? (
-          <Grid container spacing={2} mb={2}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card className="hover-lift surface-glass">
-                <CardContent>
-                  <Typography color="text.secondary">Societies</Typography>
-                  <Typography variant="h4">{overview.totals.societies}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card className="hover-lift surface-glass">
-                <CardContent>
-                  <Typography color="text.secondary">Customers</Typography>
-                  <Typography variant="h4">{overview.totals.customers}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card className="hover-lift surface-glass">
-                <CardContent>
-                  <Typography color="text.secondary">Accounts</Typography>
-                  <Typography variant="h4">{overview.totals.accounts}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <Card className="hover-lift surface-glass">
-                <CardContent>
-                  <Typography color="text.secondary">Collected Digitally</Typography>
-                  <Typography variant="h6">{balanceFormatter.format(overview.totals.successfulPaymentVolume)}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        ) : null}
-
-        {overview ? (
-          <Grid container spacing={2} mb={2}>
-            <Grid size={{ xs: 12, lg: 8 }}>
-              <Card className="surface-glass">
-                <CardContent>
-                  <Typography variant="h6" mb={1.2}>
-                    Society Monitoring
-                  </Typography>
-                  {societyActionNotice ? <Alert severity="success" sx={{ mb: 1.2 }}>{societyActionNotice}</Alert> : null}
-                  {societyActionError ? <Alert severity="error" sx={{ mb: 1.2 }}>{societyActionError}</Alert> : null}
-                  <Box sx={{ overflowX: "auto" }}>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Society</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell>Plan</TableCell>
-                          <TableCell>Customers</TableCell>
-                          <TableCell>Balance</TableCell>
-                          <TableCell>Digital Payments</TableCell>
-                          <TableCell>Collections</TableCell>
-                          <TableCell>Action</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {overview.societies.map((society) => (
-                          <TableRow key={society.id}>
-                            <TableCell>
-                              <Typography fontWeight={700}>{society.name}</Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {society.code}
-                              </Typography>
-                            </TableCell>
-                            <TableCell>{society.status}</TableCell>
-                            <TableCell>{society.subscriptionPlan}</TableCell>
-                            <TableCell>{society.customers}</TableCell>
-                            <TableCell>{balanceFormatter.format(society.totalBalance)}</TableCell>
-                            <TableCell>{society.acceptsDigitalPayments ? "Enabled" : "Disabled"}</TableCell>
-                            <TableCell>{balanceFormatter.format(society.successfulPaymentVolume)}</TableCell>
-                            <TableCell>
-                              {canApproveSocieties ? (
-                                <Button
-                                  size="small"
-                                  variant={society.isActive ? "outlined" : "contained"}
-                                  color={society.isActive ? "warning" : "success"}
-                                  onClick={() => void onToggleSocietyStatus(society.id, society.isActive)}
-                                  disabled={societyActionBusyId === society.id}
-                                >
-                                  {societyActionBusyId === society.id
-                                    ? "Saving..."
-                                    : society.isActive
-                                      ? "Suspend"
-                                      : "Activate"}
-                                </Button>
-                              ) : (
-                                <Typography variant="caption" color="text.secondary">
-                                  Scoped view
-                                </Typography>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, lg: 4 }}>
-              <Card className="surface-glass">
-                <CardContent>
-                  <Typography variant="h6" mb={1.2}>
-                    User Role Mix
-                  </Typography>
-                  <Stack spacing={1}>
-                    {Object.entries(overview.userRoleBreakdown).map(([key, value]) => (
-                      <Stack key={key} direction="row" justifyContent="space-between">
-                        <Typography>{formatRoleLabel(key)}</Typography>
-                        <Chip size="small" label={value} color="primary" variant="outlined" />
-                      </Stack>
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        ) : null}
-
-        {directory.length > 0 ? (
-          <Card className="surface-glass" sx={{ mb: 2 }}>
-            <CardContent>
-              <Typography variant="h6" mb={1.2}>
-                User Directory
-              </Typography>
-              <Box sx={{ overflowX: "auto" }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>User</TableCell>
-                      <TableCell>Role</TableCell>
-                      <TableCell>Society</TableCell>
-                      <TableCell>Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {directory.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.fullName}</TableCell>
-                        <TableCell>{formatRoleLabel(item.role)}</TableCell>
-                        <TableCell>{item.society?.name ?? "Platform"}</TableCell>
-                        <TableCell>{item.isActive ? "Active" : "Disabled"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Box>
-            </CardContent>
-          </Card>
-        ) : null}
-
-	        <Typography variant="h6" mb={1.2}>
-	          Modules ({accountType})
-	        </Typography>
-        <Grid container spacing={2}>
-          {visibleModules.map((module) => (
-            <Grid key={module.slug} size={{ xs: 12, sm: 6, lg: 4 }}>
-              <ModuleCard module={module} />
-            </Grid>
-          ))}
-        </Grid>
-      </Container>
+        </Container>
+      </Box>
+      <WorkspaceFooter />
     </>
   );
 }

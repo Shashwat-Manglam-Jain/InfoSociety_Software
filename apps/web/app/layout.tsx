@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     template: `%s | ${appBranding.productShortName}`
   },
   description: appBranding.metaDescription,
-  keywords: appBranding.keywords,
+  keywords: [...appBranding.keywords],
   applicationName: appBranding.productName,
   alternates: {
     canonical: "/"
