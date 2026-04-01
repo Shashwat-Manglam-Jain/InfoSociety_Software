@@ -69,3 +69,11 @@ export async function getAgentOverview(token: string) {
 export async function getSocietyOverview(token: string) {
   return apiRequest(token, "GET", "/administration/society-overview");
 }
+
+export async function getCustomerDetails(token: string, id: string) {
+  return apiRequest(token, "GET", `/administration/customers/${id}`);
+}
+
+export async function getAgentDetails(token: string, id: string) {
+  return apiRequest(token, "GET", `/administration/agents/${id}`);
+}

@@ -157,4 +157,16 @@ export class AdministrationController {
   recomputeGl(@Req() req: Request & { user: RequestUser }, @Body() dto: WorkingDayDto) {
     return this.service.recomputeGl(req.user, dto);
   }
+
+  @Roles(UserRole.SUPER_USER)
+  @Get("customers/:id")
+  getCustomerDetails(@Req() req: Request & { user: RequestUser }, @Param("id") id: string) {
+    return this.service.getCustomerDetails(req.user, id);
+  }
+
+  @Roles(UserRole.SUPER_USER)
+  @Get("agents/:id")
+  getAgentDetails(@Req() req: Request & { user: RequestUser }, @Param("id") id: string) {
+    return this.service.getAgentDetails(req.user, id);
+  }
 }

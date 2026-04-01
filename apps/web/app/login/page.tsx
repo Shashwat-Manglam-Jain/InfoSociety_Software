@@ -103,11 +103,12 @@ export default function LoginPage() {
         fullName: response.user.fullName,
         societyCode: response.user.society?.code ?? null,
         subscriptionPlan: response.user.subscription?.plan ?? null,
-        avatarDataUrl: null
+        avatarDataUrl: null,
+        requiresPasswordChange: response.user.requiresPasswordChange
       });
 
       toast.success(`Welcome back, ${response.user.fullName}! Redirecting to your dashboard...`);
-      router.push(getDefaultDashboardPath(accountType));
+      router.push(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
     } catch (caught) {
       console.error("[Login] error", caught);
       const status = (caught as any)?.status ? `[${(caught as any).status}] ` : "";

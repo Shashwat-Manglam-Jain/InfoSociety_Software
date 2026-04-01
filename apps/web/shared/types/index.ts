@@ -81,6 +81,7 @@ export type AuthUser = {
     phone?: string | null;
   } | null;
   subscription?: AuthSubscription | null;
+  requiresPasswordChange: boolean;
 };
 
 export type LoginResponse = {
@@ -97,6 +98,7 @@ export type Session = {
   societyCode: string | null;
   subscriptionPlan: SubscriptionPlan | null;
   avatarDataUrl: string | null;
+  requiresPasswordChange: boolean;
 };
 
 export type BillingPlansResponse = {

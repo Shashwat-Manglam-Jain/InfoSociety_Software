@@ -51,7 +51,8 @@ function parseSessionPayload(payload: unknown): Session | null {
     fullName: parsed.fullName,
     societyCode: typeof parsed.societyCode === "string" ? parsed.societyCode : null,
     subscriptionPlan: isSubscriptionPlan(parsed.subscriptionPlan) ? parsed.subscriptionPlan : null,
-    avatarDataUrl: typeof parsed.avatarDataUrl === "string" ? parsed.avatarDataUrl : null
+    avatarDataUrl: typeof parsed.avatarDataUrl === "string" ? parsed.avatarDataUrl : null,
+    requiresPasswordChange: Boolean(parsed.requiresPasswordChange)
   };
 }
 
@@ -110,7 +111,11 @@ function clearSessionCookie() {
   document.cookie = `${SESSION_KEY}=; Path=/; Max-Age=0; SameSite=Lax${secureAttribute}`;
 }
 
-export function getDefaultDashboardPath(accountType: AppAccountType) {
+export function getDefaultDashboardPath(accountType: AppAccountType, requiresPasswordChange?: boolean) {
+  if (requiresPasswordChange) {
+    return "/auth/change-password";
+  }
+
   switch (accountType) {
     case "PLATFORM": return "/dashboard/superadmin";
     case "SOCIETY": return "/dashboard/society";

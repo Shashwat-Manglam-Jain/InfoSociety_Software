@@ -68,15 +68,8 @@ export default function AgentLoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(username, password);
+      const response = await login(username, password, societyCode);
       const actualRole = response.user.role;
-      
-      // Ensure the agent belongs to THIS society
-      if (response.user.society?.code !== societyCode) {
-         setError("Unauthorized: Your account is not registered under this institution.");
-         setLoading(false);
-         return;
-      }
 
       if (actualRole !== "AGENT") {
         setError(`Unauthorized: This portal is for Agents only. You appear to be registered as a ${actualRole.toLowerCase()}.`);
@@ -94,11 +87,12 @@ export default function AgentLoginPage() {
         fullName: response.user.fullName,
         societyCode: response.user.society?.code ?? null,
         subscriptionPlan: response.user.subscription?.plan ?? null,
-        avatarDataUrl: null
+        avatarDataUrl: null,
+        requiresPasswordChange: response.user.requiresPasswordChange
       });
 
       toast.success(`Agent Console initialized. Welcome back, ${response.user.fullName}!`);
-      router.push(getDefaultDashboardPath(accountType));
+      router.push(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Authentication failed.";
       setError(message);

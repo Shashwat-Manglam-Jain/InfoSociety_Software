@@ -68,15 +68,8 @@ export default function ClientLoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(username, password);
+      const response = await login(username, password, societyCode);
       const actualRole = response.user.role;
-      
-      // Ensure the client belongs to THIS society
-      if (response.user.society?.code !== societyCode) {
-         setError("Unauthorized: Your account is not registered with this institution.");
-         setLoading(false);
-         return;
-      }
 
       if (actualRole !== "CLIENT") {
         setError(`Unauthorized: This portal is for Clients and Members only.`);
@@ -94,11 +87,12 @@ export default function ClientLoginPage() {
         fullName: response.user.fullName,
         societyCode: response.user.society?.code ?? null,
         subscriptionPlan: response.user.subscription?.plan ?? null,
-        avatarDataUrl: null
+        avatarDataUrl: null,
+        requiresPasswordChange: response.user.requiresPasswordChange
       });
 
       toast.success(`Account Access initialized. Welcome, ${response.user.fullName}!`);
-      router.push(getDefaultDashboardPath(accountType));
+      router.push(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Access failed.";
       setError(message);

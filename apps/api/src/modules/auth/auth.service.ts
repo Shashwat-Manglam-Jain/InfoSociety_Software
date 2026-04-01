@@ -107,6 +107,18 @@ export class AuthService {
       throw new UnauthorizedException("Incorrect password");
     }
 
+    // 4. Institutional Boundary Enforcement (New)
+    // If the login is performed via a specific institutional portal (societyCode provided),
+    // ensure the user account is actually mapped to that infrastructure.
+    if (dto.societyCode) {
+      const targetCode = dto.societyCode.trim().toUpperCase();
+      const userSocietyCode = user.society?.code?.toUpperCase();
+
+      if (user.role !== UserRole.SUPER_ADMIN && userSocietyCode !== targetCode) {
+        throw new UnauthorizedException(`Access Denied: This account is registered to ${userSocietyCode || 'a different infrastructure'} and cannot access the ${targetCode} workspace.`);
+      }
+    }
+
     if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.SUPER_USER && user.society?.status === SocietyStatus.PENDING) {
       throw new UnauthorizedException("Your society registration is pending verification by Super Admin");
     }
@@ -158,7 +170,8 @@ export class AuthService {
           fullName: identity.fullName,
           role: UserRole.CLIENT,
           societyId: society.id,
-          customerId: customer.id
+          customerId: customer.id,
+          requiresPasswordChange: true
         }
       });
 
@@ -284,6 +297,32 @@ export class AuthService {
     };
   }
 
+  async changePassword(currentUser: RequestUser, dto: { currentPassword: string; newPassword: string }) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: currentUser.sub }
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+
+    const valid = await compare(dto.currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException("Insufficient security clearance: Current password verification failed.");
+    }
+
+    const newHash = await hash(dto.newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: newHash,
+        requiresPasswordChange: false
+      }
+    });
+
+    return { success: true, message: "Credential vault updated successfully. Infrastructure access re-authorized." };
+  }
+
   private normalizeIdentity(username: string, fullName: string): RegistrationIdentity {
     return {
       username: username.trim(),
@@ -329,7 +368,8 @@ export class AuthService {
           }
         : null,
       customerProfile: user.customerProfile,
-      subscription: this.resolveEffectiveSubscription(user)
+      subscription: this.resolveEffectiveSubscription(user),
+      requiresPasswordChange: user.requiresPasswordChange
     };
   }
 
@@ -360,7 +400,8 @@ export class AuthService {
           passwordHash,
           fullName: identity.fullName,
           role,
-          societyId: society.id
+          societyId: society.id,
+          requiresPasswordChange: true
         }
       });
 

@@ -694,6 +694,46 @@ export class AdministrationService {
     };
   }
 
+  async getCustomerDetails(currentUser: RequestUser, id: string) {
+    this.ensureOperator(currentUser);
+    const societyId = this.resolveOperatingSocietyId(currentUser);
+    return this.prisma.customer.findFirst({
+      where: { id, societyId },
+      include: {
+        accounts: { include: { head: true } },
+        agentClients: { include: { agent: { select: { firstName: true, lastName: true } } } },
+        user: { select: { username: true, isActive: true } }
+      }
+    });
+  }
+
+  async getAgentDetails(currentUser: RequestUser, id: string) {
+    this.ensureOperator(currentUser);
+    const societyId = this.resolveOperatingSocietyId(currentUser);
+    const agent = await this.prisma.customer.findFirst({
+      where: { id, societyId, user: { role: UserRole.AGENT } },
+      include: {
+        user: true,
+        pigmyClients: { include: { customer: true } }
+      }
+    });
+
+    if (!agent) throw new NotFoundException("Agent not found");
+
+    const [daily, monthly] = await Promise.all([
+      this.prisma.transaction.aggregate({ where: { createdById: agent.user!.id, type: "CREDIT", isPassed: true, createdAt: { gte: this.toDayStart() } }, _sum: { amount: true } }),
+      this.prisma.transaction.aggregate({ where: { createdById: agent.user!.id, type: "CREDIT", isPassed: true, createdAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } }, _sum: { amount: true } })
+    ]);
+
+    return {
+      ...agent,
+      performance: {
+        daily: Number(daily._sum.amount || 0),
+        monthly: Number(monthly._sum.amount || 0)
+      }
+    };
+  }
+
   private ensureOperator(currentUser: RequestUser) {
     if (currentUser.role === UserRole.CLIENT) {
       throw new ForbiddenException("Client users cannot access administration controls");

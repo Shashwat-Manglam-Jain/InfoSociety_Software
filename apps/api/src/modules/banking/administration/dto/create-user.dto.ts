@@ -20,4 +20,8 @@ export class CreateUserDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsString()
+  @IsOptional()
+  branchId?: string;
 }

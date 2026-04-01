@@ -45,14 +45,14 @@ export function SocietiesSection() {
   return (
     <Box id="societies" sx={{ py: { xs: 8, md: 12 }, bgcolor: "#f8fafc" }}>
       <Container maxWidth="lg">
-        <Stack spacing={2} sx={{ mb: 6, textAlign: "center" }}>
+        <Stack spacing={2} sx={{ mb: 6, textAlign: "center", alignItems: "center" }}>
           <Typography variant="overline" sx={{ fontWeight: 900, color: "secondary.main", letterSpacing: 2 }}>
             INSTITUTIONAL DIRECTORY
           </Typography>
-          <Typography variant="h3" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em" }}>
+          <Typography variant="h3" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em", textAlign: "center" }}>
             Registered Societies
           </Typography>
-          <Typography variant="body1" sx={{ color: "text.secondary", maxWidth: 700, mx: "auto", fontSize: "1.1rem" }}>
+          <Typography variant="body1" sx={{ color: "text.secondary", maxWidth: 700, mx: "auto", fontSize: "1.1rem", textAlign: "center" }}>
             Select your institution to access your secure workspace. 
             Our multi-tenant architecture ensures your data stays within your society&apos;s private vault.
           </Typography>

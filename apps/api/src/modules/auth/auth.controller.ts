@@ -10,6 +10,7 @@ import { LoginDto } from "./dto/login.dto";
 import { RegisterAgentDto } from "./dto/register-agent.dto";
 import { RegisterClientDto } from "./dto/register-client.dto";
 import { RegisterSocietyDto } from "./dto/register-society.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -52,6 +53,12 @@ export class AuthController {
   @Post("register/agent")
   registerAgent(@Body() dto: RegisterAgentDto) {
     return this.authService.registerAgent(dto);
+  }
+
+  @ApiBearerAuth()
+  @Post("change-password")
+  changePassword(@Req() req: Request & { user: RequestUser }, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(req.user, dto);
   }
 
   @ApiBearerAuth()

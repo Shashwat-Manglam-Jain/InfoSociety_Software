@@ -41,11 +41,11 @@ export type RegisterSocietyPayload = {
   registrationAuthority?: string;
 };
 
-export async function login(username: string, password: string): Promise<LoginResponse> {
+export async function login(username: string, password: string, societyCode?: string): Promise<LoginResponse> {
   return requestJson<LoginResponse>({
     method: "POST",
     path: "/auth/login",
-    body: { username, password }
+    body: { username, password, societyCode }
   });
 }
 
@@ -87,6 +87,15 @@ export async function getMe(token: string): Promise<AuthUser> {
   return requestJson<AuthUser>({
     token,
     path: "/auth/me"
+  });
+}
+
+export async function changePassword(token: string, currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+  return requestJson<{ success: boolean; message: string }>({
+    token,
+    method: "POST",
+    path: "/auth/change-password",
+    body: { currentPassword, newPassword }
   });
 }
 
