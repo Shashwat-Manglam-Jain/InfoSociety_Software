@@ -24,3 +24,30 @@ export async function listCustomers(token: string, q?: string) {
   }>(token, "GET", `/customers?${params.toString()}`);
 }
 
+export async function getCustomerMe(token: string) {
+  return apiRequest<{
+    id: string;
+    customerCode: string;
+    firstName: string;
+    lastName: string | null;
+    accounts: Array<{
+      id: string;
+      accountNumber: string;
+      type: string;
+      currentBalance: number;
+    }>;
+    dashboardStats: {
+      totalInvested: number;
+      interestEarned: number;
+      totalWithdrawn: number;
+      netBalance: number;
+    };
+    allottedAgent: {
+      id: string;
+      customerCode: string;
+      firstName: string;
+      lastName: string | null;
+      phone: string | null;
+    } | null;
+  }>(token, "GET", "/customers/me");
+}

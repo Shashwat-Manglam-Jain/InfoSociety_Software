@@ -85,24 +85,60 @@ async function main() {
     }
   });
 
-  const northSociety = await prisma.society.upsert({
-    where: { code: "SOC-NORTH" },
+  const westSociety = await prisma.society.upsert({
+    where: { code: "SOC-WEST" },
     update: {
-      name: "North Region Society",
+      name: "Western Cooperative Thrift Society",
       status: SocietyStatus.ACTIVE,
       isActive: true,
-      billingEmail: "billing@north.local",
-      billingPhone: "9000000002",
-      billingAddress: "North Region Campus",
-      acceptsDigitalPayments: false
+      category: "Thrift & Credit",
+      registrationState: "Maharashtra"
     },
     create: {
-      code: "SOC-NORTH",
-      name: "North Region Society",
+      code: "SOC-WEST",
+      name: "Western Cooperative Thrift Society",
       status: SocietyStatus.ACTIVE,
-      billingEmail: "billing@north.local",
-      billingPhone: "9000000002",
-      billingAddress: "North Region Campus"
+      isActive: true,
+      category: "Thrift & Credit",
+      registrationState: "Maharashtra"
+    }
+  });
+
+  const southSociety = await prisma.society.upsert({
+    where: { code: "SOC-SOUTH" },
+    update: {
+      name: "South Regional Urban Society",
+      status: SocietyStatus.ACTIVE,
+      isActive: true,
+      category: "Urban Bank",
+      registrationState: "Karnataka"
+    },
+    create: {
+      code: "SOC-SOUTH",
+      name: "South Regional Urban Society",
+      status: SocietyStatus.ACTIVE,
+      isActive: true,
+      category: "Urban Bank",
+      registrationState: "Karnataka"
+    }
+  });
+
+  const centralSociety = await prisma.society.upsert({
+    where: { code: "SOC-CENTRAL" },
+    update: {
+      name: "Central Employees Credit Union",
+      status: SocietyStatus.ACTIVE,
+      isActive: true,
+      category: "Credit Union",
+      registrationState: "Delhi"
+    },
+    create: {
+      code: "SOC-CENTRAL",
+      name: "Central Employees Credit Union",
+      status: SocietyStatus.ACTIVE,
+      isActive: true,
+      category: "Credit Union",
+      registrationState: "Delhi"
     }
   });
 
@@ -162,21 +198,21 @@ async function main() {
     }
   });
 
-  const northAgent = await prisma.user.upsert({
+  const westAgent = await prisma.user.upsert({
     where: { username: "agent2" },
     update: {
       passwordHash: password("Agent2@123"),
-      fullName: "North Region Agent",
+      fullName: "Western Region Agent",
       role: UserRole.AGENT,
-      societyId: northSociety.id,
+      societyId: westSociety.id,
       isActive: true
     },
     create: {
       username: "agent2",
       passwordHash: password("Agent2@123"),
-      fullName: "North Region Agent",
+      fullName: "Western Region Agent",
       role: UserRole.AGENT,
-      societyId: northSociety.id
+      societyId: westSociety.id
     }
   });
 
@@ -268,25 +304,25 @@ async function main() {
     }
   });
 
-  const northCustomer = await prisma.customer.upsert({
-    where: { customerCode: "SOC-NORTH-C00001" },
+  const westCustomer = await prisma.customer.upsert({
+    where: { customerCode: "SOC-WEST-C00001" },
     update: {
-      firstName: "North",
+      firstName: "Western",
       lastName: "Client",
       phone: "6666666666",
-      email: "north@infopath.local",
-      address: "North Avenue",
+      email: "west@infosociety.local",
+      address: "Western Avenue",
       kycVerified: true,
-      societyId: northSociety.id
+      societyId: westSociety.id
     },
     create: {
-      customerCode: "SOC-NORTH-C00001",
-      societyId: northSociety.id,
-      firstName: "North",
+      customerCode: "SOC-WEST-C00001",
+      societyId: westSociety.id,
+      firstName: "Western",
       lastName: "Client",
       phone: "6666666666",
-      email: "north@infopath.local",
-      address: "North Avenue",
+      email: "west@infosociety.local",
+      address: "Western Avenue",
       kycVerified: true
     }
   });
@@ -331,23 +367,23 @@ async function main() {
     }
   });
 
-  const northClient = await prisma.user.upsert({
+  const westClient = await prisma.user.upsert({
     where: { username: "client2" },
     update: {
       passwordHash: password("Client2@123"),
-      fullName: "North Client",
+      fullName: "Western Client",
       role: UserRole.CLIENT,
-      societyId: northSociety.id,
-      customerId: northCustomer.id,
+      societyId: westSociety.id,
+      customerId: westCustomer.id,
       isActive: true
     },
     create: {
       username: "client2",
       passwordHash: password("Client2@123"),
-      fullName: "North Client",
+      fullName: "Western Client",
       role: UserRole.CLIENT,
-      societyId: northSociety.id,
-      customerId: northCustomer.id
+      societyId: westSociety.id,
+      customerId: westCustomer.id
     }
   });
 
@@ -405,7 +441,7 @@ async function main() {
   });
 
   await prisma.subscription.upsert({
-    where: { userId: northAgent.id },
+    where: { userId: westAgent.id },
     update: {
       plan: SubscriptionPlan.FREE,
       status: SubscriptionStatus.ACTIVE,
@@ -414,7 +450,7 @@ async function main() {
       cancelAtPeriodEnd: false
     },
     create: {
-      userId: northAgent.id,
+      userId: westAgent.id,
       plan: SubscriptionPlan.FREE,
       status: SubscriptionStatus.ACTIVE,
       monthlyPrice: 0
@@ -473,7 +509,7 @@ async function main() {
   });
 
   await prisma.subscription.upsert({
-    where: { userId: northClient.id },
+    where: { userId: westClient.id },
     update: {
       plan: SubscriptionPlan.FREE,
       status: SubscriptionStatus.ACTIVE,
@@ -482,7 +518,7 @@ async function main() {
       cancelAtPeriodEnd: false
     },
     create: {
-      userId: northClient.id,
+      userId: westClient.id,
       plan: SubscriptionPlan.FREE,
       status: SubscriptionStatus.ACTIVE,
       monthlyPrice: 0
@@ -511,7 +547,7 @@ async function main() {
   });
 
   await prisma.societySubscription.upsert({
-    where: { societyId: northSociety.id },
+    where: { societyId: westSociety.id },
     update: {
       plan: SubscriptionPlan.FREE,
       status: SubscriptionStatus.ACTIVE,
@@ -521,7 +557,7 @@ async function main() {
       cancelAtPeriodEnd: false
     },
     create: {
-      societyId: northSociety.id,
+      societyId: westSociety.id,
       plan: SubscriptionPlan.FREE,
       status: SubscriptionStatus.ACTIVE,
       monthlyPrice: 0,
@@ -755,23 +791,23 @@ async function main() {
   const recurringDepositAccount = await prisma.account.upsert({
     where: { accountNumber: "RD0000001" },
     update: {
-      customerId: northCustomer.id,
-      societyId: northSociety.id,
+      customerId: westCustomer.id,
+      societyId: westSociety.id,
       type: AccountType.RECURRING_DEPOSIT,
       status: AccountStatus.ACTIVE,
       currentBalance: 36000,
       interestRate: 6.5,
-      branchCode: "NR"
+      branchCode: "WR"
     },
     create: {
       accountNumber: "RD0000001",
-      customerId: northCustomer.id,
-      societyId: northSociety.id,
+      customerId: westCustomer.id,
+      societyId: westSociety.id,
       type: AccountType.RECURRING_DEPOSIT,
       status: AccountStatus.ACTIVE,
       currentBalance: 36000,
       interestRate: 6.5,
-      branchCode: "NR"
+      branchCode: "WR"
     }
   });
 
@@ -801,23 +837,23 @@ async function main() {
   const northSavingsAccount = await prisma.account.upsert({
     where: { accountNumber: "SB1000001" },
     update: {
-      customerId: northCustomer.id,
-      societyId: northSociety.id,
+      customerId: westCustomer.id,
+      societyId: westSociety.id,
       type: AccountType.SAVINGS,
       status: AccountStatus.ACTIVE,
       currentBalance: 68000,
       interestRate: 3.25,
-      branchCode: "NR"
+      branchCode: "WR"
     },
     create: {
       accountNumber: "SB1000001",
-      customerId: northCustomer.id,
-      societyId: northSociety.id,
+      customerId: westCustomer.id,
+      societyId: westSociety.id,
       type: AccountType.SAVINGS,
       status: AccountStatus.ACTIVE,
       currentBalance: 68000,
       interestRate: 3.25,
-      branchCode: "NR"
+      branchCode: "WR"
     }
   });
 
@@ -984,7 +1020,7 @@ async function main() {
       remark: "Pending verification transaction",
       isPassed: false,
       passedAt: null,
-      createdById: northAgent.id
+      createdById: westAgent.id
     },
     create: {
       transactionNumber: "TXN0000004",
@@ -996,7 +1032,7 @@ async function main() {
       remark: "Pending verification transaction",
       isPassed: false,
       passedAt: null,
-      createdById: northAgent.id
+      createdById: westAgent.id
     }
   });
 
@@ -1413,22 +1449,22 @@ async function main() {
   });
 
   await prisma.workingDay.upsert({
-    where: { societyId_date: { societyId: northAgent.societyId!, date: new Date("2026-03-11T00:00:00.000Z") } },
+    where: { societyId_date: { societyId: westAgent.societyId!, date: new Date("2026-03-11T00:00:00.000Z") } },
     update: {
-      societyId: northAgent.societyId!,
+      societyId: westAgent.societyId!,
       isDayEnd: false,
       isMonthEnd: false,
       isYearEnd: false,
-      openedById: northAgent.id,
+      openedById: westAgent.id,
       closedById: null
     },
     create: {
-      societyId: northAgent.societyId!,
+      societyId: westAgent.societyId!,
       date: new Date("2026-03-11T00:00:00.000Z"),
       isDayEnd: false,
       isMonthEnd: false,
       isYearEnd: false,
-      openedById: northAgent.id
+      openedById: westAgent.id
     }
   });
 

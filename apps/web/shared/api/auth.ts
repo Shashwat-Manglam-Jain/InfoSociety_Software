@@ -22,6 +22,23 @@ export type RegisterSocietyPayload = {
   password: string;
   fullName: string;
   societyCode: string;
+  societyName: string;
+  billingEmail?: string;
+  billingPhone?: string;
+  billingAddress?: string;
+  acceptsDigitalPayments?: boolean;
+  upiId?: string;
+  panNo?: string;
+  tanNo?: string;
+  gstNo?: string;
+  category?: string;
+  authorizedCapital?: number;
+  paidUpCapital?: number;
+  shareNominalValue?: number;
+  registrationDate?: string;
+  registrationNumber?: string;
+  registrationState?: string;
+  registrationAuthority?: string;
 };
 
 export async function login(username: string, password: string): Promise<LoginResponse> {

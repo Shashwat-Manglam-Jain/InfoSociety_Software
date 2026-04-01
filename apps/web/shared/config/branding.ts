@@ -1,10 +1,10 @@
 export const appBranding = {
-  productName: "Infopath Society Savings",
-  productShortName: "Infopath Savings",
-  productCaption: "Savings & Interest",
-  productTagline: "Society savings, collections, and interest tracking",
-  companyName: "Infopath Solutions",
-  supportEmail: "support@infopath.local",
+  productName: "InfoSociety Savings",
+  productShortName: "InfoSociety",
+  productCaption: "Institutional Banking",
+  productTagline: "Premium institutional savings and cooperative governance",
+  companyName: "InfoSociety Software",
+  supportEmail: "support@infosociety.local",
   metaDescription:
     "Society savings and money-collection platform with member, agent, and admin workflows for contributions, interest tracking, payments, reporting, and monitoring.",
   footerSummary: "Society savings workflows for members, agents, and administrators.",

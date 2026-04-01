@@ -13,6 +13,8 @@ describe("workspace localization", () => {
 
     expect(copy.homeSectionTitle).toBe("भूमिका-आधारित वर्कस्पेसेस");
     expect(copy.reviewRoleButton).toBe("भूमिका पहा");
+    expect(copy.overviewHeroTitle).toBe("पहिल्याच स्क्रीनपासून आकर्षक आणि भूमिका-जाणणारा बँकिंग अनुभव");
+    expect(copy.statProvisioningHelper).toBe("नियंत्रित ऑनबोर्डिंग");
   });
 
   it("localizes visible module names for non-English locales", () => {

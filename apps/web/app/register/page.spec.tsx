@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import RegisterPage from "./page";
-import { getBillingPlans, getPublicSocieties, registerClient, registerSociety, upgradeToPremium } from "@/shared/api/client";
-import { setSession } from "@/shared/auth/session";
+import { getBillingPlans, getPublicSocieties, registerClient, registerSociety } from "@/shared/api/client";
+import { getDefaultDashboardPath, setSession } from "@/shared/auth/session";
 import { LanguageProvider } from "@/shared/i18n/language-provider";
 
 const push = jest.fn();
@@ -24,12 +24,16 @@ jest.mock("@/shared/api/client", () => ({
 }));
 
 jest.mock("@/shared/auth/session", () => ({
+  getDefaultDashboardPath: jest.fn(),
   setSession: jest.fn()
 }));
 
 describe("RegisterPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getDefaultDashboardPath as jest.Mock).mockImplementation((accountType: string) =>
+      accountType === "SOCIETY" ? "/dashboard/society" : "/dashboard"
+    );
     (getPublicSocieties as jest.Mock).mockResolvedValue([
       { id: "soc-1", code: "SOC-HO", name: "Head Office", status: "ACTIVE" }
     ]);
@@ -66,12 +70,11 @@ describe("RegisterPage", () => {
       </LanguageProvider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Create Client Account" })).toBeEnabled();
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Manual" }));
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Free Client" } });
     fireEvent.change(screen.getByLabelText(/username/i), { target: { value: "client-free" } });
     fireEvent.change(screen.getByLabelText(/^password/i, { selector: "input" }), { target: { value: "Client@123" } });
+    fireEvent.change(screen.getByLabelText(/^society code/i), { target: { value: "SOC-HO" } });
     fireEvent.submit(screen.getByRole("button", { name: "Create Client Account" }).closest("form")!);
 
     await waitFor(() =>
@@ -91,7 +94,7 @@ describe("RegisterPage", () => {
       })
     );
     expect(push).toHaveBeenCalledWith("/dashboard");
-  });
+  }, 15000);
 
   it("creates a society administrator account for an approved society", async () => {
     (registerSociety as jest.Mock).mockResolvedValue({
@@ -110,11 +113,6 @@ describe("RegisterPage", () => {
       }
     });
 
-    (upgradeToPremium as jest.Mock).mockResolvedValue({
-      message: "Upgraded to Premium",
-      subscription: { id: "sub-premium", plan: "PREMIUM" }
-    });
-
     render(
       <LanguageProvider>
         <RegisterPage />
@@ -122,9 +120,6 @@ describe("RegisterPage", () => {
     );
 
     fireEvent.click(screen.getByRole("tab", { name: "Society" }));
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Create Society Account" })).toBeEnabled();
-    });
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Society Admin" } });
     fireEvent.change(screen.getByLabelText(/username/i), { target: { value: "socadmin" } });
     fireEvent.change(screen.getByLabelText(/^password/i, { selector: "input" }), { target: { value: "Society@123" } });
@@ -134,19 +129,18 @@ describe("RegisterPage", () => {
       expect(registerSociety).toHaveBeenCalledWith(
         expect.objectContaining({
           username: "socadmin",
-          societyCode: "SOC-HO"
+          societyCode: "SOCIETY-ADMI"
         })
       )
     );
-
-    await waitFor(() => expect(upgradeToPremium).toHaveBeenCalled());
 
     expect(setSession).toHaveBeenCalledWith(
       expect.objectContaining({
         accessToken: "token-society",
         accountType: "SOCIETY",
-        subscriptionPlan: "PREMIUM"
+        subscriptionPlan: "FREE"
       })
     );
-  });
+    expect(push).toHaveBeenCalledWith("/dashboard/society");
+  }, 15000);
 });

@@ -36,7 +36,7 @@ type FooterCopy = {
   contactLabel: string;
   privacyLabel: string;
   termsLabel: string;
-  advertisingLabel: string;
+  complianceLabel: string;
   summary: string;
   publicOperationsNote: string;
   workspaceOperationsNote: string;
@@ -92,8 +92,8 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
         "Reports, statements, and exports",
         "Role-based access & approvals"
       ],
-      freePlanFeatures: ["Core society workflows", "Standard support", "Ad-supported"],
-      premiumPlanFeatures: ["Ad-free experience", "Priority support", "Advanced features"],
+      freePlanFeatures: ["Core society workflows", "Standard support", "Institutional transparency"],
+      premiumPlanFeatures: ["Custom institutional branding", "Priority support", "Advanced features"],
       premiumPriceFallback: "Monthly",
       premiumPerMonthSuffix: "/mo",
       pricingSelection: (planLabel) => `${planLabel} plan selected`,
@@ -107,14 +107,14 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
       contactLabel: "Contact",
       privacyLabel: "Privacy Policy",
       termsLabel: "Terms of Service",
-      advertisingLabel: "Advertising Disclosure",
+      complianceLabel: "Compliance",
       summary: "Society savings workflows for members, agents, and administrators.",
       publicOperationsNote: "Frontend and API work together across onboarding, operations, monitoring, and reporting.",
       workspaceOperationsNote: "Operational workspaces remain role-based, secure, and ready for day-to-day public use.",
       publicSupportNote: "Support, product information, and policy guidance remain available across the public information pages.",
       workspaceSupportNote: "Support, policies, and onboarding guidance stay available through the public information pages at all times.",
       adsNotice:
-        "Ads are shown for monetization. Please interact only when genuinely interested. Invalid traffic and forced clicks are not permitted."
+        "This platform uses institutional grade encryption for all data transit and persistence."
     }
   },
   hi: {
@@ -158,8 +158,8 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
         "रिपोर्ट्स, स्टेटमेंट्स और एक्सपोर्ट",
         "भूमिका-आधारित एक्सेस और अप्रूवल"
       ],
-      freePlanFeatures: ["मुख्य सोसाइटी वर्कफ़्लो", "स्टैंडर्ड सपोर्ट", "विज्ञापन समर्थित"],
-      premiumPlanFeatures: ["विज्ञापन-मुक्त अनुभव", "प्राथमिक सपोर्ट", "उन्नत सुविधाएँ"],
+      freePlanFeatures: ["मुख्य सोसाइटी वर्कफ़्लो", "स्टैंडर्ड सपोर्ट", "मानक संस्थागत ब्रांडिंग"],
+      premiumPlanFeatures: ["कस्टम व्हाइट-लेबल ब्रांडिंग", "प्राथमिक सपोर्ट", "उन्नत सुविधाएँ"],
       premiumPriceFallback: "मासिक",
       premiumPerMonthSuffix: "/माह",
       pricingSelection: (planLabel) => `${planLabel} प्लान चुना गया`,
@@ -173,14 +173,14 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
       contactLabel: "संपर्क",
       privacyLabel: "गोपनीयता नीति",
       termsLabel: "सेवा की शर्तें",
-      advertisingLabel: "विज्ञापन प्रकटीकरण",
+      complianceLabel: "अनुपालन",
       summary: "सदस्यों, एजेंटों और प्रशासकों के लिए सोसाइटी सेविंग्स वर्कफ़्लो।",
       publicOperationsNote: "फ्रंटएंड और API मिलकर ऑनबोर्डिंग, ऑपरेशन्स, मॉनिटरिंग और रिपोर्टिंग को सपोर्ट करते हैं।",
       workspaceOperationsNote: "ऑपरेशनल वर्कस्पेस भूमिका-आधारित, सुरक्षित और रोज़मर्रा के सार्वजनिक उपयोग के लिए तैयार हैं।",
       publicSupportNote: "सपोर्ट, उत्पाद जानकारी और नीति मार्गदर्शन सार्वजनिक सूचना पेजों पर उपलब्ध रहते हैं।",
       workspaceSupportNote: "सपोर्ट, नीतियाँ और ऑनबोर्डिंग मार्गदर्शन सार्वजनिक सूचना पेजों के माध्यम से हमेशा उपलब्ध रहते हैं।",
       adsNotice:
-        "मॉनेटाइज़ेशन के लिए विज्ञापन दिखाए जाते हैं। कृपया तभी इंटरैक्ट करें जब आपकी वास्तविक रुचि हो। अमान्य ट्रैफ़िक और जबरन क्लिक अनुमत नहीं हैं।"
+        "यह प्लेटफ़ॉर्म सभी डेटा ट्रांजिट और निरंतरता के लिए संस्थागत ग्रेड एन्क्रिप्शन का उपयोग करता है।"
     }
   },
   mr: {
@@ -192,7 +192,7 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
       heroPrimaryAction: "फ्री सुरू करा",
       heroSecondaryAction: "लॉगिन",
       heroPanelTitle: "तुमच्या टीमसाठी आवश्यक सर्व काही",
-      heroPanelDescription: "सदस्य, फील्ड एजंट आणि सोसायटी प्रशासकांसाठी एका विश्वासार्ह सिस्टममध्ये तयार केलेले.",
+      heroPanelDescription: "सदस्य, एजंट आणि सोसायटी प्रशासकांसाठी एका विश्वासार्ह सिस्टममध्ये तयार केलेले.",
       registerToast: "नोंदणी सुरू होत आहे...",
       loginToast: "लॉगिन पानावर नेले जात आहे...",
       featuresTitle: "Infopath का निवडावे",
@@ -200,7 +200,7 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
       features: [
         {
           title: "सुरक्षित आणि अनुरूप",
-          description: "एंटरप्राइझ अनुपालनासाठी भूमिका-आधारित प्रवेश नियंत्रण आणि ऑडिट ट्रेल्स"
+          description: "एंटरप्राइझ अनुपालनासाठी भूमिका-आधारित प्रवेश नियंत्रणและ ऑडिट ट्रेल्स"
         },
         {
           title: "सुलभ कलेक्शन्स",
@@ -224,8 +224,8 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
         "रिपोर्ट्स, स्टेटमेंट्स आणि एक्सपोर्ट्स",
         "भूमिका-आधारित प्रवेश आणि मंजुरी"
       ],
-      freePlanFeatures: ["मुख्य सोसायटी वर्कफ्लोज", "स्टँडर्ड सपोर्ट", "जाहिरात-समर्थित"],
-      premiumPlanFeatures: ["जाहिरात-मुक्त अनुभव", "प्राधान्य सपोर्ट", "अॅडव्हान्स्ड फीचर्स"],
+      freePlanFeatures: ["मुख्य सोसायटी वर्कफ्लोज", "स्टँडर्ड सपोर्ट", "मानक संस्थागत ब्रांडिंग"],
+      premiumPlanFeatures: ["कस्टम व्हाइट-लेबल ब्रांडिंग", "प्राधान्य सपोर्ट", "अॅडव्हान्स्ड फीचर्स"],
       premiumPriceFallback: "मासिक",
       premiumPerMonthSuffix: "/महिना",
       pricingSelection: (planLabel) => `${planLabel} प्लॅन निवडला गेला`,
@@ -239,14 +239,14 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
       contactLabel: "संपर्क",
       privacyLabel: "गोपनीयता धोरण",
       termsLabel: "सेवेच्या अटी",
-      advertisingLabel: "जाहिरात प्रकटीकरण",
+      complianceLabel: "अनुपालन",
       summary: "सदस्य, एजंट आणि प्रशासकांसाठी सोसायटी सेव्हिंग्स वर्कफ्लोज.",
       publicOperationsNote: "फ्रंटएंड आणि API एकत्र येऊन ऑनबोर्डिंग, ऑपरेशन्स, मॉनिटरिंग आणि रिपोर्टिंगला सपोर्ट करतात.",
       workspaceOperationsNote: "ऑपरेशनल वर्कस्पेसेस भूमिका-आधारित, सुरक्षित आणि दैनंदिन सार्वजनिक वापरासाठी तयार आहेत.",
-      publicSupportNote: "सपोर्ट, उत्पादन माहिती आणि धोरण मार्गदर्शन सार्वजनिक माहिती पानांवर उपलब्ध राहतात.",
+      publicSupportNote: "सपोर्ट, उत्पाद माहिती आणि धोरण मार्गदर्शन सार्वजनिक माहिती पानांवर उपलब्ध राहतात.",
       workspaceSupportNote: "सपोर्ट, धोरणे आणि ऑनबोर्डिंग मार्गदर्शन सार्वजनिक माहिती पानांद्वारे नेहमी उपलब्ध राहते.",
       adsNotice:
-        "मॉनेटायझेशनसाठी जाहिराती दाखवल्या जातात. कृपया खरोखर स्वारस्य असल्यासच परस्परसंवाद करा. अवैध ट्रॅफिक आणि जबरदस्तीचे क्लिक अनुमत नाहीत."
+        "हे प्लॅटफॉर्म सर्व डेटा ट्रान्झिट आणि सातत्य यासाठी संस्थागत ग्रेड एन्क्रिप्शन वापरते."
     }
   }
 };

@@ -141,7 +141,68 @@ export class CustomersService {
       throw new ForbiddenException("Only client users can access this endpoint");
     }
 
-    return this.getById(currentUser, currentUser.customerId);
+    const customerId = currentUser.customerId;
+    const customer = await this.getById(currentUser, customerId);
+
+    // Aggregate statistics
+    const accounts = await this.prisma.account.findMany({
+      where: { customerId },
+      include: {
+        transactions: {
+          where: { isPassed: true },
+          select: { type: true, amount: true, remark: true }
+        }
+      }
+    });
+
+    let totalInvested = 0;
+    let interestEarned = 0;
+    let totalWithdrawn = 0;
+
+    accounts.forEach(acc => {
+      acc.transactions.forEach(tx => {
+        const amt = Number(tx.amount);
+        if (tx.type === "CREDIT") {
+          // Identify interest by looking for keywords or specific account behavior
+          const isInterest = tx.remark?.toLowerCase().includes("interest") || tx.remark?.toLowerCase().includes("div") || tx.remark?.toLowerCase().includes("intt");
+          if (isInterest) {
+            interestEarned += amt;
+          } else {
+            totalInvested += amt;
+          }
+        } else {
+          totalWithdrawn += amt;
+        }
+      });
+    });
+
+    // Get Allotted Agent Mapping
+    const agentMapping = await this.prisma.agentClient.findFirst({
+      where: { customerId },
+      include: {
+        agent: {
+          select: {
+            id: true,
+            customerCode: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            user: { select: { username: true } }
+          }
+        }
+      }
+    });
+
+    return {
+      ...customer,
+      dashboardStats: {
+        totalInvested,
+        interestEarned,
+        totalWithdrawn,
+        netBalance: accounts.reduce((acc, a) => acc + Number(a.currentBalance), 0)
+      },
+      allottedAgent: agentMapping?.agent || null
+    };
   }
 
   private async resolveSociety(currentUser: RequestUser, societyCode?: string) {

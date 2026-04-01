@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Post, Req } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { UserRole } from "@prisma/client";
 import { Request } from "express";
@@ -14,9 +14,10 @@ import { RegisterSocietyDto } from "./dto/register-society.dto";
 @ApiTags("auth")
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Public()
+  @HttpCode(200)
   @Post("login")
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);

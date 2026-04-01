@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LoginPage from "./page";
 import { login } from "@/shared/api/client";
-import { setSession } from "@/shared/auth/session";
+import { getDefaultDashboardPath, setSession } from "@/shared/auth/session";
 
 const push = jest.fn();
 
@@ -17,12 +17,16 @@ jest.mock("@/shared/api/client", () => ({
 }));
 
 jest.mock("@/shared/auth/session", () => ({
+  getDefaultDashboardPath: jest.fn(),
   setSession: jest.fn()
 }));
 
 describe("LoginPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getDefaultDashboardPath as jest.Mock).mockImplementation((accountType: string) =>
+      accountType === "SOCIETY" ? "/dashboard/society" : "/dashboard"
+    );
   });
 
   it("switches demo hints by selected role tab", () => {
@@ -56,7 +60,7 @@ describe("LoginPage", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Agent" }));
     const usernameInput = screen.getByRole("textbox", { name: /username/i });
-    const passwordInput = screen.getByLabelText(/password/i);
+    const passwordInput = screen.getByLabelText(/password/i, { selector: "input" });
 
     fireEvent.change(usernameInput, { target: { value: "agent1" } });
     fireEvent.change(passwordInput, { target: { value: "Agent@123" } });

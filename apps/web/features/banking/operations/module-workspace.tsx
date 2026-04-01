@@ -1,7 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import GridViewRoundedIcon from "@mui/icons-material/GridViewRounded";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { useRouter } from "next/navigation";
 import {
   Alert,
@@ -30,6 +35,9 @@ type ModuleWorkspaceProps = {
   slug: string;
   name: string;
   summary: string;
+  dashboardHref: string;
+  accessibleModules: Array<{ slug: string; name: string; summary: string }>;
+  viewerName: string;
 };
 
 type ModuleOverviewPayload = {
@@ -203,7 +211,7 @@ function getRecordCollection(payload: unknown) {
     return [];
   }
 
-  const preferredKeys = ["rows", "societies", "requests", "recentTransactions", "accounts", "customers"];
+  const preferredKeys = ["rows", "societies", "requests", "recentTransactions", "accounts", "customers", "visits"];
 
   for (const key of preferredKeys) {
     const value = payload[key];
@@ -266,7 +274,8 @@ function ResponsePreview({
   emptyState: string;
 }) {
   const summaryItems = getSummaryItems(payload);
-  const recordItems = getRecordCollection(payload).slice(0, 4).map(toRecordPreview);
+  const allRecords = getRecordCollection(payload);
+  const recordItems = allRecords.slice(0, 4).map(toRecordPreview);
 
   if (summaryItems.length === 0 && recordItems.length === 0) {
     return (
@@ -296,35 +305,52 @@ function ResponsePreview({
       ) : null}
 
       {recordItems.length > 0 ? (
-        <Grid container spacing={1.2}>
-          {recordItems.map((record, index) => (
-            <Grid key={`${record.title}-${index}`} size={{ xs: 12, sm: 6 }}>
-              <Box className="surface-glass" sx={{ p: 1.4, borderRadius: 2, height: "100%" }}>
-                <Typography fontWeight={700}>{record.title}</Typography>
-                {record.subtitle ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.4 }}>
-                    {record.subtitle}
-                  </Typography>
-                ) : null}
-                {record.details.length > 0 ? (
-                  <Stack spacing={0.45} sx={{ mt: 1 }}>
-                    {record.details.map((detail) => (
-                      <Typography key={detail} variant="caption" color="text.secondary">
-                        {detail}
-                      </Typography>
-                    ))}
-                  </Stack>
-                ) : null}
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
+        <Stack spacing={1.1}>
+          {allRecords.length > recordItems.length ? (
+            <Chip
+              label={`Showing ${recordItems.length} of ${allRecords.length} records`}
+              size="small"
+              sx={{ width: "fit-content" }}
+            />
+          ) : null}
+
+          <Grid container spacing={1.2}>
+            {recordItems.map((record, index) => (
+              <Grid key={`${record.title}-${index}`} size={{ xs: 12, sm: 6 }}>
+                <Box className="surface-glass" sx={{ p: 1.4, borderRadius: 2, height: "100%" }}>
+                  <Typography fontWeight={700}>{record.title}</Typography>
+                  {record.subtitle ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.4 }}>
+                      {record.subtitle}
+                    </Typography>
+                  ) : null}
+                  {record.details.length > 0 ? (
+                    <Stack spacing={0.45} sx={{ mt: 1 }}>
+                      {record.details.map((detail) => (
+                        <Typography key={detail} variant="caption" color="text.secondary">
+                          {detail}
+                        </Typography>
+                      ))}
+                    </Stack>
+                  ) : null}
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        </Stack>
       ) : null}
     </Stack>
   );
 }
 
-export function ModuleWorkspace({ slug, name, summary }: ModuleWorkspaceProps) {
+export function ModuleWorkspace({
+  slug,
+  name,
+  summary,
+  dashboardHref,
+  accessibleModules,
+  viewerName
+}: ModuleWorkspaceProps) {
   const router = useRouter();
   const config = useMemo(() => getModuleWorkspaceConfig(slug), [slug]);
 
@@ -356,6 +382,12 @@ export function ModuleWorkspace({ slug, name, summary }: ModuleWorkspaceProps) {
     }
 
     setValuesByOperation(defaults);
+  }, [config]);
+
+  useEffect(() => {
+    setActiveOperationId((current) =>
+      config?.operations.some((operation) => operation.id === current) ? current : config?.operations[0]?.id ?? null
+    );
   }, [config]);
 
   useEffect(() => {
@@ -407,6 +439,7 @@ export function ModuleWorkspace({ slug, name, summary }: ModuleWorkspaceProps) {
     [overviewPayload, summary]
   );
   const workflowList = useMemo(() => getWorkflowList(overviewPayload, workflowPayload), [overviewPayload, workflowPayload]);
+  const previewRecordCount = useMemo(() => getRecordCollection(previewPayload).length, [previewPayload]);
 
   async function loadPreview() {
     const session = getSession();
@@ -488,279 +521,514 @@ export function ModuleWorkspace({ slug, name, summary }: ModuleWorkspaceProps) {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Grid container spacing={2} sx={{ mb: 2.5 }}>
-        <Grid size={{ xs: 12, lg: 7 }}>
-          <Card className="surface-glass" sx={{ height: "100%", borderRadius: 3 }}>
-            <CardContent sx={{ p: { xs: 2.2, md: 3 } }}>
-              <Stack spacing={1}>
-                <Typography variant="overline" color="text.secondary">
-                  Workspace Summary
-                </Typography>
-                <Typography variant="h5">{name}</Typography>
-                <Typography color="text.secondary">{workspaceDescription}</Typography>
+    <Box sx={{ py: { xs: 1, md: 1.5 } }}>
+      <Container maxWidth={false} sx={{ px: 0 }}>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, lg: 3.2, xl: 2.9 }}>
+            <Stack spacing={1.4} sx={{ position: { lg: "sticky" }, top: { lg: 18 } }}>
+              <Card className="surface-glass" sx={{ borderRadius: 3.2 }}>
+                <CardContent sx={{ p: { xs: 1.8, md: 2.2 } }}>
+                  <Stack spacing={1.35}>
+                    <Box
+                      sx={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 2.4,
+                        display: "grid",
+                        placeItems: "center",
+                        bgcolor: "primary.main",
+                        color: "#fff",
+                        boxShadow: (theme) => `0 16px 28px ${alpha(theme.palette.primary.main, 0.24)}`
+                      }}
+                    >
+                      <GridViewRoundedIcon />
+                    </Box>
 
-                {loadingMeta ? (
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <CircularProgress size={18} />
-                    <Typography color="text.secondary" variant="body2">
-                      Loading workspace guidance...
-                    </Typography>
-                  </Stack>
-                ) : null}
-
-                {metaError ? <Alert severity="warning">{metaError}</Alert> : null}
-
-                {workflowList.length > 0 ? (
-                  <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ pt: 0.6 }}>
-                    {workflowList.map((workflow) => (
-                      <Chip key={workflow} label={workflow} variant="outlined" />
-                    ))}
-                  </Stack>
-                ) : null}
-
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ pt: 0.8 }}>
-                  <Button startIcon={<RefreshIcon />} onClick={() => router.refresh()} variant="outlined">
-                    Refresh workspace
-                  </Button>
-                  {previewOperation ? (
-                    <Button onClick={() => void loadPreview()} variant="contained">
-                      {previewLoaded ? "Reload current records" : "Load current records"}
-                    </Button>
-                  ) : null}
-                </Stack>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, lg: 5 }}>
-          <Card className="surface-glass" sx={{ height: "100%", borderRadius: 3 }}>
-            <CardContent sx={{ p: { xs: 2.2, md: 3 } }}>
-              <Stack spacing={1}>
-                <Typography variant="overline" color="text.secondary">
-                  Current Records
-                </Typography>
-                <Typography variant="h6">Load live records only when you need them</Typography>
-                <Typography color="text.secondary" sx={{ mb: 0.6 }}>
-                  The workspace stays clean by showing live data only after you request it.
-                </Typography>
-
-                {previewLoading ? (
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <CircularProgress size={18} />
-                    <Typography color="text.secondary" variant="body2">
-                      Loading current records...
-                    </Typography>
-                  </Stack>
-                ) : null}
-
-                {previewError ? <Alert severity="error">{previewError}</Alert> : null}
-
-                {!previewLoaded && !previewLoading ? (
-                  <Typography color="text.secondary" variant="body2">
-                    Use the button above to fetch the latest data available for this workspace.
-                  </Typography>
-                ) : null}
-
-                {previewLoaded && !previewLoading && !previewError ? (
-                  <ResponsePreview payload={previewPayload} emptyState="No current records are available for this workspace yet." />
-                ) : null}
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      <Card className="surface-glass" sx={{ borderRadius: 3 }}>
-        <CardContent sx={{ p: { xs: 2.2, md: 3 } }}>
-          <Stack spacing={0.8} sx={{ mb: 2.2 }}>
-            <Typography variant="h5">Available Actions</Typography>
-            <Typography color="text.secondary">
-              Open an action card only when you need it. This keeps the workspace focused and easier to understand for business users.
-            </Typography>
-          </Stack>
-
-          <Grid container spacing={2}>
-            {config.operations.map((operation) => {
-              const isActive = activeOperationId === operation.id;
-
-              return (
-                <Grid key={operation.id} size={{ xs: 12, md: 6, xl: 4 }}>
-                  <Card
-                    className="hover-lift"
-                    sx={{
-                      height: "100%",
-                      borderRadius: 3,
-                      border: (theme) =>
-                        `1px solid ${alpha(theme.palette.primary.main, isActive ? 0.34 : 0.12)}`,
-                      bgcolor: (theme) =>
-                        isActive
-                          ? alpha(theme.palette.primary.main, theme.palette.mode === "light" ? 0.08 : 0.14)
-                          : alpha(theme.palette.background.paper, theme.palette.mode === "light" ? 0.86 : 0.72)
-                    }}
-                  >
-                    <CardContent sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                      <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ mb: 1.1 }}>
-                        <Chip size="small" label={getActionTone(operation)} color="primary" variant="outlined" />
-                        <Chip
-                          size="small"
-                          label={operation.fields?.length ? `${operation.fields.length} details` : "No extra details"}
-                          variant="outlined"
-                        />
-                      </Stack>
-
-                      <Typography variant="h6" sx={{ fontSize: "1.04rem" }}>
-                        {operation.title}
+                    <Box>
+                      <Typography variant="overline" color="primary.main">
+                        Service Workspace
                       </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 0.8, mb: 1.2 }}>
-                        {operation.description}
+                      <Typography variant="h5" sx={{ mt: 0.45 }}>
+                        {name}
                       </Typography>
+                      <Typography color="text.secondary" sx={{ mt: 0.7 }}>
+                        {workspaceDescription}
+                      </Typography>
+                    </Box>
 
-                      <Box sx={{ mt: "auto" }}>
-                        <Button
-                          variant={isActive ? "contained" : "outlined"}
-                          onClick={() => setActiveOperationId(operation.id)}
-                        >
-                          {isActive ? "Action open" : "Open action"}
+                    <Box
+                      sx={{
+                        p: 1.2,
+                        borderRadius: 2.6,
+                        border: "1px solid rgba(148, 163, 184, 0.16)",
+                        background: "rgba(255,255,255,0.84)"
+                      }}
+                    >
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.1 }}>
+                        Signed in as
+                      </Typography>
+                      <Typography sx={{ fontWeight: 700, mt: 0.35 }}>{viewerName}</Typography>
+                    </Box>
+
+                    <Grid container spacing={1}>
+                      <Grid size={6}>
+                        <Box className="surface-glass" sx={{ p: 1.1, borderRadius: 2.2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Modules
+                          </Typography>
+                          <Typography variant="h6">{accessibleModules.length}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={6}>
+                        <Box className="surface-glass" sx={{ p: 1.1, borderRadius: 2.2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Actions
+                          </Typography>
+                          <Typography variant="h6">{config.operations.length}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={6}>
+                        <Box className="surface-glass" sx={{ p: 1.1, borderRadius: 2.2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Workflows
+                          </Typography>
+                          <Typography variant="h6">{workflowList.length || "-"}</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={6}>
+                        <Box className="surface-glass" sx={{ p: 1.1, borderRadius: 2.2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Preview
+                          </Typography>
+                          <Typography variant="h6">
+                            {previewLoaded ? (previewError ? "Issue" : previewRecordCount || "Loaded") : "On demand"}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+
+                    <Stack spacing={0.9}>
+                      <Button component={Link} href={dashboardHref} startIcon={<ArrowBackRoundedIcon />} variant="contained" fullWidth>
+                        Back to Dashboard
+                      </Button>
+                      <Button startIcon={<RefreshIcon />} onClick={() => router.refresh()} variant="outlined" fullWidth>
+                        Refresh Workspace
+                      </Button>
+                      {previewOperation ? (
+                        <Button onClick={() => void loadPreview()} variant="outlined" fullWidth>
+                          {previewLoaded ? "Reload Current Records" : "Load Current Records"}
                         </Button>
+                      ) : null}
+                    </Stack>
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              <Card className="surface-glass" sx={{ borderRadius: 3.2 }}>
+                <CardContent sx={{ p: 1.2 }}>
+                  <Typography variant="overline" color="text.secondary" sx={{ px: 0.8, display: "block", mb: 0.7 }}>
+                    All Modules
+                  </Typography>
+                  <Stack spacing={0.65}>
+                    {accessibleModules.map((module) => {
+                      const isCurrent = module.slug === slug;
+
+                      return (
+                        <Button
+                          key={module.slug}
+                          component={Link}
+                          href={`/modules/${module.slug}`}
+                          endIcon={<ChevronRightRoundedIcon />}
+                          fullWidth
+                          sx={{
+                            justifyContent: "space-between",
+                            px: 1.1,
+                            py: 1.05,
+                            borderRadius: 2.2,
+                            textTransform: "none",
+                            color: isCurrent ? "primary.main" : "text.primary",
+                            bgcolor: isCurrent ? "rgba(37, 99, 235, 0.1)" : "transparent",
+                            border: isCurrent ? "1px solid rgba(37, 99, 235, 0.16)" : "1px solid transparent"
+                          }}
+                        >
+                          <Stack alignItems="flex-start" sx={{ minWidth: 0 }}>
+                            <Typography fontWeight={700} sx={{ textAlign: "left" }} noWrap>
+                              {module.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ textAlign: "left" }} noWrap>
+                              {module.summary}
+                            </Typography>
+                          </Stack>
+                        </Button>
+                      );
+                    })}
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              <Card className="surface-glass" sx={{ borderRadius: 3.2 }}>
+                <CardContent sx={{ p: 1.2 }}>
+                  <Typography variant="overline" color="text.secondary" sx={{ px: 0.8, display: "block", mb: 0.7 }}>
+                    Action Shortcuts
+                  </Typography>
+                  <Stack spacing={0.65}>
+                    {config.operations.map((operation) => {
+                      const isActive = activeOperationId === operation.id;
+
+                      return (
+                        <Button
+                          key={operation.id}
+                          fullWidth
+                          endIcon={<ChevronRightRoundedIcon />}
+                          onClick={() => setActiveOperationId(operation.id)}
+                          sx={{
+                            justifyContent: "space-between",
+                            px: 1.1,
+                            py: 1,
+                            borderRadius: 2.2,
+                            textTransform: "none",
+                            color: isActive ? "primary.main" : "text.primary",
+                            bgcolor: isActive ? "rgba(37, 99, 235, 0.08)" : "transparent",
+                            border: isActive ? "1px solid rgba(37, 99, 235, 0.16)" : "1px solid transparent"
+                          }}
+                        >
+                          <Stack alignItems="flex-start" sx={{ minWidth: 0 }}>
+                            <Typography fontWeight={700} sx={{ textAlign: "left" }} noWrap>
+                              {operation.title}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ textAlign: "left" }} noWrap>
+                              {getActionTone(operation)} · {operation.fields?.length ? `${operation.fields.length} details` : "Direct action"}
+                            </Typography>
+                          </Stack>
+                        </Button>
+                      );
+                    })}
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Stack>
+          </Grid>
+
+          <Grid size={{ xs: 12, lg: 8.8, xl: 9.1 }}>
+            <Stack spacing={2}>
+              <Card className="surface-vibrant" sx={{ borderRadius: 3.2, overflow: "hidden" }}>
+                <CardContent sx={{ p: { xs: 2, md: 2.6 } }}>
+                  <Stack spacing={1.4}>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
+                      <Box
+                        sx={{
+                          flexGrow: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          px: 1.4,
+                          py: 1.1,
+                          borderRadius: 999,
+                          bgcolor: "rgba(255,255,255,0.82)",
+                          border: "1px solid rgba(148, 163, 184, 0.16)"
+                        }}
+                      >
+                        <SearchRoundedIcon color="action" />
+                        <Typography color="text.secondary" variant="body2" noWrap>
+                          Search this workspace by ID, member, record, or reference before loading large result sets.
+                        </Typography>
                       </Box>
+
+                      {activeOperation ? (
+                        <Chip
+                          label={`${getActionTone(activeOperation)} mode`}
+                          color="primary"
+                          variant="outlined"
+                          sx={{ width: "fit-content" }}
+                        />
+                      ) : null}
+                    </Stack>
+
+                    <Box>
+                      <Typography variant="overline" color="primary.main">
+                        Full-Width Module Shell
+                      </Typography>
+                      <Typography variant="h4" className="section-title" sx={{ mt: 0.45 }}>
+                        {name}
+                      </Typography>
+                      <Typography color="text.secondary" sx={{ mt: 0.8, maxWidth: 880 }}>
+                        This workspace keeps navigation and high-importance controls in the fixed left panel so large datasets stay easier to scan.
+                        Load only the records you need and use the active form on the right for focused action work.
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              {metaError ? <Alert severity="warning">{metaError}</Alert> : null}
+
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, xl: 7.2 }}>
+                  <Card className="surface-glass" sx={{ borderRadius: 3.2, height: "100%" }}>
+                    <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
+                      <Stack spacing={1.2}>
+                        <Stack
+                          direction={{ xs: "column", md: "row" }}
+                          justifyContent="space-between"
+                          alignItems={{ md: "center" }}
+                          spacing={1}
+                        >
+                          <Box>
+                            <Typography variant="overline" color="text.secondary">
+                              Current Records
+                            </Typography>
+                            <Typography variant="h5" className="section-title" sx={{ mt: 0.35 }}>
+                              Keep large record sets compact
+                            </Typography>
+                          </Box>
+                          {previewOperation ? (
+                            <Button onClick={() => void loadPreview()} variant="contained" disabled={previewLoading}>
+                              {previewLoaded ? "Reload Records" : "Load Records"}
+                            </Button>
+                          ) : null}
+                        </Stack>
+
+                        <Typography color="text.secondary">
+                          When there are thousands of records, this panel only shows the most useful preview and count signals instead of rendering everything at once.
+                        </Typography>
+
+                        {previewLoading ? (
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <CircularProgress size={18} />
+                            <Typography color="text.secondary" variant="body2">
+                              Loading current records...
+                            </Typography>
+                          </Stack>
+                        ) : null}
+
+                        {previewError ? <Alert severity="error">{previewError}</Alert> : null}
+
+                        {!previewLoaded && !previewLoading ? (
+                          <Alert severity="info">
+                            Use the left panel or the button above to fetch only the current records you want to inspect.
+                          </Alert>
+                        ) : null}
+
+                        {previewLoaded && !previewLoading && !previewError ? (
+                          <ResponsePreview payload={previewPayload} emptyState="No current records are available for this workspace yet." />
+                        ) : null}
+                      </Stack>
                     </CardContent>
                   </Card>
                 </Grid>
-              );
-            })}
-          </Grid>
-        </CardContent>
-      </Card>
 
-      {activeOperation ? (
-        <Card className="surface-glass" sx={{ mt: 2.5, borderRadius: 3 }}>
-          <CardContent sx={{ p: { xs: 2.2, md: 3 } }}>
-            <Stack spacing={0.8} sx={{ mb: 2.2 }}>
-              <Typography variant="overline" color="text.secondary">
-                Active Action
-              </Typography>
-              <Typography variant="h5">{activeOperation.title}</Typography>
-              <Typography color="text.secondary">{activeOperation.description}</Typography>
-            </Stack>
+                <Grid size={{ xs: 12, xl: 4.8 }}>
+                  <Card className="surface-glass" sx={{ borderRadius: 3.2, height: "100%" }}>
+                    <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
+                      <Stack spacing={1.25}>
+                        <Box>
+                          <Typography variant="overline" color="text.secondary">
+                            Workspace Notes
+                          </Typography>
+                          <Typography variant="h6" sx={{ mt: 0.35 }}>
+                            Key guidance stays simple
+                          </Typography>
+                        </Box>
 
-            <Box component="form" onSubmit={(event) => void runOperation(activeOperation, event)}>
-              <Stack spacing={2}>
-                {activeOperation.fields?.length ? (
-                  <Grid container spacing={2}>
-                    {activeOperation.fields.map((field) => {
-                      const value = valuesByOperation[activeOperation.id]?.[field.key] ?? "";
+                        {loadingMeta ? (
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <CircularProgress size={18} />
+                            <Typography color="text.secondary" variant="body2">
+                              Loading workflow guidance...
+                            </Typography>
+                          </Stack>
+                        ) : null}
 
-                      if (field.type === "select") {
-                        return (
-                          <Grid key={field.key} size={{ xs: 12, md: 6 }}>
-                            <TextField
-                              select
-                              fullWidth
-                              label={`${field.label}${field.required ? " *" : ""}`}
-                              value={value}
-                              onChange={(event) => onFieldChange(activeOperation.id, field.key, event.target.value)}
-                            >
-                              <MenuItem value="">Choose</MenuItem>
-                              {(field.options ?? []).map((option) => (
-                                <MenuItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </MenuItem>
-                              ))}
-                            </TextField>
+                        {workflowList.length > 0 ? (
+                          <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
+                            {workflowList.map((workflow) => (
+                              <Chip key={workflow} label={workflow} variant="outlined" />
+                            ))}
+                          </Stack>
+                        ) : (
+                          <Typography color="text.secondary" variant="body2">
+                            This module is ready to operate even without extra workflow metadata.
+                          </Typography>
+                        )}
+
+                        <Box
+                          sx={{
+                            p: 1.35,
+                            borderRadius: 2.5,
+                            border: "1px solid rgba(148, 163, 184, 0.16)",
+                            background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,248,251,0.96) 100%)"
+                          }}
+                        >
+                          <Typography variant="subtitle2" sx={{ mb: 0.7 }}>
+                            Current focus
+                          </Typography>
+                          <Typography color="text.secondary" variant="body2">
+                            {activeOperation
+                              ? `${activeOperation.title} is selected. Fill only the fields you need on the form below.`
+                              : "Choose an action from the left panel to begin."}
+                          </Typography>
+                        </Box>
+
+                        <Box
+                          sx={{
+                            p: 1.35,
+                            borderRadius: 2.5,
+                            border: "1px solid rgba(148, 163, 184, 0.16)",
+                            background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,248,251,0.96) 100%)"
+                          }}
+                        >
+                          <Typography variant="subtitle2" sx={{ mb: 0.7 }}>
+                            High-volume pattern
+                          </Typography>
+                          <Typography color="text.secondary" variant="body2">
+                            Keep module navigation fixed on the left, open one action at a time, and preview only filtered record batches when the dataset is large.
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {activeOperation ? (
+                <Card className="surface-glass" sx={{ borderRadius: 3.2 }}>
+                  <CardContent sx={{ p: { xs: 2.1, md: 2.8 } }}>
+                    <Stack spacing={0.9} sx={{ mb: 2.2 }}>
+                      <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
+                        <Chip size="small" label={getActionTone(activeOperation)} color="primary" variant="outlined" />
+                        <Chip
+                          size="small"
+                          label={activeOperation.fields?.length ? `${activeOperation.fields.length} details` : "No extra details"}
+                          variant="outlined"
+                        />
+                      </Stack>
+                      <Typography variant="overline" color="text.secondary">
+                        Active Action
+                      </Typography>
+                      <Typography variant="h5">{activeOperation.title}</Typography>
+                      <Typography color="text.secondary">{activeOperation.description}</Typography>
+                    </Stack>
+
+                    <Box component="form" onSubmit={(event) => void runOperation(activeOperation, event)}>
+                      <Stack spacing={2}>
+                        {activeOperation.fields?.length ? (
+                          <Grid container spacing={2}>
+                            {activeOperation.fields.map((field) => {
+                              const value = valuesByOperation[activeOperation.id]?.[field.key] ?? "";
+
+                              if (field.type === "select") {
+                                return (
+                                  <Grid key={field.key} size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                      select
+                                      fullWidth
+                                      label={`${field.label}${field.required ? " *" : ""}`}
+                                      value={value}
+                                      onChange={(event) => onFieldChange(activeOperation.id, field.key, event.target.value)}
+                                    >
+                                      <MenuItem value="">Choose</MenuItem>
+                                      {(field.options ?? []).map((option) => (
+                                        <MenuItem key={option.value} value={option.value}>
+                                          {option.label}
+                                        </MenuItem>
+                                      ))}
+                                    </TextField>
+                                  </Grid>
+                                );
+                              }
+
+                              const inputType = field.type === "number" ? "number" : field.type === "date" ? "date" : "text";
+
+                              return (
+                                <Grid key={field.key} size={{ xs: 12, md: field.type === "json" ? 12 : 6 }}>
+                                  <TextField
+                                    fullWidth
+                                    label={`${field.label}${field.required ? " *" : ""}`}
+                                    type={inputType}
+                                    value={value}
+                                    onChange={(event) => onFieldChange(activeOperation.id, field.key, event.target.value)}
+                                    placeholder={field.placeholder}
+                                    multiline={field.type === "json"}
+                                    minRows={field.type === "json" ? 4 : undefined}
+                                    slotProps={field.type === "date" ? { inputLabel: { shrink: true } } : undefined}
+                                  />
+                                </Grid>
+                              );
+                            })}
                           </Grid>
-                        );
-                      }
+                        ) : (
+                          <Alert severity="info">This action does not require any additional details.</Alert>
+                        )}
 
-                      const inputType = field.type === "number" ? "number" : field.type === "date" ? "date" : "text";
+                        <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
+                          <Button type="submit" variant="contained" disabled={runningOperationId === activeOperation.id}>
+                            {runningOperationId === activeOperation.id ? "Processing..." : getActionButtonLabel(activeOperation)}
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={() => {
+                              setValuesByOperation((previous) => ({
+                                ...previous,
+                                [activeOperation.id]: getDefaultValues(activeOperation)
+                              }));
+                              setErrorByOperation((previous) => ({ ...previous, [activeOperation.id]: null }));
+                            }}
+                          >
+                            Reset Details
+                          </Button>
+                        </Stack>
 
-                      return (
-                        <Grid key={field.key} size={{ xs: 12, md: field.type === "json" ? 12 : 6 }}>
-                          <TextField
-                            fullWidth
-                            label={`${field.label}${field.required ? " *" : ""}`}
-                            type={inputType}
-                            value={value}
-                            onChange={(event) => onFieldChange(activeOperation.id, field.key, event.target.value)}
-                            placeholder={field.placeholder}
-                            multiline={field.type === "json"}
-                            minRows={field.type === "json" ? 4 : undefined}
-                            slotProps={field.type === "date" ? { inputLabel: { shrink: true } } : undefined}
-                          />
-                        </Grid>
-                      );
-                    })}
-                  </Grid>
-                ) : (
-                  <Alert severity="info">This action does not require any additional details.</Alert>
-                )}
+                        {errorByOperation[activeOperation.id] ? <Alert severity="error">{errorByOperation[activeOperation.id]}</Alert> : null}
 
-                <Stack direction="row" spacing={1.2} flexWrap="wrap" useFlexGap>
-                  <Button type="submit" variant="contained" disabled={runningOperationId === activeOperation.id}>
-                    {runningOperationId === activeOperation.id ? "Processing..." : getActionButtonLabel(activeOperation)}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={() => {
-                      setValuesByOperation((previous) => ({
-                        ...previous,
-                        [activeOperation.id]: getDefaultValues(activeOperation)
-                      }));
-                      setErrorByOperation((previous) => ({ ...previous, [activeOperation.id]: null }));
-                    }}
-                  >
-                    Reset details
-                  </Button>
-                </Stack>
-
-                {errorByOperation[activeOperation.id] ? <Alert severity="error">{errorByOperation[activeOperation.id]}</Alert> : null}
-
-                {responseByOperation[activeOperation.id] ? (
-                  <>
-                    <Divider />
-                    <Alert severity="success">Action completed successfully.</Alert>
-                    <ResponsePreview
-                      payload={responseByOperation[activeOperation.id]}
-                      emptyState="The action completed, but there is no business preview to show for this response."
-                    />
-                    <Box>
-                      <Button
-                        variant="text"
-                        onClick={() =>
-                          setExpandedResponseByOperation((previous) => ({
-                            ...previous,
-                            [activeOperation.id]: !previous[activeOperation.id]
-                          }))
-                        }
-                      >
-                        {expandedResponseByOperation[activeOperation.id] ? "Hide technical response" : "View technical response"}
-                      </Button>
+                        {responseByOperation[activeOperation.id] ? (
+                          <>
+                            <Divider />
+                            <Alert severity="success">Action completed successfully.</Alert>
+                            <ResponsePreview
+                              payload={responseByOperation[activeOperation.id]}
+                              emptyState="The action completed, but there is no business preview to show for this response."
+                            />
+                            <Box>
+                              <Button
+                                variant="text"
+                                onClick={() =>
+                                  setExpandedResponseByOperation((previous) => ({
+                                    ...previous,
+                                    [activeOperation.id]: !previous[activeOperation.id]
+                                  }))
+                                }
+                              >
+                                {expandedResponseByOperation[activeOperation.id] ? "Hide technical response" : "View technical response"}
+                              </Button>
+                            </Box>
+                            {expandedResponseByOperation[activeOperation.id] ? (
+                              <Box
+                                component="pre"
+                                sx={{
+                                  m: 0,
+                                  p: 2,
+                                  borderRadius: 2,
+                                  bgcolor: "#0f172a",
+                                  color: "#dbeafe",
+                                  overflowX: "auto",
+                                  fontSize: 12,
+                                  whiteSpace: "pre-wrap"
+                                }}
+                              >
+                                {JSON.stringify(responseByOperation[activeOperation.id], null, 2)}
+                              </Box>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </Stack>
                     </Box>
-                    {expandedResponseByOperation[activeOperation.id] ? (
-                      <Box
-                        component="pre"
-                        sx={{
-                          m: 0,
-                          p: 2,
-                          borderRadius: 2,
-                          bgcolor: "#0f172a",
-                          color: "#dbeafe",
-                          overflowX: "auto",
-                          fontSize: 12,
-                          whiteSpace: "pre-wrap"
-                        }}
-                      >
-                        {JSON.stringify(responseByOperation[activeOperation.id], null, 2)}
-                      </Box>
-                    ) : null}
-                  </>
-                ) : null}
-              </Stack>
-            </Box>
-          </CardContent>
-        </Card>
-      ) : null}
-    </Container>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </Stack>
+          </Grid>
+        </Grid>
+      </Container>
+    </Box>
   );
 }

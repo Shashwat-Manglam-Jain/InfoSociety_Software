@@ -53,13 +53,33 @@ export type WorkspaceUiCopy = {
   overviewBadge: string;
   overviewTitle: string;
   overviewSubtitle: string;
+  overviewHeroBadge: string;
+  overviewHeroTitle: string;
+  overviewHeroBody: string;
+  overviewFeatureFixedRail: string;
+  overviewFeatureSearchFirst: string;
+  overviewFeatureOperationalCards: string;
+  overviewFeatureLeastPrivilege: string;
+  overviewIntentionLabel: string;
+  overviewIntentionTitle: string;
+  overviewIntentionBody: string;
+  overviewCompareLabel: string;
+  overviewCompareTitle: string;
+  overviewCompareBody: string;
+  overviewCompareRoleSearch: string;
+  overviewCompareNavigation: string;
+  overviewCompareOperations: string;
+  overviewCompareShowcase: string;
   statRoleProfilesTitle: string;
   statRoleProfilesCaption: string;
+  statRoleProfilesHelper: string;
   statModuleCoverageTitle: string;
   statModuleCoverageCaption: string;
+  statModuleCoverageHelper: string;
   statProvisioningTitle: string;
   statProvisioningValue: string;
   statProvisioningCaption: string;
+  statProvisioningHelper: string;
   homeSectionTitle: string;
   homeSectionSubtitle: string;
   reviewRoleButton: string;
@@ -127,12 +147,12 @@ const workspaceDefinitions: WorkspaceDefinition[] = [
     ],
     provisioningNote: "Provision this role for end members who should only access their own data and self-service banking views.",
     primaryAction: {
-      href: "/register?type=CLIENT",
-      label: "Provision Client Access"
+      href: "#societies",
+      label: "Find My Society"
     },
     secondaryAction: {
-      href: "/login",
-      label: "Client Sign-In"
+      href: "/",
+      label: "Member Sign-In"
     }
   },
   {
@@ -171,11 +191,11 @@ const workspaceDefinitions: WorkspaceDefinition[] = [
     ],
     provisioningNote: "Provision this role for staff who execute society operations but should not control institution-level setup.",
     primaryAction: {
-      href: "/register?type=AGENT",
-      label: "Provision Agent Access"
+      href: "#societies",
+      label: "Find My Society"
     },
     secondaryAction: {
-      href: "/login",
+      href: "/",
       label: "Agent Sign-In"
     }
   },
@@ -214,12 +234,12 @@ const workspaceDefinitions: WorkspaceDefinition[] = [
     ],
     provisioningNote: "Provision this role for institution owners and administrators who are responsible for one society end-to-end.",
     primaryAction: {
-      href: "/register?type=SOCIETY&plan=PREMIUM",
-      label: "Provision Society Access"
+      href: "/register",
+      label: "Enroll New Society"
     },
     secondaryAction: {
       href: "/login",
-      label: "Society Admin Sign-In"
+      label: "Society Sign-In"
     }
   },
   {
@@ -257,12 +277,12 @@ const workspaceDefinitions: WorkspaceDefinition[] = [
     ],
     provisioningNote: "Provision this role only for central platform operators who manage governance across multiple societies.",
     primaryAction: {
-      href: "/login",
-      label: "Platform Admin Sign-In"
+      href: "/admin",
+      label: "Authenticate Terminal"
     },
     secondaryAction: {
-      href: "/workspaces",
-      label: "View Workspace Overview"
+      href: "/admin",
+      label: "Platform Governance"
     }
   }
 ];
@@ -548,13 +568,36 @@ const workspaceUiCopy: Record<AppLocale, WorkspaceUiCopy> = {
     overviewTitle: "Role-Based Workspace Architecture",
     overviewSubtitle:
       "Review the production access model for members, operational staff, society administrators, and platform governance teams before onboarding or deployment.",
+    overviewHeroBadge: "Workspace Control Theatre",
+    overviewHeroTitle: "Attractive, role-aware banking surfaces from the first screen",
+    overviewHeroBody:
+      "Compare how clients, agents, society admins, and platform admins move through the product. The page now leads with stronger hierarchy, cleaner comparison cues, and dashboard-style previews that look much closer to the real banking app.",
+    overviewFeatureFixedRail: "Fixed module rail",
+    overviewFeatureSearchFirst: "Search-first workspace",
+    overviewFeatureOperationalCards: "Bright operational cards",
+    overviewFeatureLeastPrivilege: "Least-privilege access",
+    overviewIntentionLabel: "Design Intention",
+    overviewIntentionTitle: "Make access boundaries obvious without making the app feel dull.",
+    overviewIntentionBody:
+      "The visual treatment now balances governance clarity with a more premium product feel, so role comparison reads like a live product showcase instead of a documentation page.",
+    overviewCompareLabel: "Compare Live Role Surfaces",
+    overviewCompareTitle: "Same product language, different control depth",
+    overviewCompareBody:
+      "Every workspace card below now behaves like a miniature banking interface. That makes it easier to understand what changes between member access, operations access, institution control, and platform governance.",
+    overviewCompareRoleSearch: "Role-specific search",
+    overviewCompareNavigation: "Navigation-first layout",
+    overviewCompareOperations: "Operational emphasis",
+    overviewCompareShowcase: "Product showcase mode",
     statRoleProfilesTitle: "Role Profiles",
     statRoleProfilesCaption: "Distinct workspace definitions with controlled access boundaries",
+    statRoleProfilesHelper: "Four role surfaces",
     statModuleCoverageTitle: "Module Coverage",
     statModuleCoverageCaption: "Operational banking modules mapped through role-based authorization",
+    statModuleCoverageHelper: "Scoped module map",
     statProvisioningTitle: "Provisioning Model",
     statProvisioningValue: "Least Privilege",
     statProvisioningCaption: "Each role receives only the modules and controls required for its scope",
+    statProvisioningHelper: "Controlled onboarding",
     homeSectionTitle: "Role-Based Workspaces",
     homeSectionSubtitle:
       "Clients, agents, society admins, and platform admins each get a different surface so users only see the tools they should actually operate.",
@@ -589,13 +632,36 @@ const workspaceUiCopy: Record<AppLocale, WorkspaceUiCopy> = {
     overviewBadge: "एक्सेस आर्किटेक्चर",
     overviewTitle: "भूमिका-आधारित वर्कस्पेस आर्किटेक्चर",
     overviewSubtitle: "ऑनबोर्डिंग या डिप्लॉयमेंट से पहले सदस्य, ऑपरेशनल स्टाफ, सोसाइटी एडमिन और प्लेटफ़ॉर्म गवर्नेंस टीमों के लिए एक्सेस मॉडल देखें।",
+    overviewHeroBadge: "वर्कस्पेस कंट्रोल थिएटर",
+    overviewHeroTitle: "पहली स्क्रीन से ही आकर्षक और भूमिका-आधारित बैंकिंग अनुभव",
+    overviewHeroBody:
+      "देखें कि क्लाइंट, एजेंट, सोसाइटी एडमिन और प्लेटफ़ॉर्म एडमिन प्रोडक्ट में कैसे अलग-अलग चलते हैं। यह पेज अब बेहतर हायरार्की, साफ़ तुलना संकेत और वास्तविक बैंकिंग ऐप जैसे डैशबोर्ड प्रीव्यू के साथ सामने आता है।",
+    overviewFeatureFixedRail: "फिक्स्ड मॉड्यूल रेल",
+    overviewFeatureSearchFirst: "सर्च-फर्स्ट वर्कस्पेस",
+    overviewFeatureOperationalCards: "उज्ज्वल ऑपरेशनल कार्ड",
+    overviewFeatureLeastPrivilege: "न्यूनतम-अधिकार एक्सेस",
+    overviewIntentionLabel: "डिज़ाइन उद्देश्य",
+    overviewIntentionTitle: "एक्सेस सीमाएं स्पष्ट रहें, लेकिन ऐप फीका न लगे।",
+    overviewIntentionBody:
+      "यह विज़ुअल ट्रीटमेंट गवर्नेंस की स्पष्टता को अधिक प्रीमियम प्रोडक्ट अनुभव के साथ संतुलित करता है, ताकि भूमिका तुलना किसी डॉक्यूमेंटेशन पेज की जगह लाइव प्रोडक्ट शोकेस जैसी लगे।",
+    overviewCompareLabel: "लाइव भूमिका सतहों की तुलना",
+    overviewCompareTitle: "एक जैसा प्रोडक्ट अनुभव, अलग नियंत्रण गहराई",
+    overviewCompareBody:
+      "नीचे दिया गया हर वर्कस्पेस कार्ड अब एक छोटे बैंकिंग इंटरफ़ेस की तरह व्यवहार करता है। इससे समझना आसान होता है कि सदस्य एक्सेस, ऑपरेशंस एक्सेस, संस्थान नियंत्रण और प्लेटफ़ॉर्म गवर्नेंस में क्या बदलता है।",
+    overviewCompareRoleSearch: "भूमिका-विशिष्ट खोज",
+    overviewCompareNavigation: "नेविगेशन-फर्स्ट लेआउट",
+    overviewCompareOperations: "ऑपरेशनल फोकस",
+    overviewCompareShowcase: "प्रोडक्ट शोकेस मोड",
     statRoleProfilesTitle: "रोल प्रोफ़ाइल",
     statRoleProfilesCaption: "नियंत्रित एक्सेस सीमाओं के साथ अलग-अलग वर्कस्पेस परिभाषाएं",
+    statRoleProfilesHelper: "चार भूमिका सतहें",
     statModuleCoverageTitle: "मॉड्यूल कवरेज",
     statModuleCoverageCaption: "भूमिका-आधारित अनुमति के साथ मैप किए गए बैंकिंग मॉड्यूल",
+    statModuleCoverageHelper: "स्कोप्ड मॉड्यूल मैप",
     statProvisioningTitle: "प्रोविजनिंग मॉडल",
     statProvisioningValue: "न्यूनतम एक्सेस",
     statProvisioningCaption: "हर भूमिका को केवल उसके काम के लिए जरूरी मॉड्यूल और कंट्रोल दिए जाते हैं",
+    statProvisioningHelper: "नियंत्रित ऑनबोर्डिंग",
     homeSectionTitle: "भूमिका-आधारित वर्कस्पेस",
     homeSectionSubtitle: "क्लाइंट, एजेंट, सोसाइटी एडमिन और प्लेटफ़ॉर्म एडमिन को अलग-अलग कार्यक्षेत्र मिलते हैं ताकि हर उपयोगकर्ता केवल वही टूल देखे जो उसे चलाने चाहिए।",
     reviewRoleButton: "भूमिका देखें",
@@ -629,13 +695,36 @@ const workspaceUiCopy: Record<AppLocale, WorkspaceUiCopy> = {
     overviewBadge: "ॲक्सेस आर्किटेक्चर",
     overviewTitle: "भूमिका-आधारित वर्कस्पेस आर्किटेक्चर",
     overviewSubtitle: "ऑनबोर्डिंग किंवा डिप्लॉयमेंटपूर्वी सदस्य, ऑपरेशनल स्टाफ, सोसायटी अॅडमिन आणि प्लॅटफॉर्म गव्हर्नन्स टीमसाठी प्रवेश मॉडेल पाहा.",
+    overviewHeroBadge: "वर्कस्पेस कंट्रोल थिएटर",
+    overviewHeroTitle: "पहिल्याच स्क्रीनपासून आकर्षक आणि भूमिका-जाणणारा बँकिंग अनुभव",
+    overviewHeroBody:
+      "क्लायंट, एजंट, सोसायटी अॅडमिन आणि प्लॅटफॉर्म अॅडमिन प्रॉडक्टमध्ये कसे वेगवेगळे काम करतात ते तुलना करून पाहा. हे पेज आता अधिक स्पष्ट हायरार्की, स्वच्छ तुलना संकेत आणि खऱ्या बँकिंग अॅपसारखे डॅशबोर्ड प्रीव्ह्यू दाखवते.",
+    overviewFeatureFixedRail: "फिक्स्ड मॉड्यूल रेल",
+    overviewFeatureSearchFirst: "सर्च-फर्स्ट वर्कस्पेस",
+    overviewFeatureOperationalCards: "उठावदार ऑपरेशनल कार्ड्स",
+    overviewFeatureLeastPrivilege: "किमान-अधिकार प्रवेश",
+    overviewIntentionLabel: "डिझाइन हेतू",
+    overviewIntentionTitle: "प्रवेश मर्यादा स्पष्ट दिसू द्या, पण अॅप निस्तेज वाटू देऊ नका.",
+    overviewIntentionBody:
+      "ही व्हिज्युअल ट्रीटमेंट गव्हर्नन्सची स्पष्टता आणि अधिक प्रीमियम प्रॉडक्ट अनुभव यांचा समतोल राखते, त्यामुळे भूमिका तुलना एखाद्या दस्तऐवजीकरण पानासारखी न वाटता जिवंत प्रॉडक्ट शोकेससारखी दिसते.",
+    overviewCompareLabel: "लाइव्ह भूमिका सरफेसेसची तुलना",
+    overviewCompareTitle: "समान प्रॉडक्ट भाषा, वेगवेगळी नियंत्रण खोली",
+    overviewCompareBody:
+      "खालील प्रत्येक वर्कस्पेस कार्ड आता छोट्या बँकिंग इंटरफेससारखे वागते. त्यामुळे सदस्य प्रवेश, ऑपरेशन्स प्रवेश, संस्था नियंत्रण आणि प्लॅटफॉर्म गव्हर्नन्स यांच्यात नेमके काय बदलते ते लगेच समजते.",
+    overviewCompareRoleSearch: "भूमिका-विशिष्ट शोध",
+    overviewCompareNavigation: "नेव्हिगेशन-फर्स्ट लेआउट",
+    overviewCompareOperations: "ऑपरेशनल फोकस",
+    overviewCompareShowcase: "प्रॉडक्ट शोकेस मोड",
     statRoleProfilesTitle: "रोल प्रोफाइल्स",
     statRoleProfilesCaption: "नियंत्रित प्रवेश मर्यादांसह वेगवेगळ्या वर्कस्पेस परिभाषा",
+    statRoleProfilesHelper: "चार भूमिका सरफेसेस",
     statModuleCoverageTitle: "मॉड्यूल कव्हरेज",
     statModuleCoverageCaption: "भूमिका-आधारित अधिकृततेद्वारे मॅप केलेले बँकिंग मॉड्यूल्स",
+    statModuleCoverageHelper: "स्कोप्ड मॉड्यूल मॅप",
     statProvisioningTitle: "प्रोव्हिजनिंग मॉडेल",
     statProvisioningValue: "किमान प्रवेश",
     statProvisioningCaption: "प्रत्येक भूमिकेला तिच्या कामासाठी आवश्यक तेवढेच मॉड्यूल्स आणि नियंत्रण मिळतात",
+    statProvisioningHelper: "नियंत्रित ऑनबोर्डिंग",
     homeSectionTitle: "भूमिका-आधारित वर्कस्पेसेस",
     homeSectionSubtitle: "क्लायंट, एजंट, सोसायटी अॅडमिन आणि प्लॅटफॉर्म अॅडमिन यांना वेगवेगळे कार्यक्षेत्र मिळते, त्यामुळे प्रत्येक वापरकर्त्याला फक्त त्याने वापरायची साधनेच दिसतात.",
     reviewRoleButton: "भूमिका पहा",

@@ -68,20 +68,47 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    const username = dto.username.trim();
-    const user = await this.prisma.user.findUnique({
-      where: { username },
+    const input = dto.username.trim().toLowerCase().replace(/^@/, "");
+    
+    // 1. Attempt to find user by Administrative Handle / Username
+    let user = await this.prisma.user.findUnique({
+      where: { username: input },
       include: userProfileInclude
     });
 
-    if (!user || !user.isActive) {
-      throw new UnauthorizedException("Invalid credentials");
+    // 2. If no direct user match, try to find a society with this unique code
+    if (!user) {
+      const society = await this.prisma.society.findUnique({
+        where: { code: input.toUpperCase() },
+        include: {
+          users: {
+            where: { role: UserRole.SUPER_USER },
+            include: userProfileInclude,
+            take: 1
+          }
+        }
+      });
+
+      if (society && society.users.length > 0) {
+        user = society.users[0] as any;
+      }
+    }
+
+    if (!user) {
+      throw new UnauthorizedException("User account not found");
+    }
+    
+    if (!user.isActive) {
+      throw new UnauthorizedException("User account is deactivated");
     }
 
     const valid = await compare(dto.password, user.passwordHash);
-
     if (!valid) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException("Incorrect password");
+    }
+
+    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.SUPER_USER && user.society?.status === SocietyStatus.PENDING) {
+      throw new UnauthorizedException("Your society registration is pending verification by Super Admin");
     }
 
     return this.buildLoginResponse(user);
@@ -169,12 +196,32 @@ export class AuthService {
       const society = await this.prisma.society.create({
         data: {
           code: societyCode,
-          name: dto.fullName,
-          isActive: true
+          name: dto.societyName.trim(),
+          isActive: true,
+          billingEmail: dto.billingEmail?.trim() || null,
+          billingPhone: dto.billingPhone?.trim() || null,
+          billingAddress: dto.billingAddress?.trim() || null,
+          acceptsDigitalPayments: dto.acceptsDigitalPayments ?? false,
+          upiId: dto.upiId?.trim() || null,
+          panNo: dto.panNo?.trim().toUpperCase() || null,
+          tanNo: dto.tanNo?.trim().toUpperCase() || null,
+          gstNo: dto.gstNo?.trim().toUpperCase() || null,
+          category: dto.category?.trim() || null,
+          authorizedCapital: dto.authorizedCapital ?? null,
+          paidUpCapital: dto.paidUpCapital ?? null,
+          shareNominalValue: dto.shareNominalValue ?? null,
+          registrationDate: dto.registrationDate ? new Date(dto.registrationDate) : null,
+          registrationNumber: dto.registrationNumber?.trim() || null,
+          registrationState: dto.registrationState?.trim() || null,
+          registrationAuthority: dto.registrationAuthority?.trim() || null,
         }
       });
 
-      const identity = this.normalizeIdentity(dto.username, dto.fullName);
+      // Autogenerate username from society code if not provided or to ensure consistent naming
+      const autoUsername = `adm_${societyCode.toLowerCase()}`;
+      const usernameToUse = dto.username?.trim() || autoUsername;
+
+      const identity = this.normalizeIdentity(usernameToUse, dto.fullName);
       await this.assertUsernameAvailable(identity.username);
       const passwordHash = await hash(dto.password, 10);
 

@@ -192,6 +192,7 @@ model Branch {
 
   society   Society  @relation(fields: [societyId], references: [id])
   accounts  Account[]
+  users     User[]
 
   @@unique([societyId, code])
   @@index([societyId, isActive])
@@ -205,11 +206,13 @@ model User {
   role            UserRole @default(CLIENT)
   isActive        Boolean  @default(true)
   societyId       String?
+  branchId        String?
   customerId      String?  @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   society         Society?   @relation(fields: [societyId], references: [id])
+  branch          Branch?    @relation(fields: [branchId], references: [id])
   customerProfile Customer?  @relation("CustomerUser", fields: [customerId], references: [id])
   subscription    Subscription?
   transactions    Transaction[]

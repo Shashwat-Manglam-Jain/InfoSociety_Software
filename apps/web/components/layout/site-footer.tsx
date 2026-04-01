@@ -9,7 +9,7 @@ import { appBranding } from "@/shared/config/branding";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getFooterCopy } from "@/shared/i18n/marketing-copy";
 
-const workspaceRoutePrefixes = ["/dashboard", "/modules"];
+const workspaceRoutePrefixes = ["/dashboard", "/modules", "/admin"];
 
 function isWorkspaceRoute(pathname: string) {
   return workspaceRoutePrefixes.some((prefix) => pathname.startsWith(prefix));
@@ -24,8 +24,7 @@ export function SiteFooter() {
     { href: "/about", label: footerCopy.aboutLabel },
     { href: "/contact", label: footerCopy.contactLabel },
     { href: "/privacy-policy", label: footerCopy.privacyLabel },
-    { href: "/terms-of-service", label: footerCopy.termsLabel },
-    { href: "/advertising-disclosure", label: footerCopy.advertisingLabel }
+    { href: "/terms-of-service", label: footerCopy.termsLabel }
   ] as const;
 
   if (isWorkspaceRoute(pathname)) {

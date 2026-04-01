@@ -3,6 +3,7 @@ import { clearSession, getSession, setSession, subscribeToSession } from "./sess
 describe("session helpers", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    document.cookie = "infopath_session=; Max-Age=0; path=/";
   });
 
   it("normalizes invalid persisted account types and subscription plans", () => {
@@ -46,5 +47,22 @@ describe("session helpers", () => {
 
     expect(listener).toHaveBeenCalledTimes(2);
     unsubscribe();
+  });
+
+  it("mirrors a slim session into a cookie for server rendering", () => {
+    setSession({
+      accessToken: "token-3",
+      role: "SUPER_USER",
+      accountType: "SOCIETY",
+      username: "owner1",
+      fullName: "Owner One",
+      societyCode: "SOC-HO",
+      subscriptionPlan: "PREMIUM",
+      avatarDataUrl: "data:image/png;base64,abc123"
+    });
+
+    expect(document.cookie).toContain("infopath_session=");
+    expect(decodeURIComponent(document.cookie)).toContain('"accountType":"SOCIETY"');
+    expect(decodeURIComponent(document.cookie)).not.toContain("abc123");
   });
 });

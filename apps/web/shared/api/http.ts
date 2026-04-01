@@ -18,21 +18,33 @@ function extractErrorMessage(payload: unknown, status: number) {
   }
 
   if (typeof payload === "object" && payload !== null) {
-    const message = "message" in payload ? (payload as { message?: string | string[] }).message : undefined;
-
-    if (Array.isArray(message)) {
-      return message.join(", ");
+    const obj = payload as Record<string, unknown>;
+    
+    // Check 'message' field
+    if ("message" in obj) {
+      if (Array.isArray(obj.message)) return obj.message.join(", ");
+      if (typeof obj.message === "string" && obj.message.trim()) return obj.message;
     }
 
-    if (typeof message === "string" && message.trim()) {
-      return message;
+    // Check 'errors' array
+    if ("errors" in obj && Array.isArray(obj.errors)) {
+      const firstError = obj.errors[0];
+      if (typeof firstError === "string") return firstError;
+      if (typeof firstError === "object" && firstError !== null && "message" in firstError) {
+        return String(firstError.message);
+      }
     }
 
-    const error = "error" in payload ? (payload as { error?: string }).error : undefined;
-    if (typeof error === "string" && error.trim()) {
-      return error;
+    // Check 'error' field
+    if ("error" in obj && typeof obj.error === "string" && obj.error.trim()) {
+      return obj.error;
     }
   }
+
+  if (status === 401) return "Invalid credentials. Please verify your username and password.";
+  if (status === 403) return "You do not have permission to access this resource.";
+  if (status === 404) return "The requested resource was not found on the server.";
+  if (status === 500) return "A server-side error occurred. Please try again later.";
 
   return `Request failed with status ${status}`;
 }
@@ -54,7 +66,14 @@ async function parseResponse<T>(response: Response): Promise<T> {
   }
 
   if (!response.ok) {
-    throw new Error(extractErrorMessage(payload, response.status));
+    const error = new Error(extractErrorMessage(payload, response.status));
+    (error as any).status = response.status;
+    throw error;
+  }
+
+  if (!payload && (response.status === 204 || !text)) {
+    // If the caller expects JSON (T) but we got nothing, it's a structural error in this app's context.
+    throw new Error(`The server returned an empty success (status ${response.status}). Expected data was missing.`);
   }
 
   return payload as T;
