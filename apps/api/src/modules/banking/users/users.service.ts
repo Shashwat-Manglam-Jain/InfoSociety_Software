@@ -36,6 +36,7 @@ export class UsersService {
         fullName: true,
         role: true,
         isActive: true,
+        branchId: true,
         society: {
           select: {
             code: true,

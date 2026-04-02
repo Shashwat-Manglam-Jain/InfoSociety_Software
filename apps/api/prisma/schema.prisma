@@ -25,6 +25,11 @@ model Society {
   gstNo                  String?
   imageUrl               String?
   logoUrl                String?
+  faviconUrl             String?
+  about                  String?
+  softwareUrl            String?
+  cin                    String?
+  class                  String?
   paidUpCapital          Decimal?             @db.Decimal(18, 2)
   panNo                  String?
   registrationAuthority  String?
@@ -41,6 +46,7 @@ model Society {
   subscription           SocietySubscription?
   users                  User[]
   workingDays            WorkingDay[]
+  directors              Director[]
 
   @@index([name])
   @@index([status, isActive])
@@ -86,6 +92,7 @@ model User {
   createdAt                    DateTime             @default(now())
   updatedAt                    DateTime             @updatedAt
   branchId                     String?
+  allowedModuleSlugs           String[]             @default([])
   audits                       AuditLog[]
   cashBookEntries              CashBookEntry[]
   paymentRequestsCreated       PaymentRequest[]     @relation("PaymentRequestCreatedBy")
@@ -743,4 +750,42 @@ enum PaymentTransactionStatus {
   FAILED
   REFUNDED
   CANCELLED
+}
+
+model Director {
+  id                    String    @id @default(uuid())
+  societyId             String
+  din                   String?   @unique
+  designation           String
+  firstName             String
+  lastName              String?
+  dob                   DateTime?
+  email                 String?
+  fatherName            String?
+  motherName            String?
+  occupation            String?
+  panNo                 String?
+  aadharNo              String?
+  gender                String?
+  mobileNo              String?
+  appointmentDate       DateTime?
+  resignationDate       DateTime?
+  isAuthorizedSignatory Boolean   @default(false)
+  registrationDate      DateTime? @default(now())
+
+  // Banking Info
+  accountNo String?
+  bankName  String?
+  ifscCode  String?
+
+  // Address
+  correspondingAddress String?
+  permanentAddress     String?
+
+  society Society @relation(fields: [societyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([societyId])
 }

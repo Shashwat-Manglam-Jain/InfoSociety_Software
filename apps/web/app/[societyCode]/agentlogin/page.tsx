@@ -44,6 +44,10 @@ export default function AgentLoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    router.prefetch("/dashboard/agent");
+  }, [router]);
+
+  useEffect(() => {
     async function fetchSociety() {
       try {
         const societies = await getPublicSocieties();
@@ -88,11 +92,12 @@ export default function AgentLoginPage() {
         societyCode: response.user.society?.code ?? null,
         subscriptionPlan: response.user.subscription?.plan ?? null,
         avatarDataUrl: null,
-        requiresPasswordChange: response.user.requiresPasswordChange
+        requiresPasswordChange: response.user.requiresPasswordChange,
+        allowedModuleSlugs: response.user.allowedModuleSlugs ?? []
       });
 
-      toast.success(`Agent Console initialized. Welcome back, ${response.user.fullName}!`);
-      router.push(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
+      toast.success(`Welcome back, ${response.user.fullName}!`);
+      router.replace(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Authentication failed.";
       setError(message);
@@ -201,7 +206,7 @@ export default function AgentLoginPage() {
                 >
                   <Stack spacing={3.2}>
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Agent Handle</Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Agent ID</Typography>
                       <TextField
                         placeholder="e.g. agt_skyline"
                         value={username}
@@ -215,7 +220,7 @@ export default function AgentLoginPage() {
                     </Box>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Operations Password</Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Password</Typography>
                       <TextField
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
@@ -251,7 +256,7 @@ export default function AgentLoginPage() {
                         boxShadow: "0 10px 20px -5px rgba(6, 95, 70, 0.3)"
                       }}
                     >
-                      {loading ? <CircularProgress size={24} sx={{ color: "inherit" }} /> : "Access Operations Portal"}
+                      {loading ? <CircularProgress size={24} sx={{ color: "inherit" }} /> : "Sign In"}
                     </Button>
                   </Stack>
                 </Box>

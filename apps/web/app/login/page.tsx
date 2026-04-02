@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -36,9 +36,9 @@ import type { UserRole } from "@/shared/types";
 
 function getRoleCopy() {
   return {
-    title: "Society Owner Console",
-    body: "Access your institutional command centre. Manage modules, overseeing branches, and configure society-wide settings from a single executive interface.",
-    chips: ["Executive Access", "Society Governance", "Admin Tools"]
+    title: "Society Admin Login",
+    body: "Sign in to manage your society profile, branches, users, members, plans, accounts, lockers, and daily records from one place.",
+    chips: ["Society Admin", "Branch Control", "Daily Operations"]
   };
 }
 
@@ -52,6 +52,13 @@ export default function LoginPage() {
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const roleCopy = useMemo(() => getRoleCopy(), []);
+
+  useEffect(() => {
+    router.prefetch("/dashboard");
+    router.prefetch("/dashboard/agent");
+    router.prefetch("/dashboard/client");
+    router.prefetch("/register");
+  }, [router]);
 
   function validateForm() {
     let isValid = true;
@@ -104,11 +111,12 @@ export default function LoginPage() {
         societyCode: response.user.society?.code ?? null,
         subscriptionPlan: response.user.subscription?.plan ?? null,
         avatarDataUrl: null,
-        requiresPasswordChange: response.user.requiresPasswordChange
+        requiresPasswordChange: response.user.requiresPasswordChange,
+        allowedModuleSlugs: response.user.allowedModuleSlugs ?? []
       });
 
       toast.success(`Welcome back, ${response.user.fullName}! Redirecting to your dashboard...`);
-      router.push(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
+      router.replace(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
     } catch (caught) {
       console.error("[Login] error", caught);
       const status = (caught as any)?.status ? `[${(caught as any).status}] ` : "";
@@ -194,7 +202,7 @@ export default function LoginPage() {
                     Sign In to Continue
                   </Typography>
                   <Typography color="text.secondary" sx={{ mt: 0.8, maxWidth: 620 }}>
-                    Access your administrative console. Only verified <strong>Society Owners</strong> can access this institutional surface. 
+                    Use your society admin login to open the society dashboard.
                   </Typography>
                 </Box>
 
@@ -212,13 +220,13 @@ export default function LoginPage() {
                 >
                   <Stack spacing={3}>
                     <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 1.5 }}>
-                      Credential Verification
+                      Login Details
                     </Typography>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Handle or Society Code</Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Username or Society Code</Typography>
                       <TextField
-                        placeholder="e.g. @adm_society or SOC-001"
+                        placeholder="e.g. superuser or SOC-001"
                         value={username}
                         onChange={(event) => {
                           setUsername(event.target.value);
@@ -242,7 +250,7 @@ export default function LoginPage() {
                     </Box>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Secured Password</Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Password</Typography>
                       <TextField
                         placeholder="••••••••"
                         type={showPassword ? "text" : "password"}
@@ -296,11 +304,11 @@ export default function LoginPage() {
                           boxShadow: "0 10px 20px -5px rgba(59, 130, 246, 0.4)"
                         }}
                       >
-                        {loading ? <CircularProgress size={24} sx={{ color: "inherit" }} /> : "Initialize Log-In"}
+                        {loading ? <CircularProgress size={24} sx={{ color: "inherit" }} /> : "Sign In"}
                       </Button>
 
                       <Button component={Link} href="/register" variant="text" sx={{ textTransform: "none", color: "text.secondary", fontWeight: 700 }}>
-                        Need institutional access? <strong style={{ color: "#2563eb" }}>&nbsp;Enroll Society</strong>
+                        New society? <strong style={{ color: "#2563eb" }}>&nbsp;Register here</strong>
                       </Button>
                     </Stack>
                   </Stack>

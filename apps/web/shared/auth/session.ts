@@ -52,7 +52,10 @@ function parseSessionPayload(payload: unknown): Session | null {
     societyCode: typeof parsed.societyCode === "string" ? parsed.societyCode : null,
     subscriptionPlan: isSubscriptionPlan(parsed.subscriptionPlan) ? parsed.subscriptionPlan : null,
     avatarDataUrl: typeof parsed.avatarDataUrl === "string" ? parsed.avatarDataUrl : null,
-    requiresPasswordChange: Boolean(parsed.requiresPasswordChange)
+    requiresPasswordChange: Boolean(parsed.requiresPasswordChange),
+    allowedModuleSlugs: Array.isArray(parsed.allowedModuleSlugs)
+      ? parsed.allowedModuleSlugs.filter((entry): entry is string => typeof entry === "string")
+      : []
   };
 }
 
@@ -118,7 +121,7 @@ export function getDefaultDashboardPath(accountType: AppAccountType, requiresPas
 
   switch (accountType) {
     case "PLATFORM": return "/dashboard/superadmin";
-    case "SOCIETY": return "/dashboard/society";
+    case "SOCIETY": return "/dashboard";
     case "AGENT": return "/dashboard/agent";
     case "CLIENT": return "/dashboard/client";
     default: return "/dashboard";

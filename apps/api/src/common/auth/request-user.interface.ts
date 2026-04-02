@@ -6,4 +6,5 @@ export type RequestUser = {
   role: UserRole;
   societyId: string | null;
   customerId: string | null;
+  allowedModuleSlugs?: string[];
 };

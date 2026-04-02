@@ -72,6 +72,8 @@ export type AuthUser = {
   fullName: string;
   role: UserRole;
   isActive?: boolean;
+  branchId?: string | null;
+  allowedModuleSlugs?: string[];
   society?: Society | null;
   customerProfile?: {
     id: string;
@@ -99,6 +101,7 @@ export type Session = {
   subscriptionPlan: SubscriptionPlan | null;
   avatarDataUrl: string | null;
   requiresPasswordChange: boolean;
+  allowedModuleSlugs?: string[];
 };
 
 export type BillingPlansResponse = {

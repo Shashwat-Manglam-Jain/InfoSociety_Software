@@ -7,3 +7,5 @@ export * from "./customers";
 export * from "./payments";
 export * from "./branches";
 export * from "./administration";
+export * from "./locker";
+export * from "./cashbook";

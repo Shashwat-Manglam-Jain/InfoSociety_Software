@@ -87,15 +87,20 @@ cp apps/web/.env.example apps/web/.env.local
 npm run db:up
 ```
 
-4. Generate Prisma client, run migrations, and seed demo data:
+4. Generate Prisma client and run migrations:
 
 ```bash
 npm run prisma:generate
 npm run prisma:migrate
+```
+
+5. Optional: seed demo/sample data only if you explicitly want sample records:
+
+```bash
 npm run prisma:seed
 ```
 
-5. Start the apps in separate terminals:
+6. Start the apps in separate terminals:
 
 ```bash
 npm run dev:api
@@ -129,12 +134,18 @@ Backend:
 npm --workspace @infopath/api run test
 ```
 
-## Demo credentials
+Targeted checks used during the recent cleanup:
 
-- Society admin: `superuser / Super@123`
-- Platform admin: `superadmin / Admin@123`
-- Agent: `agent1 / Agent@123`
-- Client: `client1 / Client@123`
+```bash
+npm --workspace @infopath/web run test -- society-operations-data.spec.ts
+npm --workspace @infopath/api run test -- locker.service.spec.ts
+```
+
+## Clean database support
+
+- The society dashboard now supports clean-start testing without browser-side seed records for members, plans, accounts, or lockers.
+- Demo credentials exist only when demo data is explicitly seeded.
+- Locker allocation is available from the society dashboard under `Locker > Locker Registry`.
 
 ## Documentation
 

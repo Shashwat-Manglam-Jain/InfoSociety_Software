@@ -77,6 +77,8 @@ The backend already contains real services for:
 - Branch CRUD
 - Head master CRUD
 - Society monitoring and access updates
+- Per-user module access updates for agent and client users
+- Locker allocation, locker closing, and locker visit history
 - Role-aware banking modules and reporting
 - Auth profile responses that now include extended society master fields for dashboard editing
 
@@ -84,6 +86,7 @@ The current frontend wiring uses these live backend capabilities:
 
 - society admin institution-profile saves through monitoring update APIs
 - branch creation and updates through branch APIs
+- locker registry create/list/visit/close flows through the locker APIs
 - role-based workspace visibility from the access map in `apps/web/features/banking/account-access.ts`
 
 ## Data layer

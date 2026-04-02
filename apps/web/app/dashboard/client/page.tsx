@@ -80,8 +80,8 @@ export default function ClientDashboardPage() {
   const accountTypeLabel = "Verified Member";
 
   const accessibleModules = useMemo(
-    () => getAccessibleModules(modules, "CLIENT").map((m) => localizeBankingModule(m, locale)),
-    [locale]
+    () => getAccessibleModules(modules, "CLIENT", user?.allowedModuleSlugs).map((m) => localizeBankingModule(m, locale)),
+    [locale, user?.allowedModuleSlugs]
   );
 
   if (loading) return <Skeleton variant="rectangular" height="100vh" />;

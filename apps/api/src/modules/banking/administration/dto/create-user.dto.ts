@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
 import { UserRole } from "@prisma/client";
 
 export class CreateUserDto {
@@ -24,4 +24,9 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   branchId?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  allowedModuleSlugs?: string[];
 }

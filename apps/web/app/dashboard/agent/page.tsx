@@ -79,8 +79,8 @@ export default function AgentDashboardPage() {
   const accountTypeLabel = "Field Operations Agent";
 
   const accessibleModules = useMemo(
-    () => getAccessibleModules(modules, "AGENT").map((m) => localizeBankingModule(m, locale)),
-    [locale]
+    () => getAccessibleModules(modules, "AGENT", user?.allowedModuleSlugs).map((m) => localizeBankingModule(m, locale)),
+    [locale, user?.allowedModuleSlugs]
   );
 
   if (loading) return <Skeleton variant="rectangular" height="100vh" />;

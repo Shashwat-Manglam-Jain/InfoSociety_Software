@@ -40,7 +40,14 @@ const userProfileInclude = Prisma.validator<Prisma.UserInclude>()({
     }
   },
   customerProfile: true,
-  subscription: true
+  subscription: true,
+  branch: {
+    select: {
+      id: true,
+      code: true,
+      name: true
+    }
+  }
 });
 
 type UserProfileRecord = Prisma.UserGetPayload<{
@@ -293,7 +300,8 @@ export class AuthService {
 
     return {
       ...this.buildUserProfile(user),
-      isActive: user.isActive
+      isActive: user.isActive,
+      allowedModuleSlugs: await this.getAllowedModuleSlugs(user.id)
     };
   }
 
@@ -343,6 +351,7 @@ export class AuthService {
       username: user.username,
       fullName: user.fullName,
       role: user.role,
+      branchId: user.branchId ?? null,
       society: user.society
         ? {
             id: user.society.id,
@@ -542,5 +551,13 @@ export class AuthService {
       nextBillingDate: subscription.nextBillingDate,
       cancelAtPeriodEnd: subscription.cancelAtPeriodEnd
     };
+  }
+
+  private async getAllowedModuleSlugs(userId: string) {
+    const rows = await this.prisma.$queryRaw<Array<{ allowedModuleSlugs: string[] | null }>>(
+      Prisma.sql`SELECT "allowedModuleSlugs" FROM "User" WHERE id = ${userId} LIMIT 1`
+    );
+
+    return rows[0]?.allowedModuleSlugs ?? [];
   }
 }

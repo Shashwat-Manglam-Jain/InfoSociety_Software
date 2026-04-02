@@ -56,7 +56,9 @@ export default function AdminLoginPage() {
         fullName: response.user.fullName,
         societyCode: null,
         subscriptionPlan: null,
-        avatarDataUrl: null
+        avatarDataUrl: null,
+        requiresPasswordChange: response.user.requiresPasswordChange,
+        allowedModuleSlugs: response.user.allowedModuleSlugs ?? []
       });
 
       toast.success("Executive terminal initialized. Accessing Platform Governance Hub.");

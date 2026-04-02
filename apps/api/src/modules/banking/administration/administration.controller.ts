@@ -10,6 +10,7 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { ListWorkingDaysQueryDto } from "./dto/list-working-days-query.dto";
 import { MapAgentClientDto } from "./dto/map-agent-client.dto";
 import { RecomputeAccountDto } from "./dto/recompute-account.dto";
+import { UpdateUserAccessDto } from "./dto/update-user-access.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 import { WorkingDayDto } from "./dto/working-day.dto";
 
@@ -32,6 +33,42 @@ export class AdministrationController {
   }
 
   @Roles(UserRole.SUPER_USER)
+  @Patch("branches/:id")
+  updateBranch(@Req() req: Request & { user: RequestUser }, @Param("id") id: string, @Body() dto: any) {
+    return this.service.updateBranch(req.user, id, dto);
+  }
+
+  @Roles(UserRole.SUPER_USER)
+  @Post("branches/:id/delete")
+  deleteBranch(@Req() req: Request & { user: RequestUser }, @Param("id") id: string) {
+    return this.service.deleteBranch(req.user, id);
+  }
+
+  @Roles(UserRole.SUPER_USER)
+  @Get("directors")
+  listDirectors(@Req() req: Request & { user: RequestUser }) {
+    return this.service.listDirectors(req.user);
+  }
+
+  @Roles(UserRole.SUPER_USER)
+  @Post("directors")
+  createDirector(@Req() req: Request & { user: RequestUser }, @Body() dto: any) {
+    return this.service.createDirector(req.user, dto);
+  }
+
+  @Roles(UserRole.SUPER_USER)
+  @Patch("directors/:id")
+  updateDirector(@Req() req: Request & { user: RequestUser }, @Param("id") id: string, @Body() dto: any) {
+    return this.service.updateDirector(req.user, id, dto);
+  }
+
+  @Roles(UserRole.SUPER_USER)
+  @Post("directors/:id/delete")
+  deleteDirector(@Req() req: Request & { user: RequestUser }, @Param("id") id: string) {
+    return this.service.deleteDirector(req.user, id);
+  }
+
+  @Roles(UserRole.SUPER_USER)
   @Get("society-agents")
   listSocietyAgents(@Req() req: Request & { user: RequestUser }) {
     return this.service.listAgents(req.user);
@@ -50,7 +87,6 @@ export class AdministrationController {
   }
 
   @Roles(UserRole.SUPER_USER)
-  @Patch("society")
   @Patch("society")
   updateSociety(@Req() req: Request & { user: RequestUser }, @Body() dto: any) {
     return this.service.updateSociety(req.user, dto);
@@ -92,8 +128,8 @@ export class AdministrationController {
 
   @Roles(UserRole.SUPER_USER)
   @Get("society-overview")
-  getSocietyOverview(@Req() req: Request & { user: RequestUser }) {
-    return this.service.getSocietyOverview(req.user);
+  getSocietyOverview(@Req() req: Request & { user: RequestUser }, @Query("branchId") branchId?: string) {
+    return this.service.getSocietyOverview(req.user, branchId);
   }
 
   @Roles(UserRole.SUPER_USER, UserRole.SUPER_ADMIN, UserRole.AGENT)
@@ -140,6 +176,16 @@ export class AdministrationController {
     @Body() dto: UpdateUserStatusDto
   ) {
     return this.service.updateUserStatus(req.user, id, dto);
+  }
+
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT)
+  @Patch("users/:id/access")
+  updateUserAccess(
+    @Req() req: Request & { user: RequestUser },
+    @Param("id") id: string,
+    @Body() dto: UpdateUserAccessDto
+  ) {
+    return this.service.updateUserAccess(req.user, id, dto);
   }
 
   @Roles(UserRole.SUPER_USER, UserRole.AGENT)

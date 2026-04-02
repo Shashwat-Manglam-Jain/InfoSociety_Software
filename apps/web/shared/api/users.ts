@@ -6,6 +6,8 @@ export type UserDirectoryEntry = {
   fullName: string;
   role: string;
   isActive: boolean;
+  branchId?: string | null;
+  allowedModuleSlugs?: string[];
   society: { code: string; name: string } | null;
   createdAt: string;
 };

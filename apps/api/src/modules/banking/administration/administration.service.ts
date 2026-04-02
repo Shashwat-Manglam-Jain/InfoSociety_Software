@@ -1,7 +1,8 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, TransactionType, UserRole } from "@prisma/client";
+import { Prisma, SubscriptionPlan, SubscriptionStatus, TransactionType, UserRole } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { bankingFeatureMap } from "../../shared/banking-feature-map";
+import { getDefaultAllowedModules, sanitizeAllowedModules } from "../shared/module-access";
 import { RequestUser } from "../../../common/auth/request-user.interface";
 import { PrismaService } from "../../../common/database/prisma.service";
 import { CreateBranchDto } from "./dto/create-branch.dto";
@@ -69,7 +70,7 @@ export class AdministrationService {
     let branchCode = dto.code?.trim().toUpperCase();
     if (!branchCode) {
       const branchCount = await this.prisma.branch.count({ where: { societyId } });
-      branchCode = `BR${String(branchCount + 1).padStart(3, "0")}`;
+      branchCode = String(branchCount + 1).padStart(5, "0");
     }
 
     const existing = await this.prisma.branch.findUnique({
@@ -85,18 +86,96 @@ export class AdministrationService {
       throw new ConflictException(`Branch code ${branchCode} already exists in this society`);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, societyId: _sid, ...rest } = dto as any;
     return this.prisma.branch.create({
       data: {
-        ...dto,
+        ...rest,
+        openingDate: dto.openingDate ? new Date(dto.openingDate) : undefined,
         code: branchCode,
         societyId
       }
     });
   }
 
+  async updateBranch(currentUser: RequestUser, id: string, dto: any) {
+    this.ensureOperator(currentUser);
+    const societyId = this.resolveOperatingSocietyId(currentUser);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, societyId: _sid, ...rest } = dto;
+    return this.prisma.branch.update({
+      where: { id, societyId },
+      data: {
+        ...rest,
+        openingDate: dto.openingDate ? new Date(dto.openingDate) : undefined,
+      }
+    });
+  }
+
+  async deleteBranch(currentUser: RequestUser, id: string) {
+    this.ensureOperator(currentUser);
+    const societyId = this.resolveOperatingSocietyId(currentUser);
+    return this.prisma.branch.delete({
+      where: { id, societyId }
+    });
+  }
+
+  async listDirectors(currentUser: RequestUser) {
+    this.ensureOperator(currentUser);
+    const societyId = this.resolveOperatingSocietyId(currentUser);
+    return this.prisma.director.findMany({
+      where: { societyId },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async createDirector(currentUser: RequestUser, dto: any) {
+    this.ensureOperator(currentUser);
+    const societyId = this.resolveOperatingSocietyId(currentUser);
+    return this.prisma.director.create({
+      data: {
+        ...dto,
+        societyId,
+        dob: dto.dob ? new Date(dto.dob) : undefined,
+        appointmentDate: dto.appointmentDate ? new Date(dto.appointmentDate) : undefined,
+        resignationDate: dto.resignationDate ? new Date(dto.resignationDate) : undefined,
+        registrationDate: dto.registrationDate ? new Date(dto.registrationDate) : undefined,
+      }
+    });
+  }
+
+  async updateDirector(currentUser: RequestUser, id: string, dto: any) {
+    this.ensureOperator(currentUser);
+    const societyId = this.resolveOperatingSocietyId(currentUser);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, societyId: _sid, ...rest } = dto as any;
+    return this.prisma.director.update({
+      where: { id, societyId },
+      data: {
+        ...rest,
+        dob: dto.dob ? new Date(dto.dob) : undefined,
+        appointmentDate: dto.appointmentDate ? new Date(dto.appointmentDate) : undefined,
+        resignationDate: dto.resignationDate ? new Date(dto.resignationDate) : undefined,
+        registrationDate: dto.registrationDate ? new Date(dto.registrationDate) : undefined,
+      }
+    });
+  }
+
+  async deleteDirector(currentUser: RequestUser, id: string) {
+    this.ensureOperator(currentUser);
+    const societyId = this.resolveOperatingSocietyId(currentUser);
+    return this.prisma.director.delete({
+      where: { id, societyId }
+    });
+  }
+
   async createUser(currentUser: RequestUser, dto: CreateUserDto & { branchId?: string }) {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
+
+    if (currentUser.role === UserRole.AGENT && dto.role !== UserRole.CLIENT) {
+      throw new ForbiddenException("Agents can provision client identities only");
+    }
 
     const existing = await this.prisma.user.findUnique({
       where: { username: dto.username.toLowerCase() }
@@ -106,47 +185,84 @@ export class AdministrationService {
       throw new ConflictException("Username already taken");
     }
 
-    const passwordHash = await hash(dto.password, 10);
-
-    let customerId: string | undefined;
-
-    if (dto.role === UserRole.CLIENT) {
-      const society = await this.prisma.society.findUnique({ where: { id: societyId } });
-      if (!society) throw new NotFoundException("Society not found");
-      
-      const count = await this.prisma.customer.count({ where: { societyId } });
-      const customerCode = `${society.code}-M${String(count + 1).padStart(5, "0")}`;
-      
-      const customer = await this.prisma.customer.create({
-        data: {
-          customerCode,
-          societyId,
-          firstName: dto.fullName.split(" ")[0],
-          lastName: dto.fullName.split(" ").slice(1).join(" ") || undefined,
-        }
+    if (dto.branchId) {
+      const branch = await this.prisma.branch.findFirst({
+        where: {
+          id: dto.branchId,
+          societyId
+        },
+        select: { id: true }
       });
-      customerId = customer.id;
+
+      if (!branch) {
+        throw new NotFoundException("Selected branch does not belong to your society");
+      }
     }
 
-    return this.prisma.user.create({
-      data: {
-        username: dto.username.toLowerCase(),
-        fullName: dto.fullName.trim(),
-        passwordHash,
-        role: dto.role,
-        isActive: dto.isActive ?? true,
-        societyId,
-        branchId: dto.branchId,
-        customerId
-      },
-      select: {
-        id: true,
-        username: true,
-        fullName: true,
-        role: true,
-        isActive: true,
-        branchId: true
+    const society = await this.prisma.society.findUnique({
+      where: { id: societyId },
+      select: { id: true, code: true }
+    });
+
+    if (!society) {
+      throw new NotFoundException("Society not found");
+    }
+
+    const passwordHash = await hash(dto.password, 10);
+    const allowedModuleSlugs = sanitizeAllowedModules(dto.role, dto.allowedModuleSlugs);
+    const [firstName, ...restName] = dto.fullName.trim().split(/\s+/);
+    const lastName = restName.join(" ") || undefined;
+    const needsCustomerProfile = dto.role === UserRole.CLIENT || dto.role === UserRole.AGENT;
+
+    return this.prisma.$transaction(async (tx) => {
+      let customerId: string | undefined;
+
+      if (needsCustomerProfile) {
+        customerId = await this.createLinkedCustomerProfile(tx, {
+          societyId,
+          societyCode: society.code,
+          role: dto.role,
+          firstName,
+          lastName
+        });
       }
+
+      const user = await tx.user.create({
+        data: {
+          username: dto.username.toLowerCase(),
+          fullName: dto.fullName.trim(),
+          passwordHash,
+          role: dto.role,
+          isActive: dto.isActive ?? true,
+          societyId,
+          branchId: dto.branchId,
+          customerId,
+          requiresPasswordChange: true
+        },
+        select: {
+          id: true,
+          username: true,
+          fullName: true,
+          role: true,
+          isActive: true,
+          branchId: true,
+          customerId: true,
+          requiresPasswordChange: true
+        }
+      });
+
+      await this.updateAllowedModules(tx, user.id, allowedModuleSlugs);
+
+      await tx.subscription.create({
+        data: {
+          userId: user.id,
+          plan: SubscriptionPlan.FREE,
+          status: SubscriptionStatus.ACTIVE,
+          monthlyPrice: 0
+        }
+      });
+
+      return user;
     });
   }
 
@@ -175,25 +291,131 @@ export class AdministrationService {
     });
   }
 
-  async getSocietyOverview(currentUser: RequestUser) {
+  async getSocietyOverview(currentUser: RequestUser, branchId?: string) {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
 
-    const [branchCount, staffCount, memberCount, totalDeposits] = await Promise.all([
+    const baseWhere: any = { societyId };
+    if (branchId) {
+      baseWhere.branchId = branchId;
+    }
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      branchCount,
+      staffCount,
+      memberCount,
+      totalDeposits,
+      bankBalance,
+      cashBalance,
+      totalDistributed,
+      totalInterest,
+      collectionApproved,
+      collectionPending,
+      distributedApproved,
+      distributedPending,
+      totalCollected
+    ] = await Promise.all([
       this.prisma.branch.count({ where: { societyId } }),
       this.prisma.user.count({ where: { societyId, role: { in: [UserRole.AGENT, UserRole.SUPER_USER] } } }),
       this.prisma.customer.count({ where: { societyId } }),
+      
+      // Total Balance (Deposits)
       this.prisma.account.aggregate({
-        where: { societyId, type: { not: "LOAN" } },
+        where: { ...baseWhere, type: { not: "LOAN" } },
         _sum: { currentBalance: true }
-      })
+      }),
+
+      // Bank Balance
+      this.prisma.account.aggregate({
+        where: { ...baseWhere, type: { in: ["SAVINGS", "CURRENT"] }, head: { name: { contains: "Bank", mode: "insensitive" } } },
+        _sum: { currentBalance: true }
+      }),
+
+      // Cash Balance
+      this.prisma.account.aggregate({
+        where: { ...baseWhere, head: { name: { contains: "Cash", mode: "insensitive" } } },
+        _sum: { currentBalance: true }
+      }),
+
+      // Total Distributed Amount (Loans)
+      this.prisma.loanAccount.aggregate({
+        where: { account: baseWhere },
+        _sum: { disbursedAmount: true }
+      }),
+
+      // Total Interest
+      this.prisma.ledgerEntry.aggregate({
+        where: { account: baseWhere },
+        _sum: { interestReceivable: true, interestPayable: true }
+      }),
+
+      // Collection Approved (Daily, Weekly, Monthly)
+      Promise.all([
+        this.prisma.transaction.aggregate({ where: { account: baseWhere, type: "CREDIT", isPassed: true, valueDate: { gte: startOfToday } }, _sum: { amount: true } }),
+        this.prisma.transaction.aggregate({ where: { account: baseWhere, type: "CREDIT", isPassed: true, valueDate: { gte: startOfWeek } }, _sum: { amount: true } }),
+        this.prisma.transaction.aggregate({ where: { account: baseWhere, type: "CREDIT", isPassed: true, valueDate: { gte: startOfMonth } }, _sum: { amount: true } })
+      ]),
+
+      // Collection Pending (Daily, Weekly, Monthly)
+      Promise.all([
+        this.prisma.transaction.aggregate({ where: { account: baseWhere, type: "CREDIT", isPassed: false, valueDate: { gte: startOfToday } }, _sum: { amount: true } }),
+        this.prisma.transaction.aggregate({ where: { account: baseWhere, type: "CREDIT", isPassed: false, valueDate: { gte: startOfWeek } }, _sum: { amount: true } }),
+        this.prisma.transaction.aggregate({ where: { account: baseWhere, type: "CREDIT", isPassed: false, valueDate: { gte: startOfMonth } }, _sum: { amount: true } })
+      ]),
+
+      // Distributed Approved (Daily, Weekly, Monthly)
+      Promise.all([
+        this.prisma.transaction.aggregate({ where: { account: { ...baseWhere, type: "LOAN" }, type: "DEBIT", isPassed: true, valueDate: { gte: startOfToday } }, _sum: { amount: true } }),
+        this.prisma.transaction.aggregate({ where: { account: { ...baseWhere, type: "LOAN" }, type: "DEBIT", isPassed: true, valueDate: { gte: startOfWeek } }, _sum: { amount: true } }),
+        this.prisma.transaction.aggregate({ where: { account: { ...baseWhere, type: "LOAN" }, type: "DEBIT", isPassed: true, valueDate: { gte: startOfMonth } }, _sum: { amount: true } })
+      ]),
+
+      // Distributed Pending Loan (Daily, Weekly, Monthly) - using current balance of pending loans or similar
+      Promise.all([
+        this.prisma.loanAccount.aggregate({ where: { account: baseWhere, status: { in: ["APPLIED", "SANCTIONED"] }, createdAt: { gte: startOfToday } }, _sum: { applicationAmount: true } }),
+        this.prisma.loanAccount.aggregate({ where: { account: baseWhere, status: { in: ["APPLIED", "SANCTIONED"] }, createdAt: { gte: startOfWeek } }, _sum: { applicationAmount: true } }),
+        this.prisma.loanAccount.aggregate({ where: { account: baseWhere, status: { in: ["APPLIED", "SANCTIONED"] }, createdAt: { gte: startOfMonth } }, _sum: { applicationAmount: true } })
+      ]),
+
+      // Total Collected (All Time)
+      this.prisma.transaction.aggregate({ where: { account: baseWhere, type: "CREDIT", isPassed: true }, _sum: { amount: true } })
     ]);
 
     return {
       totalBranches: branchCount,
       totalStaff: staffCount,
       totalMembers: memberCount,
-      totalCapital: Number(totalDeposits._sum.currentBalance || 0)
+      totalCapital: Number(totalDeposits._sum.currentBalance || 0),
+      bankBalance: Number(bankBalance._sum.currentBalance || 0),
+      cashBalance: Number(cashBalance._sum.currentBalance || 0),
+      totalDistributed: Number(totalDistributed._sum.disbursedAmount || 0),
+      totalInterest: Number(totalInterest._sum.interestReceivable || 0) + Number(totalInterest._sum.interestPayable || 0),
+      collectionApproved: {
+        daily: Number(collectionApproved[0]._sum.amount || 0),
+        weekly: Number(collectionApproved[1]._sum.amount || 0),
+        monthly: Number(collectionApproved[2]._sum.amount || 0)
+      },
+      collectionPending: {
+        daily: Number(collectionPending[0]._sum.amount || 0),
+        weekly: Number(collectionPending[1]._sum.amount || 0),
+        monthly: Number(collectionPending[2]._sum.amount || 0)
+      },
+      distributedApproved: {
+        daily: Number(distributedApproved[0]._sum.amount || 0),
+        weekly: Number(distributedApproved[1]._sum.amount || 0),
+        monthly: Number(distributedApproved[2]._sum.amount || 0)
+      },
+      distributedPending: {
+        daily: Number(distributedPending[0]._sum.applicationAmount || 0),
+        weekly: Number(distributedPending[1]._sum.applicationAmount || 0),
+        monthly: Number(distributedPending[2]._sum.applicationAmount || 0)
+      },
+      totalCollected: Number(totalCollected._sum.amount || 0)
     };
   }
 
@@ -209,7 +431,19 @@ export class AdministrationService {
         billingAddress: dto.billingAddress,
         registrationNumber: dto.registrationNumber,
         panNo: dto.panNo,
-        gstNo: dto.gstNo
+        gstNo: dto.gstNo,
+        logoUrl: dto.logoUrl,
+        faviconUrl: dto.faviconUrl,
+        about: dto.about,
+        softwareUrl: dto.softwareUrl,
+        cin: dto.cin,
+        class: dto.class,
+        authorizedCapital: dto.authorizedCapital,
+        paidUpCapital: dto.paidUpCapital,
+        shareNominalValue: dto.shareNominalValue,
+        registrationState: dto.registrationState,
+        category: dto.category,
+        registrationDate: dto.registrationDate ? new Date(dto.registrationDate) : undefined,
       }
     });
   }
@@ -504,7 +738,7 @@ export class AdministrationService {
   async listUsers(currentUser: RequestUser) {
     this.ensureOperator(currentUser);
 
-    return this.prisma.user.findMany({
+    const rows = await this.prisma.user.findMany({
       where:
         currentUser.role === UserRole.SUPER_ADMIN
           ? {}
@@ -517,17 +751,31 @@ export class AdministrationService {
         fullName: true,
         role: true,
         isActive: true,
+        branchId: true,
+        customerProfile: {
+          select: {
+            id: true,
+            customerCode: true
+          }
+        },
         society: {
           select: {
             code: true,
             name: true
           }
-        }
+        },
+        createdAt: true
       },
       orderBy: {
         createdAt: "desc"
       }
     });
+
+    const accessMap = await this.getAllowedModuleMap(rows.map((entry) => entry.id));
+    return rows.map((entry) => ({
+      ...entry,
+      allowedModuleSlugs: accessMap.get(entry.id) ?? getDefaultAllowedModules(entry.role)
+    }));
   }
 
   async updateUserStatus(currentUser: RequestUser, id: string, dto: UpdateUserStatusDto) {
@@ -571,6 +819,55 @@ export class AdministrationService {
         isActive: true
       }
     });
+  }
+
+  async updateUserAccess(currentUser: RequestUser, id: string, dto: { allowedModuleSlugs: string[] }) {
+    this.ensureOperator(currentUser);
+
+    const target = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        societyId: true,
+        role: true
+      }
+    });
+
+    if (!target) {
+      throw new NotFoundException("User not found");
+    }
+
+    if (currentUser.role !== UserRole.SUPER_ADMIN && target.societyId !== currentUser.societyId) {
+      throw new ForbiddenException("User belongs to another society");
+    }
+
+    if (currentUser.role === UserRole.AGENT && target.role !== UserRole.CLIENT) {
+      throw new ForbiddenException("Agents can update client access only");
+    }
+
+    if (target.role === UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException("Platform administrators are managed separately");
+    }
+
+    const allowedModuleSlugs = sanitizeAllowedModules(target.role, dto.allowedModuleSlugs);
+
+    await this.updateAllowedModules(this.prisma, id, allowedModuleSlugs);
+
+    const updated = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        role: true,
+        isActive: true
+      }
+    });
+
+    return {
+      ...updated,
+      allowedModuleSlugs
+    };
   }
 
   async recomputeAccountBalance(currentUser: RequestUser, accountId: string, dto: RecomputeAccountDto) {
@@ -752,5 +1049,61 @@ export class AdministrationService {
     const output = date ? new Date(date) : new Date();
     output.setHours(0, 0, 0, 0);
     return output;
+  }
+
+  private async getAllowedModuleMap(userIds: string[]) {
+    if (!userIds.length) {
+      return new Map<string, string[]>();
+    }
+
+    const rows = await this.prisma.$queryRaw<Array<{ id: string; allowedModuleSlugs: string[] | null }>>(
+      Prisma.sql`
+        SELECT id, "allowedModuleSlugs"
+        FROM "User"
+        WHERE id IN (${Prisma.join(userIds)})
+      `
+    );
+
+    return new Map(rows.map((entry) => [entry.id, entry.allowedModuleSlugs ?? []]));
+  }
+
+  private async updateAllowedModules(tx: Prisma.TransactionClient | PrismaService, userId: string, allowedModuleSlugs: string[]) {
+    const moduleArray =
+      allowedModuleSlugs.length > 0
+        ? Prisma.sql`ARRAY[${Prisma.join(allowedModuleSlugs.map((entry) => Prisma.sql`${entry}`))}]::TEXT[]`
+        : Prisma.sql`ARRAY[]::TEXT[]`;
+
+    await tx.$executeRaw(
+      Prisma.sql`UPDATE "User" SET "allowedModuleSlugs" = ${moduleArray} WHERE id = ${userId}`
+    );
+  }
+
+  private async createLinkedCustomerProfile(
+    tx: Prisma.TransactionClient,
+    input: {
+      societyId: string;
+      societyCode: string;
+      role: UserRole;
+      firstName: string;
+      lastName?: string;
+    }
+  ) {
+    const prefix = input.role === UserRole.AGENT ? "A" : "C";
+    const count = await tx.customer.count({ where: { societyId: input.societyId } });
+    const customerCode = `${input.societyCode}-${prefix}${String(count + 1).padStart(5, "0")}`;
+
+    const customer = await tx.customer.create({
+      data: {
+        customerCode,
+        societyId: input.societyId,
+        firstName: input.firstName,
+        lastName: input.lastName
+      },
+      select: {
+        id: true
+      }
+    });
+
+    return customer.id;
   }
 }

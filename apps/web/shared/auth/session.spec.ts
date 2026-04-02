@@ -41,7 +41,8 @@ describe("session helpers", () => {
       fullName: "Client One",
       societyCode: "SOC-HO",
       subscriptionPlan: "FREE",
-      avatarDataUrl: null
+      avatarDataUrl: null,
+      requiresPasswordChange: false
     });
     clearSession();
 
@@ -58,7 +59,8 @@ describe("session helpers", () => {
       fullName: "Owner One",
       societyCode: "SOC-HO",
       subscriptionPlan: "PREMIUM",
-      avatarDataUrl: "data:image/png;base64,abc123"
+      avatarDataUrl: "data:image/png;base64,abc123",
+      requiresPasswordChange: false
     });
 
     expect(document.cookie).toContain("infopath_session=");

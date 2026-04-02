@@ -28,6 +28,10 @@ export class CreateBranchDto {
 
   @IsString()
   @IsOptional()
+  addressLine2?: string;
+
+  @IsString()
+  @IsOptional()
   city?: string;
 
   @IsString()
@@ -37,4 +41,16 @@ export class CreateBranchDto {
   @IsString()
   @IsOptional()
   pincode?: string;
+
+  @IsString()
+  @IsOptional()
+  openingDate?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  lockerFacility?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  neftImpsService?: boolean;
 }

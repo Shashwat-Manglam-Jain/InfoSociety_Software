@@ -44,6 +44,10 @@ export default function ClientLoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    router.prefetch("/dashboard/client");
+  }, [router]);
+
+  useEffect(() => {
     async function fetchSociety() {
       try {
         const societies = await getPublicSocieties();
@@ -88,11 +92,12 @@ export default function ClientLoginPage() {
         societyCode: response.user.society?.code ?? null,
         subscriptionPlan: response.user.subscription?.plan ?? null,
         avatarDataUrl: null,
-        requiresPasswordChange: response.user.requiresPasswordChange
+        requiresPasswordChange: response.user.requiresPasswordChange,
+        allowedModuleSlugs: response.user.allowedModuleSlugs ?? []
       });
 
-      toast.success(`Account Access initialized. Welcome, ${response.user.fullName}!`);
-      router.push(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
+      toast.success(`Welcome, ${response.user.fullName}!`);
+      router.replace(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Access failed.";
       setError(message);
@@ -196,7 +201,7 @@ export default function ClientLoginPage() {
                 >
                   <Stack spacing={3.2}>
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Member Identifier</Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Member ID</Typography>
                       <TextField
                         placeholder="e.g. member_123"
                         value={username}
@@ -210,7 +215,7 @@ export default function ClientLoginPage() {
                     </Box>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Secure Password</Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Password</Typography>
                       <TextField
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
@@ -246,7 +251,7 @@ export default function ClientLoginPage() {
                         boxShadow: "0 10px 20px -5px rgba(30, 58, 138, 0.3)"
                       }}
                     >
-                      {loading ? <CircularProgress size={24} sx={{ color: "inherit" }} /> : "Initialize My Dashboard"}
+                      {loading ? <CircularProgress size={24} sx={{ color: "inherit" }} /> : "Sign In"}
                     </Button>
                   </Stack>
                 </Box>
