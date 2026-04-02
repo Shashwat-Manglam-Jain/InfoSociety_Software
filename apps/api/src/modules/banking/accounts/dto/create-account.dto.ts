@@ -25,6 +25,13 @@ export class CreateAccountDto {
   branchCode?: string;
 
   @IsOptional()
+  @IsString()
+  branchId?: string;
+
+  @IsString()
+  headId!: string;
+
+  @IsOptional()
   @IsBoolean()
   isPassbookEnabled?: boolean;
 }

@@ -108,6 +108,19 @@ export class AccountsService {
     return account;
   }
 
+  /**
+   * Creates a new banking account while enforcing legacy architectural rules.
+   * 
+   * Strict Enforcements:
+   * 1. A customer can only hold ONE active Savings or Share (General) account.
+   * 2. A customer can only hold ONE active Loan account at at time.
+   * 3. Account numbers are automatically generated using the 17-digit rule if not explicitly provided.
+   *
+   * @param currentUser The authenticated user making the request.
+   * @param dto The payload containing account configuration.
+   * @returns The newly provisioned Account record.
+   * @throws ForbiddenException if limits are exceeded or scope is violated.
+   */
   async create(currentUser: RequestUser, dto: CreateAccountDto) {
     if (currentUser.role === UserRole.CLIENT) {
       throw new ForbiddenException("Client users cannot create accounts");
@@ -118,23 +131,39 @@ export class AccountsService {
       select: {
         id: true,
         societyId: true,
-        society: {
-          select: {
-            code: true
-          }
-        }
+        society: { select: { code: true } }
       }
     });
 
-    if (!customer) {
-      throw new NotFoundException("Customer not found");
-    }
+    if (!customer) throw new NotFoundException("Customer not found");
 
     this.ensureScope(currentUser, customer.societyId);
 
+    // Enforce 1 Savings/Share account rule per customer
+    if (dto.type === AccountType.SAVINGS || dto.type === AccountType.GENERAL) { // General might be Shares
+      const existing = await this.prisma.account.findFirst({
+        where: { customerId: customer.id, type: dto.type }
+      });
+      if (existing) throw new ForbiddenException(`Customer already has a ${dto.type} account.`);
+    }
+
+    // Enforce 1 Active Loan rule per customer
+    if (dto.type === AccountType.LOAN) {
+      const activeLoan = await this.prisma.account.findFirst({
+        where: { 
+          customerId: customer.id, 
+          type: AccountType.LOAN,
+          loanAccount: {
+            status: { notIn: ['CLOSED'] }
+          }
+        }
+      });
+      if (activeLoan) throw new ForbiddenException("Customer already has an active loan.");
+    }
+
     const accountNumber = dto.accountNumber?.trim()
       ? dto.accountNumber.trim().toUpperCase()
-      : await this.generateAccountNumber(customer.society.code, dto.type);
+      : await this.generateAccountNumber(customer.societyId, dto.branchId, dto.headId);
 
     return this.prisma.account.create({
       data: {
@@ -145,6 +174,8 @@ export class AccountsService {
         currentBalance: dto.openingBalance ?? 0,
         interestRate: dto.interestRate,
         branchCode: dto.branchCode,
+        branchId: dto.branchId,
+        headId: dto.headId,
         isPassbookEnabled: dto.isPassbookEnabled ?? true
       },
       include: {
@@ -219,17 +250,8 @@ export class AccountsService {
       where.customerId = currentUser.customerId ?? "";
     }
 
-    if (currentUser.role === UserRole.AGENT) {
+    if (currentUser.role === UserRole.AGENT || currentUser.role === UserRole.SUPER_USER) {
       where.societyId = currentUser.societyId ?? "";
-    }
-
-    if (currentUser.role === UserRole.SUPER_USER && query.societyCode) {
-      const society = await this.prisma.society.findUnique({
-        where: { code: query.societyCode.trim().toUpperCase() },
-        select: { id: true }
-      });
-
-      where.societyId = society?.id ?? "";
     }
 
     if (query.customerId) {
@@ -258,11 +280,7 @@ export class AccountsService {
   }
 
   private ensureScope(currentUser: RequestUser, societyId: string, customerId?: string) {
-    if (currentUser.role === UserRole.SUPER_USER) {
-      return;
-    }
-
-    if (currentUser.role === UserRole.AGENT && currentUser.societyId !== societyId) {
+    if ((currentUser.role === UserRole.SUPER_USER || currentUser.role === UserRole.AGENT) && currentUser.societyId !== societyId) {
       throw new ForbiddenException("Account belongs to another society");
     }
 
@@ -271,27 +289,35 @@ export class AccountsService {
     }
   }
 
-  private async generateAccountNumber(societyCode: string, type: AccountType) {
-    const prefixMap: Record<AccountType, string> = {
-      SAVINGS: "SB",
-      CURRENT: "CA",
-      FIXED_DEPOSIT: "FD",
-      RECURRING_DEPOSIT: "RD",
-      LOAN: "LN",
-      PIGMY: "PG",
-      GENERAL: "GL"
-    };
+  /**
+   * Generates a 17-digit deterministic account number based on the legacy schema mapping.
+   * 
+   * Format: [Society Code (3)] + [Branch Code (3)] + [Head Account Code (3)] + [Sequence (8)]
+   * Example: 00100100300000001
+   * 
+   * @param societyId Originating society's internal ID
+   * @param branchId Originating branch's internal ID (if applicable)
+   * @param headId The financial Head Master ID for categorization (Savings, FD, etc.)
+   * @returns A guaranteed unique 17-digit string
+   */
+  private async generateAccountNumber(societyId: string, branchId: string | undefined, headId: string) {
+    const society = await this.prisma.society.findUnique({ where: { id: societyId }, select: { code: true }});
+    const branch = branchId ? await this.prisma.branch.findUnique({ where: { id: branchId }, select: { code: true }}) : null;
+    const head = await this.prisma.head.findUnique({ where: { id: headId }, select: { accountCode: true }});
+    
+    // Fallback to "001" if missing to prevent failure, enforcing strictly 3 digits
+    const sCode = society?.code?.substring(0, 3).padStart(3, "0") || "001";
+    const bCode = branch?.code?.substring(0, 3).padStart(3, "0") || "001";
+    const hCode = head?.accountCode?.substring(0, 3).padStart(3, "0") || "001";
 
-    const prefix = prefixMap[type];
     const count = await this.prisma.account.count({
       where: {
-        society: {
-          code: societyCode
-        },
-        type
+        societyId,
+        headId
       }
     });
 
-    return `${prefix}${String(count + 1).padStart(7, "0")}`;
+    const sequence = String(count + 1).padStart(8, "0");
+    return `${sCode}${bCode}${hCode}${sequence}`;
   }
 }

@@ -26,8 +26,7 @@ export class BillingController {
   @ApiBearerAuth()
   @Post("upgrade")
   upgrade(@Req() req: Request & { user: RequestUser }, @Body() dto: UpgradeSubscriptionDto) {
-    void dto;
-    return this.service.upgrade(req.user);
+    return this.service.upgrade(req.user, dto);
   }
 
   @ApiBearerAuth()

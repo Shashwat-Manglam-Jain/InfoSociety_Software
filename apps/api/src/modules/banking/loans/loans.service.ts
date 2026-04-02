@@ -338,20 +338,9 @@ export class LoansService {
       where.customerId = currentUser.customerId ?? "";
     }
 
-    if (currentUser.role === UserRole.AGENT) {
+    if (currentUser.role === UserRole.AGENT || currentUser.role === UserRole.SUPER_USER) {
       where.account = {
         societyId: currentUser.societyId ?? ""
-      };
-    }
-
-    if (currentUser.role === UserRole.SUPER_USER && query.societyCode) {
-      const society = await this.prisma.society.findUnique({
-        where: { code: query.societyCode.trim().toUpperCase() },
-        select: { id: true }
-      });
-
-      where.account = {
-        societyId: society?.id ?? ""
       };
     }
 
@@ -376,11 +365,7 @@ export class LoansService {
   }
 
   private ensureScope(currentUser: RequestUser, societyId: string, customerId?: string) {
-    if (currentUser.role === UserRole.SUPER_USER) {
-      return;
-    }
-
-    if (currentUser.role === UserRole.AGENT && currentUser.societyId !== societyId) {
+    if ((currentUser.role === UserRole.SUPER_USER || currentUser.role === UserRole.AGENT) && currentUser.societyId !== societyId) {
       throw new ForbiddenException("Loan belongs to another society");
     }
 

@@ -194,19 +194,9 @@ export class LockerService {
       where.customerId = currentUser.customerId ?? "";
     }
 
-    if (currentUser.role === UserRole.AGENT) {
+    if (currentUser.role === UserRole.AGENT || currentUser.role === UserRole.SUPER_USER) {
       where.customer = {
         societyId: currentUser.societyId ?? ""
-      };
-    }
-
-    if (currentUser.role === UserRole.SUPER_USER && query.societyCode) {
-      const society = await this.prisma.society.findUnique({
-        where: { code: query.societyCode.trim().toUpperCase() },
-        select: { id: true }
-      });
-      where.customer = {
-        societyId: society?.id ?? ""
       };
     }
 
@@ -227,11 +217,7 @@ export class LockerService {
   }
 
   private ensureScope(currentUser: RequestUser, societyId: string, customerId?: string) {
-    if (currentUser.role === UserRole.SUPER_USER) {
-      return;
-    }
-
-    if (currentUser.role === UserRole.AGENT && currentUser.societyId !== societyId) {
+    if ((currentUser.role === UserRole.SUPER_USER || currentUser.role === UserRole.AGENT) && currentUser.societyId !== societyId) {
       throw new ForbiddenException("Locker belongs to another society");
     }
 

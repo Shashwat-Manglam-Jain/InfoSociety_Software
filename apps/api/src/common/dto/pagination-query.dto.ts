@@ -1,15 +1,15 @@
-import { Transform } from "class-transformer";
+import { Transform, type TransformFnParams } from "class-transformer";
 import { IsInt, IsOptional, Min } from "class-validator";
 
 export class PaginationQueryDto {
   @IsOptional()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }: TransformFnParams) => Number(value))
   @IsInt()
   @Min(1)
   page = 1;
 
   @IsOptional()
-  @Transform(({ value }) => Number(value))
+  @Transform(({ value }: TransformFnParams) => Number(value))
   @IsInt()
   @Min(1)
   limit = 20;

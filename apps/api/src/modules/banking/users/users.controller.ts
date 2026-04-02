@@ -27,7 +27,7 @@ export class UsersController {
   }
 
   @ApiBearerAuth()
-  @Roles(UserRole.SUPER_USER, UserRole.AGENT)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT)
   @Get("directory")
   getDirectory(@Req() req: Request & { user: RequestUser }) {
     return this.service.getDirectory(req.user);

@@ -1,13 +1,16 @@
 "use client";
 
-import { CssBaseline, ThemeProvider } from "@mui/material";
-import { appTheme } from "@/shared/theme/theme";
+import { ToastViewport } from "@/components/ui/toast-viewport";
+import { LanguageProvider } from "@/shared/i18n/language-provider";
+import { AppThemeProvider } from "@/shared/theme/app-theme-provider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider theme={appTheme}>
-      <CssBaseline />
-      {children}
-    </ThemeProvider>
+    <AppThemeProvider>
+      <LanguageProvider>
+        {children}
+        <ToastViewport />
+      </LanguageProvider>
+    </AppThemeProvider>
   );
 }

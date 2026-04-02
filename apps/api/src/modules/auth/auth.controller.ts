@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Post, Req } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { UserRole } from "@prisma/client";
 import { Request } from "express";
@@ -9,13 +9,16 @@ import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterAgentDto } from "./dto/register-agent.dto";
 import { RegisterClientDto } from "./dto/register-client.dto";
+import { RegisterSocietyDto } from "./dto/register-society.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 
 @ApiTags("auth")
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Public()
+  @HttpCode(200)
   @Post("login")
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
@@ -27,11 +30,35 @@ export class AuthController {
     return this.authService.registerClient(dto);
   }
 
+  @Public()
+  @Post("register/agent/self")
+  registerAgentSelf(@Body() dto: RegisterAgentDto) {
+    return this.authService.registerAgentSelf(dto);
+  }
+
+  @Public()
+  @Post("register/society")
+  registerSociety(@Body() dto: RegisterSocietyDto) {
+    return this.authService.registerSociety(dto);
+  }
+
+  @Public()
+  @Get("societies")
+  listSocieties() {
+    return this.authService.listActiveSocieties();
+  }
+
   @ApiBearerAuth()
-  @Roles(UserRole.SUPER_USER)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER)
   @Post("register/agent")
   registerAgent(@Body() dto: RegisterAgentDto) {
     return this.authService.registerAgent(dto);
+  }
+
+  @ApiBearerAuth()
+  @Post("change-password")
+  changePassword(@Req() req: Request & { user: RequestUser }, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(req.user, dto);
   }
 
   @ApiBearerAuth()

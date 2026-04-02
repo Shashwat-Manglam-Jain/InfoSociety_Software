@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteNavbar } from "@/components/layout/site-navbar";
+import { appBranding } from "@/shared/config/branding";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -8,37 +10,27 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Infopath Banking Platform",
-    template: "%s | Infopath Banking"
+    default: appBranding.productName,
+    template: `%s | ${appBranding.productShortName}`
   },
-  description:
-    "Core banking platform for societies with client, agent, and superuser workflows across accounts, deposits, loans, reports, and operations.",
-  keywords: [
-    "core banking software",
-    "society banking",
-    "loan management",
-    "deposit management",
-    "nest js banking api",
-    "next js banking dashboard"
-  ],
-  applicationName: "Infopath Banking Platform",
+  description: appBranding.metaDescription,
+  keywords: [...appBranding.keywords],
+  applicationName: appBranding.productName,
   alternates: {
     canonical: "/"
   },
   openGraph: {
-    title: "Infopath Banking Platform",
-    description:
-      "Unified web banking system for account lifecycle, transactions, loan operations, and role-based society monitoring.",
+    title: appBranding.productName,
+    description: appBranding.metaDescription,
     url: siteUrl,
-    siteName: "Infopath Banking",
+    siteName: appBranding.productShortName,
     locale: "en_US",
     type: "website"
   },
   twitter: {
     card: "summary_large_image",
-    title: "Infopath Banking Platform",
-    description:
-      "Client, agent, and superuser workspaces for society banking operations on a responsive web platform."
+    title: appBranding.productName,
+    description: appBranding.metaDescription
   },
   robots: {
     index: true,
@@ -58,7 +50,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Providers>
-          {children}
+          <SiteNavbar />
+          <main>{children}</main>
           <SiteFooter />
         </Providers>
       </body>

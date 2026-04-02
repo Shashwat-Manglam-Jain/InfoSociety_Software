@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { PrismaModule } from "../common/database/prisma.module";
 import { AuthModule } from "../modules/auth/auth.module";
 import { BillingModule } from "../modules/billing/billing.module";
+import { PaymentsModule } from "../modules/payments/payments.module";
 import { AccountsModule } from "../modules/banking/accounts/accounts.module";
 import { AdministrationModule } from "../modules/banking/administration/administration.module";
 import { CashbookModule } from "../modules/banking/cashbook/cashbook.module";
@@ -16,6 +17,8 @@ import { InvestmentsModule } from "../modules/banking/investments/investments.mo
 import { LoansModule } from "../modules/banking/loans/loans.module";
 import { LockerModule } from "../modules/banking/locker/locker.module";
 import { MonitoringModule } from "../modules/banking/monitoring/monitoring.module";
+import { BranchesModule } from "../modules/banking/branches/branches.module";
+import { HeadsModule } from "../modules/banking/heads/heads.module";
 import { ReportsModule } from "../modules/banking/reports/reports.module";
 import { TransactionsModule } from "../modules/banking/transactions/transactions.module";
 import { UsersModule } from "../modules/banking/users/users.module";
@@ -29,6 +32,7 @@ import { AppController } from "./app.controller";
     PrismaModule,
     AuthModule,
     BillingModule,
+    PaymentsModule,
     HealthModule,
     CustomersModule,
     AccountsModule,
@@ -44,7 +48,9 @@ import { AppController } from "./app.controller";
     AdministrationModule,
     ReportsModule,
     UsersModule,
-    MonitoringModule
+    MonitoringModule,
+    BranchesModule,
+    HeadsModule
   ],
   controllers: [AppController]
 })

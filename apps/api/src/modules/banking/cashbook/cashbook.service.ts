@@ -28,23 +28,9 @@ export class CashbookService {
 
     const where: Prisma.CashBookEntryWhereInput = {};
 
-    if (currentUser.role === UserRole.AGENT) {
+    if (currentUser.role === UserRole.AGENT || currentUser.role === UserRole.SUPER_USER) {
       where.createdBy = {
         societyId: currentUser.societyId ?? ""
-      };
-    }
-
-    if (currentUser.role === UserRole.SUPER_USER && query.societyCode) {
-      const society = await this.prisma.society.findUnique({
-        where: {
-          code: query.societyCode.trim().toUpperCase()
-        },
-        select: {
-          id: true
-        }
-      });
-      where.createdBy = {
-        societyId: society?.id ?? ""
       };
     }
 
@@ -235,7 +221,7 @@ export class CashbookService {
       }
     };
 
-    if (currentUser.role === UserRole.AGENT) {
+    if (currentUser.role === UserRole.AGENT || currentUser.role === UserRole.SUPER_USER) {
       where.createdBy = {
         societyId: currentUser.societyId ?? ""
       };
@@ -261,11 +247,7 @@ export class CashbookService {
   }
 
   private ensureEntryScope(currentUser: RequestUser, societyId: string | null) {
-    if (currentUser.role === UserRole.SUPER_USER) {
-      return;
-    }
-
-    if (societyId && currentUser.societyId !== societyId) {
+    if ((currentUser.role === UserRole.SUPER_USER || currentUser.role === UserRole.AGENT) && societyId && currentUser.societyId !== societyId) {
       throw new ForbiddenException("Cashbook entry belongs to another society");
     }
   }
