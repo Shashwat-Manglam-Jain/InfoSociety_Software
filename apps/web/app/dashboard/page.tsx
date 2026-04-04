@@ -27,7 +27,7 @@ export default function DashboardRootRedirect() {
         router.replace("/dashboard/superadmin");
         break;
       case "SUPER_USER":
-        window.location.href = "/dashboard/society?view=overview";
+        window.location.href = "/dashboard/society?view=membership_clients";
         break;
       default:
         router.replace("/login");

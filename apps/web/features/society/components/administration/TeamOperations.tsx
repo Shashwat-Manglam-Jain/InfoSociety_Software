@@ -1,45 +1,42 @@
 "use client";
 
-import React from "react";
-import { 
-  Avatar, 
-  Box, 
-  Button, 
-  Chip, 
-  Grid, 
-  Paper, 
-  Stack, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Typography,
-  IconButton,
+import { useState } from "react";
+import {
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  Paper,
+  Stack,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
-  InputAdornment
+  Tooltip,
+  Typography,
+  MenuItem
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
-import EngineeringRoundedIcon from "@mui/icons-material/EngineeringRounded";
 import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
+import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
-import ToggleOffRoundedIcon from "@mui/icons-material/ToggleOffRounded";
-import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import { alpha, useTheme } from "@mui/material/styles";
 import { SectionHero } from "../operations/SectionHero";
 import { MetricCard } from "../operations/MetricCard";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
+import type { ManagedUserRow } from "../../lib/society-admin-dashboard";
 
 export type TeamOperationsProps = {
-  managedUsers: any[];
+  managedUsers: ManagedUserRow[];
   userSearch: string;
-  setUserSearch: (v: string) => void;
+  setUserSearch: (value: string) => void;
   handleOpenDrawer: (type: "staff" | "agent" | "client") => void;
   handleToggleUserStatus: (id: string, current: boolean) => void;
-  setSelectedUserAccess: (user: any) => void;
+  setSelectedUserAccess: (user: ManagedUserRow) => void;
 };
 
 export function TeamOperations({
@@ -54,100 +51,211 @@ export function TeamOperations({
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
 
+  const [accountTypeFilter, setAccountTypeFilter] = useState("all");
+
+  const filteredUsers = managedUsers.filter((user) => {
+    if (user.role === "SUPER_USER") {
+      return false; // Remove admin account showing
+    }
+
+    if (accountTypeFilter !== "all" && user.role !== accountTypeFilter) {
+      return false;
+    }
+
+    const query = userSearch.trim().toLowerCase();
+    if (!query) {
+      return true;
+    }
+
+    return [user.fullName, user.username, user.branch?.name ?? "", user.roleMeta.label].some((value) =>
+      value.toLowerCase().includes(query)
+    );
+  });
+
   const metrics = [
-    { label: "Active Team", value: String(managedUsers.length), caption: "Administrative and operative identities." },
-    { label: "Role Diversity", value: "3 Types", caption: "Staff, Agents, and Member-focused roles." },
-    { label: "System Uptime", value: "99.9%", caption: "Login portal availability health." },
-    { label: "Security", value: "RBAC", caption: "Role-Based Access Control enforced." }
+    { label: "Accounts", value: String(managedUsers.length), caption: "All login-enabled society accounts." },
+    {
+      label: "Staff",
+      value: String(managedUsers.filter((user) => user.role === "SUPER_USER").length),
+      caption: "Internal operational accounts."
+    },
+    {
+      label: "Agents",
+      value: String(managedUsers.filter((user) => user.role === "AGENT").length),
+      caption: "Field agents and collections staff."
+    },
+    {
+      label: "Clients",
+      value: String(managedUsers.filter((user) => user.role === "CLIENT").length),
+      caption: "Client member portal accounts."
+    }
   ];
 
   return (
-    <Stack spacing={4}>
+    <Stack spacing={3}>
       <SectionHero
         icon={<BadgeRoundedIcon />}
-        eyebrow="Operations"
-        title="Team Directory"
-        description="Monitor and provision institutional identities for field agents, administrative staff, and member client portals."
+        eyebrow="Users"
+        title="User management"
+        description="Create, activate, and manage staff, agent, and client accounts with clear role labels and module access."
         colorScheme="blue"
         actions={
           <>
-            <TextField 
-                size="small" 
-                placeholder="Search operatives..." 
-                value={userSearch}
-                onChange={e => setUserSearch(e.target.value)}
-                sx={{ 
-                    width: 250, 
-                    "& .MuiOutlinedInput-root": { borderRadius: 3, bgcolor: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" } 
-                }}
-                InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "rgba(255,255,255,0.6)" }} /></InputAdornment> }}
+            <TextField
+              size="small"
+              value={userSearch}
+              onChange={(event) => setUserSearch(event.target.value)}
+              placeholder="Search users"
+              sx={{
+                minWidth: { xs: "100%", sm: 240 },
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2.5,
+                  bgcolor: surfaces.input,
+                  color: "#fff",
+                  border: `1px solid ${surfaces.inputBorder}`
+                }
+              }}
+              InputProps={{
+                startAdornment: <SearchRoundedIcon sx={{ mr: 1, fontSize: 18, color: "rgba(255,255,255,0.65)" }} />
+              }}
             />
-            <Button 
-                variant="contained" 
-                startIcon={<EngineeringRoundedIcon />} 
-                onClick={() => handleOpenDrawer("staff")}
-                sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2.5, fontWeight: 900, "&:hover": { bgcolor: "#f1f5f9" } }}
+            <TextField
+              select
+              size="small"
+              value={accountTypeFilter}
+              onChange={(e) => setAccountTypeFilter(e.target.value)}
+              sx={{
+                minWidth: { xs: "100%", sm: 160 },
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2.5,
+                  bgcolor: surfaces.input,
+                  color: "#fff",
+                  border: `1px solid ${surfaces.inputBorder}`
+                }
+              }}
             >
-                Provision User
+              <MenuItem value="all">All Accounts</MenuItem>
+              <MenuItem value="CLIENT">Client</MenuItem>
+              <MenuItem value="AGENT">Agent</MenuItem>
+            </TextField>
+            <Button
+              variant="contained"
+              startIcon={<PersonAddAlt1RoundedIcon />}
+              onClick={() => handleOpenDrawer("staff")}
+              sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2.5, fontWeight: 800, "&:hover": { bgcolor: "#f8fafc" } }}
+            >
+              Add account
             </Button>
           </>
         }
       />
 
-      <Grid container spacing={3}>
-        {metrics.map((m, idx) => (
-          <Grid item xs={12} sm={6} md={3} key={idx}>
-            <MetricCard {...m} />
-          </Grid>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" }
+        }}
+      >
+        {metrics.map((metric) => (
+          <MetricCard key={metric.label} {...metric} />
         ))}
-      </Grid>
+      </Box>
 
-      <Paper elevation={0} sx={{ borderRadius: 6, border: `1px solid ${surfaces.border}`, overflow: 'hidden', bgcolor: surfaces.paper }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
-          <Table>
+          <Table size="small" sx={{ minWidth: 860, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 900, py: 2.5 }}>Operative Identity</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Structural Role</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Assigned Hub</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Portal Access</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 900 }}>Operational Status</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "28%" }}>User</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "18%" }}>Account type</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "18%" }}>Branch</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "18%" }}>Modules</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "10%" }}>Status</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, width: "8%" }}>
+                  Actions
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {managedUsers
-                .filter(u => u.fullName.toLowerCase().includes(userSearch.toLowerCase()) || u.username.toLowerCase().includes(userSearch.toLowerCase()))
-                .map((entry) => (
-                <TableRow key={entry.id} hover>
-                   <TableCell>
-                      <Stack direction="row" spacing={2} alignItems="center">
-                         <Avatar sx={{ bgcolor: entry.role === 'STAFF' ? "primary.main" : entry.role === 'AGENT' ? "#10b981" : "#8b5cf6", fontWeight: 900, borderRadius: 2 }}>
-                            {entry.role === 'STAFF' ? <EngineeringRoundedIcon /> : entry.role === 'AGENT' ? <ToggleOnRoundedIcon /> : <GroupsRoundedIcon />}
-                         </Avatar>
-                         <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 800 }}>{entry.fullName}</Typography>
-                            <Typography variant="caption" color="text.secondary">@{entry.username}</Typography>
-                         </Box>
-                      </Stack>
-                   </TableCell>
-                   <TableCell>
-                      <Chip label={entry.role} size="small" sx={{ fontWeight: 900, bgcolor: entry.role === 'STAFF' ? alpha("#2563eb", 0.1) : entry.role === 'AGENT' ? alpha("#10b981", 0.1) : alpha("#8b5cf6", 0.1), color: entry.role === 'STAFF' ? "#2563eb" : entry.role === 'AGENT' ? "#10b981" : "#8b5cf6" }} />
-                   </TableCell>
-                   <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{entry.branch?.name || "Global"}</Typography>
-                      <Typography variant="caption" color="text.secondary">{entry.branch?.code || "Sovereign"}</Typography>
-                   </TableCell>
-                   <TableCell>
-                      <Button size="small" startIcon={<ManageAccountsRoundedIcon sx={{ fontSize: 14 }} />} sx={{ fontWeight: 900, borderRadius: 1.5 }} onClick={() => setSelectedUserAccess(entry)}>Access Matrix</Button>
-                   </TableCell>
-                   <TableCell align="right">
-                      <Stack direction="row" spacing={2} justifyContent="flex-end" alignItems="center">
-                         <Typography variant="caption" sx={{ fontWeight: 900, color: entry.isActive ? "#10b981" : "#f43f5e" }}>{entry.isActive ? "ONLINE" : "BLOCKED"}</Typography>
-                         <Switch checked={entry.isActive} onChange={() => handleToggleUserStatus(entry.id, entry.isActive)} />
-                      </Stack>
-                   </TableCell>
+              {filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No matching users found.
+                    </Typography>
+                  </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredUsers.map((user) => (
+                  <TableRow key={user.id} hover>
+                    <TableCell>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main }}>
+                          {user.fullName?.[0] ?? "U"}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {user.fullName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            @{user.username}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip title={user.roleMeta.description}>
+                        <Chip
+                          size="small"
+                          label={user.roleMeta.label}
+                          sx={{
+                            fontWeight: 700,
+                            bgcolor: alpha(theme.palette.primary.main, 0.08),
+                            color: theme.palette.primary.main
+                          }}
+                        />
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {user.branch?.name ?? "Head office"}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {user.branch?.code ?? "No branch code"}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {user.allowedModuleSlugs?.length ?? 0} modules
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Controlled from access settings
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Switch checked={user.isActive} onChange={() => handleToggleUserStatus(user.id, user.isActive)} />
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: user.isActive ? "#15803d" : "#475569" }}>
+                          {user.isActive ? "Active" : "Inactive"}
+                        </Typography>
+                      </Stack>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Manage access">
+                        <Button
+                          size="small"
+                          startIcon={<ManageAccountsRoundedIcon fontSize="small" />}
+                          onClick={() => setSelectedUserAccess(user)}
+                          sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700 }}
+                        >
+                          Access
+                        </Button>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>

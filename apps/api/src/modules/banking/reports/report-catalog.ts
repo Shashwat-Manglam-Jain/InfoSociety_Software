@@ -4,7 +4,6 @@ export const reportCatalog = {
     "Nominee List",
     "Joint Account List",
     "Customer Master",
-    "Director List",
     "Member List",
     "Employee List",
     "Guarantors List",

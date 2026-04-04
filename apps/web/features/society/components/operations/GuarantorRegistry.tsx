@@ -12,12 +12,14 @@ import {
   TablePagination, 
   TableRow, 
   TextField, 
-  Typography
+  Typography,
+  Button
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
 import GroupAddRoundedIcon from "@mui/icons-material/GroupAddRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import { SectionHero } from "./SectionHero";
 import { TableEmpty } from "./shared/TableEmpty";
 import { StatusChip } from "./shared/StatusChip";
@@ -59,8 +61,24 @@ export function GuarantorRegistry({
   const colorScheme = type === "guarantor" ? "sky" : "violet";
 
   const columnLabels = type === "guarantor" 
-    ? ["Guarantor Name", "Branch", "Account Ref", "Facility Type", "Linked Plan", "Security Status"]
-    : ["Applicant Name", "Branch", "Co-Applicant", "Relationship", "Linked Acc", "Status"];
+    ? [
+        { label: "Guarantor Name", width: "25%", align: "left" },
+        { label: "Branch", width: "15%", align: "left" },
+        { label: "Account Ref", width: "15%", align: "left" },
+        { label: "Facility Type", width: "15%", align: "left" },
+        { label: "Linked Plan", width: "15%", align: "left" },
+        { label: "Security Status", width: "15%", align: "left" },
+        { label: "Actions", width: "10%", align: "right" }
+      ]
+    : [
+        { label: "Applicant Name", width: "25%", align: "left" },
+        { label: "Branch", width: "15%", align: "left" },
+        { label: "Co-Applicant", width: "15%", align: "left" },
+        { label: "Relationship", width: "15%", align: "left" },
+        { label: "Linked Acc", width: "15%", align: "left" },
+        { label: "Status", width: "15%", align: "left" },
+        { label: "Actions", width: "10%", align: "right" }
+      ];
 
   return (
     <Stack spacing={3}>
@@ -92,33 +110,63 @@ export function GuarantorRegistry({
         }
       />
 
-      <Paper elevation={0} sx={{ borderRadius: 6, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
-          <Table sx={{ minWidth: 1000 }}>
+          <Table sx={{ minWidth: 1000, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
-                {columnLabels.map((label) => (
-                  <TableCell key={label} sx={{ fontWeight: 900, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
-                    {label}
+                {columnLabels.map((col, idx) => (
+                  <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
+                    {col.label}
                   </TableCell>
                 ))}
               </TableRow>
             </TableHead>
             <TableBody>
               {rows.length === 0 ? (
-                <TableEmpty colSpan={6} label={`No ${type} records documented in the current registry view.`} />
+                <TableEmpty colSpan={7} label={`No ${type} records documented in the current registry view.`} />
               ) : (
                 rows
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                   .map((row, idx) => (
-                    <TableRow key={idx} hover>
-                      <TableCell sx={{ fontWeight: 800 }}>{row.memberName || row.name}</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>{row.branch}</TableCell>
-                      <TableCell>{type === "guarantor" ? row.accountNo : row.name}</TableCell>
-                      <TableCell>{type === "guarantor" ? row.accountType : row.relation}</TableCell>
-                      <TableCell>{type === "guarantor" ? row.planName : row.linkedAccountNo}</TableCell>
+                    <TableRow 
+                      key={idx} 
+                      hover
+                      sx={{ 
+                        transition: "background-color 0.2s ease",
+                        "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.02) }
+                      }}
+                    >
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>{row.memberName || row.name}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: "text.secondary" }}>{row.branch}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary" }}>{type === "guarantor" ? row.accountNo : row.name}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{type === "guarantor" ? row.accountType : row.relation}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: "primary.main" }}>{type === "guarantor" ? row.planName : row.linkedAccountNo}</Typography>
+                      </TableCell>
                       <TableCell>
                         <StatusChip label={row.status} tone={row.status === "Active" || row.status === "Verified" ? "success" : "warning"} />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Button 
+                          size="small" 
+                          sx={{ 
+                            minWidth: "auto", 
+                            p: 1, 
+                            color: "text.secondary", 
+                            "&:hover": { color: "primary.main", bgcolor: alpha(theme.palette.primary.main, 0.08) } 
+                          }}
+                        >
+                          <EditRoundedIcon fontSize="small" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

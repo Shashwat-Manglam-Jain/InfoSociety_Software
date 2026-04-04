@@ -18,7 +18,8 @@ import {
   Tooltip,
   Typography,
   Avatar,
-  Grid
+  Grid,
+  IconButton
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -134,21 +135,21 @@ export function ClientRegistry({
         ))}
       </Grid>
 
-      <Paper elevation={0} sx={{ borderRadius: 6, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
-          <Table sx={{ minWidth: 1000 }}>
+          <Table sx={{ minWidth: 860, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
                 {[
-                  "Member Identity",
-                  "Member Details",
-                  "Contact Matrix",
-                  "Regional Scope",
-                  "Joined On",
-                  "Actions"
-                ].map((label) => (
-                  <TableCell key={label} sx={{ fontWeight: 900, py: 2.5, whiteSpace: "nowrap", borderBottom: `1px solid ${surfaces.tableBorder}` }}>
-                    {label}
+                  { label: "Client Identity", width: "25%", align: "left" },
+                  { label: "Profile & Role", width: "20%", align: "left" },
+                  { label: "Contact Info", width: "20%", align: "left" },
+                  { label: "Geo-Location", width: "15%", align: "left" },
+                  { label: "Joined Date", width: "15%", align: "left" },
+                  { label: "", width: "5%", align: "right" }
+                ].map((col, idx) => (
+                  <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
+                    {col.label}
                   </TableCell>
                 ))}
               </TableRow>
@@ -162,39 +163,55 @@ export function ClientRegistry({
                 </TableRow>
               ) : (
                 members.slice(memberPage * memberRowsPerPage, memberPage * memberRowsPerPage + memberRowsPerPage).map((member) => (
-                  <TableRow key={member.id} hover sx={{ cursor: "pointer" }} onClick={() => openMemberDetail(member.id)}>
-                    <TableCell>
+                  <TableRow 
+                    key={member.id} 
+                    hover 
+                    sx={{ 
+                      cursor: "pointer",
+                      transition: "background-color 0.2s ease",
+                      "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.02) }
+                    }} 
+                    onClick={() => openMemberDetail(member.id)}
+                  >
+                    <TableCell sx={{ py: 2 }}>
                       <Stack direction="row" spacing={2} alignItems="center">
                         <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main, fontWeight: 900, borderRadius: 2 }}>
                           {member.memberName.charAt(0)}
                         </Avatar>
                         <Box>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>{member.memberName}</Typography>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 900, color: "text.primary" }}>{member.memberName}</Typography>
                           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>ID: {member.memberId}</Typography>
                         </Box>
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{member.occupation || "-"}</Typography>
-                      <Typography variant="caption" color="text.secondary">{member.branchName}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>{member.occupation || "-"}</Typography>
+                      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>{member.branchName}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{member.mobileNo}</Typography>
-                      <Typography variant="caption" color="text.secondary">{member.email || "No Email"}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>{member.mobileNo}</Typography>
+                      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>{member.email || "No Email"}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">{member.city}</Typography>
-                      <Typography variant="caption" color="text.secondary">{member.state}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary" }}>{member.city}</Typography>
+                      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>{member.state}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary">{formatDate(member.registrationDate)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{formatDate(member.registrationDate)}</Typography>
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={1} justifyContent="flex-end">
                         <Tooltip title="View Profile">
-                          <Button size="small" variant="outlined" sx={{ borderRadius: 2, minWidth: 40 }} onClick={(e) => { e.stopPropagation(); openMemberDetail(member.id); }}>
+                          <IconButton 
+                            size="small" 
+                            onClick={(e) => { e.stopPropagation(); openMemberDetail(member.id); }}
+                            sx={{
+                              color: "text.secondary",
+                              "&:hover": { color: "primary.main", bgcolor: alpha(theme.palette.primary.main, 0.08) }
+                            }}
+                          >
                             <VisibilityRoundedIcon fontSize="small" />
-                          </Button>
+                          </IconButton>
                         </Tooltip>
                       </Stack>
                     </TableCell>
@@ -216,5 +233,4 @@ export function ClientRegistry({
     </Stack>
   );
 }
-
 

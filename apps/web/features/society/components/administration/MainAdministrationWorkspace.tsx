@@ -1,38 +1,33 @@
 "use client";
 
-import React from "react";
-import { Stack, Box, Typography, Paper } from "@mui/material";
-import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import { SocietyMaster } from "./SocietyMaster";
+import { DashboardOverview } from "./DashboardOverview";
 import { BranchInfrastructure } from "./BranchInfrastructure";
-import { DirectorGovernance } from "./DirectorGovernance";
+
 import { TeamOperations } from "./TeamOperations";
 import { TreasuryAudit } from "./TreasuryAudit";
 import { FieldOperatives } from "./FieldOperatives";
-import { AgentShareholding } from "./AgentShareholding";
 
 export type AdminView = 
   | "overview"
   | "master_company" 
   | "master_branches" 
-  | "master_directors" 
+
   | "directory" 
-  | "treasury_audit" 
-  | "promoter_agents" 
-  | "promoter_shareholding"
-  | "logs";
+  | "treasury_audit"
+  | "promoter_agents";
 
 export type MainAdministrationWorkspaceProps = {
   view: AdminView;
   societyForm: any;
   setSocietyForm: (v: any) => void;
   handleUpdateSociety: () => void;
+  handleOpenWorkspace: () => void;
   formLoading: boolean;
   branches: any[];
   handleOpenDrawer: (type: any, data?: any) => void;
   handleDeleteBranch: (id: string) => void;
-  directors: any[];
-  handleDeleteDirector: (id: string) => void;
+
   managedUsers: any[];
   userSearch: string;
   setUserSearch: (v: string) => void;
@@ -51,16 +46,6 @@ export type MainAdministrationWorkspaceProps = {
   agentRowsPerPage: number;
   setAgentRowsPerPage: (r: number) => void;
   setEditingAgent: (agent: any) => void;
-  shareholdings: any[];
-  shareholdingSearch: string;
-  setShareholdingSearch: (v: string) => void;
-  shareholdingPage: number;
-  setShareholdingPage: (p: number) => void;
-  shareholdingRowsPerPage: number;
-  setShareholdingRowsPerPage: (r: number) => void;
-  setActiveShareholdingDrawer: (v: any) => void;
-  setShareholdingForm: (v: any) => void;
-  setEditingShareholding: (v: any) => void;
 };
 
 export function MainAdministrationWorkspace(props: MainAdministrationWorkspaceProps) {
@@ -68,12 +53,22 @@ export function MainAdministrationWorkspace(props: MainAdministrationWorkspacePr
 
   switch (view) {
     case "overview":
+      return (
+        <DashboardOverview
+          societyForm={props.societyForm}
+          transactions={props.transactions}
+          agents={props.agents}
+          managedUsers={props.managedUsers}
+        />
+      );
+
     case "master_company":
       return (
         <SocietyMaster 
           societyForm={props.societyForm} 
           setSocietyForm={props.setSocietyForm} 
           handleUpdateSociety={props.handleUpdateSociety} 
+          handleOpenWorkspace={props.handleOpenWorkspace}
           formLoading={props.formLoading} 
         />
       );
@@ -87,14 +82,7 @@ export function MainAdministrationWorkspace(props: MainAdministrationWorkspacePr
         />
       );
 
-    case "master_directors":
-      return (
-        <DirectorGovernance 
-          directors={props.directors} 
-          handleOpenDrawer={props.handleOpenDrawer} 
-          handleDeleteDirector={props.handleDeleteDirector} 
-        />
-      );
+
 
     case "directory":
       return (
@@ -132,37 +120,6 @@ export function MainAdministrationWorkspace(props: MainAdministrationWorkspacePr
           handleOpenDrawer={props.handleOpenDrawer} 
           setEditingAgent={props.setEditingAgent} 
         />
-      );
-
-    case "promoter_shareholding":
-      return (
-        <AgentShareholding 
-          shareholdings={props.shareholdings} 
-          shareholdingSearch={props.shareholdingSearch} 
-          setShareholdingSearch={props.setShareholdingSearch} 
-          shareholdingPage={props.shareholdingPage} 
-          setShareholdingPage={props.setShareholdingPage} 
-          shareholdingRowsPerPage={props.shareholdingRowsPerPage} 
-          setShareholdingRowsPerPage={props.setShareholdingRowsPerPage} 
-          setActiveShareholdingDrawer={props.setActiveShareholdingDrawer} 
-          setShareholdingForm={props.setShareholdingForm} 
-          setEditingShareholding={props.setEditingShareholding} 
-        />
-      );
-
-    case "logs":
-      return (
-        <Stack spacing={4}>
-          <Box>
-            <Typography variant="h3" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.04em" }}>System Logs</Typography>
-            <Typography variant="body1" sx={{ color: "text.secondary", mt: 1 }}>Security audit and institutional event stream.</Typography>
-          </Box>
-          <Paper elevation={0} sx={{ p: 8, borderRadius: 3, border: "1px dashed rgba(15, 23, 42, 0.2)", textAlign: 'center' }}>
-             <HistoryRoundedIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-             <Typography variant="h6" sx={{ fontWeight: 800 }}>Audit Engine Initializing</Typography>
-             <Typography variant="body2" color="text.secondary">Detailed system logs will be streaming here after the next synchronization cycle.</Typography>
-          </Paper>
-        </Stack>
       );
 
     default:

@@ -15,8 +15,7 @@ import {
   TableRow, 
   TextField, 
   Typography,
-  Tabs,
-  Tab,
+  MenuItem,
   alpha
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
@@ -84,6 +83,24 @@ export function ShareRegister({
         actions={
           <>
             <TextField
+              select
+              size="small"
+              value={shareholdingTypeTab}
+              onChange={(e) => setShareholdingTypeTab(e.target.value)}
+              sx={{
+                minWidth: { xs: "100%", sm: 160 },
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 3,
+                  bgcolor: surfaces.input,
+                  color: "#fff",
+                  border: `1px solid ${surfaces.inputBorder}`
+                }
+              }}
+            >
+              <MenuItem value="shareholder">Shareholder</MenuItem>
+              <MenuItem value="nominal">Nominal</MenuItem>
+            </TextField>
+            <TextField
               size="small"
               value={shareholdingSearch}
               onChange={(event) => setShareholdingSearch(event.target.value)}
@@ -125,34 +142,22 @@ export function ShareRegister({
         }
       />
 
-      <Paper elevation={0} sx={{ borderRadius: 6, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
-        <Tabs
-          value={shareholdingTypeTab}
-          onChange={(_, value) => setShareholdingTypeTab(value)}
-          sx={{ 
-            px: 3, 
-            borderBottom: `1px solid ${surfaces.tableBorder}`,
-            "& .MuiTab-root": { fontWeight: 900, py: 2.5 }
-          }}
-        >
-          <Tab label="Shareholder" value="shareholder" />
-          <Tab label="Nominal" value="nominal" />
-        </Tabs>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
-          <Table sx={{ minWidth: 1000 }}>
+          <Table sx={{ minWidth: 1000, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
                 {[
-                  "Member Identity",
-                  "Agent / Employee",
-                  "Share Range",
-                  "Total Shares",
-                  "Nominal Value",
-                  "Registry Status",
-                  "Actions"
-                ].map((label, idx) => (
-                  <TableCell key={label} align={idx === 3 || idx === 4 || idx === 6 ? "right" : "left"} sx={{ fontWeight: 900, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
-                    {label}
+                  { label: "Member Identity", width: "25%", align: "left" },
+                  { label: "Agent / Employee", width: "20%", align: "left" },
+                  { label: "Share Range", width: "15%", align: "left" },
+                  { label: "Total Shares", width: "12%", align: "right" },
+                  { label: "Nominal Value", width: "13%", align: "right" },
+                  { label: "Registry Status", width: "10%", align: "left" },
+                  { label: "", width: "5%", align: "right" }
+                ].map((col, idx) => (
+                  <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
+                    {col.label}
                   </TableCell>
                 ))}
               </TableRow>
@@ -164,35 +169,42 @@ export function ShareRegister({
                 filteredShares
                   .slice(shareholdingPage * shareholdingRowsPerPage, shareholdingPage * shareholdingRowsPerPage + shareholdingRowsPerPage)
                   .map((share) => (
-                    <TableRow key={share.id} hover>
-                      <TableCell>
+                    <TableRow 
+                      key={share.id} 
+                      hover
+                      sx={{ 
+                        transition: "background-color 0.2s ease",
+                        "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.02) }
+                      }}
+                    >
+                      <TableCell sx={{ py: 2 }}>
                         <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Typography variant="body2" sx={{ fontWeight: 800 }}>{share.memberName}</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>{share.memberName}</Typography>
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{share.agent}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: "text.secondary" }}>{share.agent}</Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" sx={{ opacity: 0.8 }}>{share.shareRange}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>{share.shareRange}</Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Typography variant="body2" sx={{ fontWeight: 900 }}>{share.totalShareHold}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{share.totalShareHold}</Typography>
                       </TableCell>
                       <TableCell align="right">
                         <Typography variant="body2" sx={{ fontWeight: 900, color: "success.main" }}>{formatCurrency(share.totalShareVal)}</Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="caption" sx={{ fontWeight: 900, bgcolor: alpha(theme.palette.success.main, 0.1), color: theme.palette.success.main, px: 1, py: 0.5, borderRadius: 1 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 900, bgcolor: alpha(theme.palette.success.main, 0.1), color: theme.palette.success.main, px: 1, py: 0.5, borderRadius: 1.5 }}>
                           DOCUMENTED
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
                         <Stack direction="row" spacing={1} justifyContent="flex-end">
-                          <IconButton size="small" onClick={() => openShareholdingDrawer(share)}>
+                          <IconButton size="small" onClick={() => openShareholdingDrawer(share)} sx={{ color: "text.secondary", "&:hover": { color: "primary.main", bgcolor: alpha(theme.palette.primary.main, 0.08) } }}>
                             <EditRoundedIcon fontSize="small" />
                           </IconButton>
-                          <IconButton size="small" onClick={() => handleDeleteShareholding(share.id)} color="error">
+                          <IconButton size="small" onClick={() => handleDeleteShareholding(share.id)} sx={{ color: "text.secondary", "&:hover": { color: "error.main", bgcolor: alpha(theme.palette.error.main, 0.08) } }}>
                             <DeleteRoundedIcon fontSize="small" />
                           </IconButton>
                         </Stack>

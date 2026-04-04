@@ -46,7 +46,6 @@ model Society {
   subscription           SocietySubscription?
   users                  User[]
   workingDays            WorkingDay[]
-  directors              Director[]
 
   @@index([name])
   @@index([status, isActive])
@@ -752,40 +751,4 @@ enum PaymentTransactionStatus {
   CANCELLED
 }
 
-model Director {
-  id                    String    @id @default(uuid())
-  societyId             String
-  din                   String?   @unique
-  designation           String
-  firstName             String
-  lastName              String?
-  dob                   DateTime?
-  email                 String?
-  fatherName            String?
-  motherName            String?
-  occupation            String?
-  panNo                 String?
-  aadharNo              String?
-  gender                String?
-  mobileNo              String?
-  appointmentDate       DateTime?
-  resignationDate       DateTime?
-  isAuthorizedSignatory Boolean   @default(false)
-  registrationDate      DateTime? @default(now())
 
-  // Banking Info
-  accountNo String?
-  bankName  String?
-  ifscCode  String?
-
-  // Address
-  correspondingAddress String?
-  permanentAddress     String?
-
-  society Society @relation(fields: [societyId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([societyId])
-}

@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  Container, Grid, Typography, Card, CardContent, Stack, Box, Alert, 
+import {
+  Container, Grid, Typography, Card, CardContent, Stack, Box, Alert,
   Skeleton, Chip, Button, IconButton, Divider, Avatar, Tooltip
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
@@ -43,7 +43,7 @@ export default function AgentDashboardPage() {
   const router = useRouter();
   const theme = useTheme();
   const { locale, t } = useLanguage();
-  
+
   // State
   const [user, setUser] = useState<AuthUser | null>(null);
   const [overview, setOverview] = useState<any>(null);
@@ -95,36 +95,36 @@ export default function AgentDashboardPage() {
       t={t as any}
       accessibleModules={accessibleModules}
     >
-      <Box sx={{ 
-        minHeight: "100vh", 
+      <Box sx={{
+        minHeight: "100vh",
         background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
-        pt: 4, pb: 8 
+        pt: 4, pb: 8
       }}>
         <Container maxWidth="xl">
           <Stack spacing={4}>
-            
+
             {/* Agent Workstation Header */}
             <Box sx={{ position: "relative" }}>
-              <Box sx={{ 
-                position: "absolute", 
-                top: -60, right: -100, 
-                width: 400, height: 400, 
+              <Box sx={{
+                position: "absolute",
+                top: -60, right: -100,
+                width: 400, height: 400,
                 background: "radial-gradient(circle, rgba(16, 185, 129, 0.05) 0%, transparent 70%)",
                 zIndex: 0
               }} />
-              
+
               <Stack direction={{ xs: "column", md: "row" }} spacing={3} alignItems="center" justifyContent="space-between" sx={{ position: "relative", zIndex: 1 }}>
                 <Box>
                   <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
-                    <Chip 
-                      label="ACTIVE STATION" 
-                      size="small" 
-                      sx={{ 
-                        bgcolor: "#10b981", 
-                        color: "#fff", 
-                        fontWeight: 800, 
-                        px: 1 
-                      }} 
+                    <Chip
+                      label="ACTIVE STATION"
+                      size="small"
+                      sx={{
+                        bgcolor: "#10b981",
+                        color: "#fff",
+                        fontWeight: 800,
+                        px: 1
+                      }}
                     />
                     <Typography variant="caption" sx={{ fontWeight: 800, color: "text.disabled", letterSpacing: 2 }}>
                       {user?.society?.name?.toUpperCase()} · OPERATIVE ID: {user?.id?.substring(0, 8)}
@@ -134,22 +134,22 @@ export default function AgentDashboardPage() {
                     Agent Workstation
                   </Typography>
                   <Typography variant="body1" sx={{ color: "text.secondary", mt: 1, maxWidth: 600, fontWeight: 500 }}>
-                     Welcome back, {user?.fullName}. You are managing <strong>{overview?.totalClients || 0} allotted members</strong> in your sector today.
+                    Welcome back, {user?.fullName}. You are managing <strong>{overview?.totalClients || 0} allotted members</strong> in your sector today.
                   </Typography>
                 </Box>
-                
+
                 <Box sx={{ p: 2.5, borderRadius: 5, bgcolor: "#fff", border: "1px solid rgba(16, 185, 129, 0.2)", minWidth: 260, boxShadow: "0 10px 30px rgba(0,0,0,0.03)" }}>
-                   <Stack spacing={1.5}>
-                      <Typography variant="caption" sx={{ fontWeight: 900, color: "#10b981", textTransform: "uppercase", letterSpacing: 1 }}>Shift Summary</Typography>
-                      <Stack direction="row" spacing={2} alignItems="center">
-                         <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: "#10b981", boxShadow: "0 0 10px #10b981" }} />
-                         <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>₹{(overview?.todayCollection || 0).toLocaleString()}</Typography>
-                      </Stack>
-                      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>COLLECTED TODAY</Typography>
-                      <Button fullWidth variant="contained" sx={{ bgcolor: "#10b981", fontWeight: 800, borderRadius: 2.5, "&:hover": { bgcolor: "#059669" } }}>
-                         Submit Daily Report
-                      </Button>
-                   </Stack>
+                  <Stack spacing={1.5}>
+                    <Typography variant="caption" sx={{ fontWeight: 900, color: "#10b981", textTransform: "uppercase", letterSpacing: 1 }}>Shift Summary</Typography>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: "#10b981", boxShadow: "0 0 10px #10b981" }} />
+                      <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>₹{(overview?.todayCollection || 0).toLocaleString()}</Typography>
+                    </Stack>
+                    <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>COLLECTED TODAY</Typography>
+                    <Button fullWidth variant="contained" sx={{ bgcolor: "#10b981", fontWeight: 800, borderRadius: 2.5, "&:hover": { bgcolor: "#059669" } }}>
+                      Submit Daily Report
+                    </Button>
+                  </Stack>
                 </Box>
               </Stack>
             </Box>
@@ -163,8 +163,8 @@ export default function AgentDashboardPage() {
                 { label: "Shift Performance", value: "94%", icon: <InsightsRoundedIcon />, color: "#8b5cf6", trend: "Efficiency Rating" }
               ].map((m, i) => (
                 <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
-                  <Card sx={{ 
-                    borderRadius: 5, 
+                  <Card sx={{
+                    borderRadius: 5,
                     border: "1px solid rgba(15, 23, 42, 0.05)",
                     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.02)",
                     position: "relative",
@@ -202,15 +202,15 @@ export default function AgentDashboardPage() {
                   <Grid container spacing={2.5}>
                     {accessibleModules.filter(m => featuredModuleSlugs.includes(m.slug)).map((module) => (
                       <Grid size={{ xs: 12, md: 6 }} key={module.slug}>
-                        <Card 
+                        <Card
                           component={Link}
                           href={`/modules/${module.slug}`}
-                          sx={{ 
+                          sx={{
                             textDecoration: "none",
-                            borderRadius: 5, 
+                            borderRadius: 5,
                             border: "1px solid rgba(15, 23, 42, 0.05)",
                             transition: "all 300ms ease",
-                            "&:hover": { 
+                            "&:hover": {
                               borderColor: "#10b981",
                               transform: "translateY(-4px)",
                               boxShadow: "0 20px 25px -5px rgba(16, 185, 129, 0.1)"
@@ -219,8 +219,8 @@ export default function AgentDashboardPage() {
                         >
                           <CardContent sx={{ p: 3 }}>
                             <Stack direction="row" spacing={2.5} alignItems="center">
-                              <Avatar sx={{ 
-                                bgcolor: alpha("#10b981", 0.08), 
+                              <Avatar sx={{
+                                bgcolor: alpha("#10b981", 0.08),
                                 color: "#10b981",
                                 width: 56, height: 56,
                                 borderRadius: 3
@@ -246,21 +246,21 @@ export default function AgentDashboardPage() {
                   </Grid>
 
                   {/* Field Strategy Map Placeholder */}
-                  <Box sx={{ 
+                  <Box sx={{
                     mt: 2, p: 4, borderRadius: 6, bgcolor: "#0f172a", color: "#fff",
                     backgroundImage: "radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%)"
                   }}>
                     <Stack direction={{ xs: "column", md: "row" }} spacing={4} alignItems="center">
-                       <Box sx={{ flex: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 900 }}>Member Coverage Strategy</Typography>
-                          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.6)", mt: 1, lineHeight: 1.6 }}>
-                             Review your assigned geographic area to optimize collection routes and member onboarding sessions.
-                          </Typography>
-                          <Button variant="contained" sx={{ mt: 3, bgcolor: "#10b981", fontWeight: 800, borderRadius: 2.5 }}>View Interactive Map</Button>
-                       </Box>
-                       <Avatar sx={{ width: 120, height: 120, bgcolor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                          <DomainIcon sx={{ fontSize: 50, opacity: 0.3 }} />
-                       </Avatar>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 900 }}>Member Coverage Strategy</Typography>
+                        <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.6)", mt: 1, lineHeight: 1.6 }}>
+                          Review your assigned geographic area to optimize collection routes and member onboarding sessions.
+                        </Typography>
+                        <Button variant="contained" sx={{ mt: 3, bgcolor: "#10b981", fontWeight: 800, borderRadius: 2.5 }}>View Interactive Map</Button>
+                      </Box>
+                      <Avatar sx={{ width: 120, height: 120, bgcolor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                        <DomainIcon sx={{ fontSize: 50, opacity: 0.3 }} />
+                      </Avatar>
                     </Stack>
                   </Box>
                 </Stack>
@@ -273,8 +273,8 @@ export default function AgentDashboardPage() {
                   <Card sx={{ borderRadius: 6, border: "1px solid rgba(15, 23, 42, 0.1)", bgcolor: "#fff" }}>
                     <CardContent sx={{ p: 4 }}>
                       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 3 }}>
-                         <HistoryRoundedIcon sx={{ color: "text.disabled" }} />
-                         <Typography variant="h6" sx={{ fontWeight: 900 }}>Activity Log</Typography>
+                        <HistoryRoundedIcon sx={{ color: "text.disabled" }} />
+                        <Typography variant="h6" sx={{ fontWeight: 900 }}>Activity Log</Typography>
                       </Stack>
                       <Stack spacing={3}>
                         {[

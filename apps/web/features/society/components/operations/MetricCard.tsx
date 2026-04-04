@@ -22,15 +22,15 @@ export function MetricCard({ label, value, caption, trend }: MetricCardProps) {
     <Paper
       elevation={0}
       sx={{
-        p: 3,
-        borderRadius: 4.5,
+        p: 2.5,
+        borderRadius: 3,
         border: `1px solid ${surfaces.border}`,
         height: "100%",
         bgcolor: surfaces.paper,
         transition: "transform 0.2s, box-shadow 0.2s",
         "&:hover": {
-          transform: "translateY(-4px)",
-          boxShadow: isDark ? "0 12px 24px -10px rgba(0, 0, 0, 0.4)" : "0 12px 24px -10px rgba(15, 23, 42, 0.12)"
+          transform: "translateY(-2px)",
+          boxShadow: isDark ? "0 10px 20px -12px rgba(0, 0, 0, 0.4)" : "0 10px 20px -12px rgba(15, 23, 42, 0.12)"
         }
       }}
     >
@@ -39,7 +39,7 @@ export function MetricCard({ label, value, caption, trend }: MetricCardProps) {
           {label}
         </Typography>
         <Stack direction="row" spacing={1.5} alignItems="baseline">
-          <Typography variant="h3" sx={{ fontWeight: 900, letterSpacing: "-0.04em", color: isDark ? "#fff" : "#0f172a" }}>
+          <Typography variant="h4" sx={{ fontWeight: 900, letterSpacing: "-0.03em", color: isDark ? "#fff" : "#0f172a" }}>
             {value}
           </Typography>
           {trend && (

@@ -1,40 +1,32 @@
 "use client";
 
-import React from "react";
-import { 
-  Box, 
-  Button, 
-  Grid, 
-  Paper, 
-  Stack, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
-  Typography,
-  IconButton,
+import {
+  Box,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   TextField,
-  InputAdornment,
-  MenuItem
+  Typography
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
-import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
+import { alpha, useTheme } from "@mui/material/styles";
 import { SectionHero } from "../operations/SectionHero";
 import { MetricCard } from "../operations/MetricCard";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
+import type { TreasuryTransactionRow } from "../../lib/society-admin-dashboard";
 
 export type TreasuryAuditProps = {
-  transactions: any[];
+  transactions: TreasuryTransactionRow[];
   transactionSearch: string;
-  setTransactionSearch: (v: string) => void;
-  formatCurrency: (v: number) => string;
-  formatDate: (v: string) => string;
+  setTransactionSearch: (value: string) => void;
+  formatCurrency: (value: number) => string;
+  formatDate: (value: string) => string;
 };
 
 export function TreasuryAudit({
@@ -48,100 +40,164 @@ export function TreasuryAudit({
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
 
+  const filteredTransactions = transactions.filter((transaction) => {
+    const query = transactionSearch.trim().toLowerCase();
+    if (!query) {
+      return true;
+    }
+
+    return [
+      transaction.reference,
+      transaction.accountNumber,
+      transaction.customerName,
+      transaction.branchName,
+      transaction.category
+    ].some((value) => value.toLowerCase().includes(query));
+  });
+
+  const totalCredits = filteredTransactions
+    .filter((transaction) => transaction.type === "CREDIT")
+    .reduce((total, transaction) => total + transaction.amount, 0);
+  const totalDebits = filteredTransactions
+    .filter((transaction) => transaction.type === "DEBIT")
+    .reduce((total, transaction) => total + transaction.amount, 0);
+
   const metrics = [
-    { label: "Treasury Flow", value: "₹45.6L", caption: "Aggregate institutional liquidity." },
-    { label: "Audit Radius", value: "30 Days", caption: "Current ledger synchronization window." },
-    { label: "Fiscal Health", value: "Optimal", caption: "Treasury reserve status." },
-    { label: "Events", value: String(transactions.length), caption: "Transactions recorded in this span." }
+    { label: "Entries", value: String(filteredTransactions.length), caption: "Transactions visible in the current audit view." },
+    { label: "Credits", value: formatCurrency(totalCredits), caption: "Total incoming value." },
+    { label: "Debits", value: formatCurrency(totalDebits), caption: "Total outgoing value." },
+    { label: "Net", value: formatCurrency(totalCredits - totalDebits), caption: "Credit minus debit impact." }
   ];
 
   return (
-    <Stack spacing={4}>
+    <Stack spacing={3}>
       <SectionHero
         icon={<AccountBalanceWalletRoundedIcon />}
-        eyebrow="Compliance"
-        title="Institutional Treasury"
-        description="Monitor the aggregate financial flow, fiscal reserves, and institutional audit trails of the entire society."
+        eyebrow="Treasury"
+        title="Treasury audit"
+        description="Review live transaction movement across branches, accounts, and users without the placeholder ledger cards."
         colorScheme="blue"
         actions={
-          <>
-            <TextField 
-                size="small" 
-                placeholder="Search audit trail..." 
-                value={transactionSearch}
-                onChange={e => setTransactionSearch(e.target.value)}
-                sx={{ 
-                    width: 250, 
-                    "& .MuiOutlinedInput-root": { borderRadius: 3, bgcolor: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" } 
-                }}
-                InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ fontSize: 18, color: "rgba(255,255,255,0.6)" }} /></InputAdornment> }}
-            />
-            <Button 
-                variant="contained" 
-                startIcon={<FileDownloadRoundedIcon />} 
-                sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2.5, fontWeight: 900, "&:hover": { bgcolor: "#f1f5f9" } }}
-            >
-                Export Ledger
-            </Button>
-          </>
+          <TextField
+            size="small"
+            value={transactionSearch}
+            onChange={(event) => setTransactionSearch(event.target.value)}
+            placeholder="Search transactions"
+            sx={{
+              minWidth: { xs: "100%", sm: 260 },
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2.5,
+                bgcolor: surfaces.input,
+                color: "#fff",
+                border: `1px solid ${surfaces.inputBorder}`
+              }
+            }}
+            InputProps={{
+              startAdornment: <SearchRoundedIcon sx={{ mr: 1, fontSize: 18, color: "rgba(255,255,255,0.65)" }} />
+            }}
+          />
         }
       />
 
-      <Grid container spacing={3}>
-        {metrics.map((m, idx) => (
-          <Grid item xs={12} sm={6} md={3} key={idx}>
-            <MetricCard {...m} />
-          </Grid>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" }
+        }}
+      >
+        {metrics.map((metric) => (
+          <MetricCard key={metric.label} {...metric} />
         ))}
-      </Grid>
+      </Box>
 
-      <Paper elevation={0} sx={{ borderRadius: 6, border: `1px solid ${surfaces.border}`, overflow: 'hidden', bgcolor: surfaces.paper }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
-          <Table>
+          <Table size="small" sx={{ minWidth: 920, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 900, py: 2.5 }}>Compliance Date</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Fiscal Hub (Branch)</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Event Reference</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Flow Type</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 900 }}>Impact Amount</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "12%" }}>Date</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "16%" }}>Reference</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "18%" }}>Account</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "18%" }}>Customer</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "16%" }}>Branch</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "10%" }}>Type</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, width: "10%" }}>
+                  Amount
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {transactions
-                .filter(t => (t.reference || "").toLowerCase().includes(transactionSearch.toLowerCase()) || (t.type || "").toLowerCase().includes(transactionSearch.toLowerCase()))
-                .length === 0 ? (
+              {filteredTransactions.length === 0 ? (
                 <TableRow>
-                   <TableCell colSpan={5} sx={{ py: 10, textAlign: 'center' }}>
-                      <ReceiptLongRoundedIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-                      <Typography variant="h6" sx={{ fontWeight: 800 }}>No Fiscal Events Found</Typography>
-                      <Typography variant="body2" color="text.secondary">Transactions will populate as institutional operations execute.</Typography>
-                   </TableCell>
+                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No transactions match the current search.
+                    </Typography>
+                  </TableCell>
                 </TableRow>
               ) : (
-                transactions
-                  .filter(t => (t.reference || "").toLowerCase().includes(transactionSearch.toLowerCase()) || (t.type || "").toLowerCase().includes(transactionSearch.toLowerCase()))
-                  .map((t, idx) => (
-                    <TableRow key={idx} hover>
-                       <TableCell sx={{ fontWeight: 700 }}>{formatDate(t.date)}</TableCell>
-                       <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 800 }}>{t.branchName || "Main Hub"}</Typography>
-                          <Typography variant="caption" sx={{ fontFamily: "monospace", color: "primary.main" }}>{t.branchCode}</Typography>
-                       </TableCell>
-                       <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{t.reference}</Typography>
-                          <Typography variant="caption" color="text.secondary">{t.category || "General Ledger"}</Typography>
-                       </TableCell>
-                       <TableCell>
-                          <Chip label={t.type} size="small" sx={{ fontWeight: 900, bgcolor: t.type === 'CREDIT' ? alpha("#10b981", 0.1) : alpha("#f43f5e", 0.1), color: t.type === 'CREDIT' ? "#10b981" : "#f43f5e" }} />
-                       </TableCell>
-                       <TableCell align="right">
-                          <Typography variant="body2" sx={{ fontWeight: 900, color: t.type === 'CREDIT' ? "#10b981" : "#f43f5e" }}>
-                             {t.type === 'CREDIT' ? '+' : '-'} {formatCurrency(t.amount)}
-                          </Typography>
-                       </TableCell>
-                    </TableRow>
-                  ))
+                filteredTransactions.map((transaction) => (
+                  <TableRow key={transaction.id} hover>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {formatDate(transaction.date)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {transaction.enteredBy}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {transaction.reference}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {transaction.category}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {transaction.accountNumber}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {transaction.customerName}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {transaction.branchName}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {transaction.branchCode}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 700,
+                          color: transaction.type === "CREDIT" ? "#15803d" : "#b91c1c"
+                        }}
+                      >
+                        {transaction.type}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 700,
+                          color: transaction.type === "CREDIT" ? "#15803d" : "#b91c1c"
+                        }}
+                      >
+                        {transaction.type === "CREDIT" ? "+ " : "- "}
+                        {formatCurrency(transaction.amount)}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>

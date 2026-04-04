@@ -1,198 +1,192 @@
 "use client";
 
-import React from "react";
 import {
-  Avatar,
   Box,
   Button,
   Drawer,
+  FormControlLabel,
+  Grid,
   IconButton,
-  MenuItem,
   Stack,
   Switch,
   TextField,
-  Typography,
-  InputAdornment,
-  Paper,
-  Grid,
+  Typography
 } from "@mui/material";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import AddLocationAltRoundedIcon from "@mui/icons-material/AddLocationAltRounded";
-import InfoRoundedIcon from "@mui/icons-material/InfoRounded";
-import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
-import LocalPhoneRoundedIcon from "@mui/icons-material/LocalPhoneRounded";
-import { alpha } from "@mui/material/styles";
+import type { BranchFormState } from "../../../lib/society-admin-dashboard";
 
 type BranchDrawerProps = {
   open: boolean;
   onClose: () => void;
-  form: any;
-  setForm: (v: any) => void;
+  form: BranchFormState;
+  setForm: (value: BranchFormState) => void;
   onSave: () => void;
   loading: boolean;
 };
 
-const FieldLabel = ({ children, color = "primary.main" }: { children: React.ReactNode; color?: string }) => (
-  <Typography variant="caption" sx={{ fontWeight: 1000, color, letterSpacing: "0.1em", display: "block", mb: 2 }}>
-    {String(children).toUpperCase()}
-  </Typography>
-);
+export function BranchDrawer({ open, onClose, form, setForm, onSave, loading }: BranchDrawerProps) {
+  const updateField = <K extends keyof BranchFormState>(field: K, value: BranchFormState[K]) => {
+    setForm({ ...form, [field]: value });
+  };
 
-export function BranchDrawer({
-  open,
-  onClose,
-  form,
-  setForm,
-  onSave,
-  loading,
-}: BranchDrawerProps) {
   return (
     <Drawer
       anchor="right"
       open={open}
       onClose={onClose}
       PaperProps={{
-        sx: { width: { xs: "100%", sm: 600 }, borderRadius: "24px 0 0 24px" },
+        sx: { width: { xs: "100%", sm: 560 } }
       }}
     >
-      <Box sx={{ flex: 1, height: "100%", display: "flex", flexDirection: "column" }}>
-        <Box sx={{ p: 4, pb: 6, bgcolor: alpha("#0f172a", 0.03), borderBottom: "1px solid rgba(15, 23, 42, 0.1)", position: "relative" }}>
-          <IconButton onClick={onClose} sx={{ position: "absolute", right: 16, top: 16, color: "#64748b" }}>
-            <CloseRoundedIcon />
-          </IconButton>
-          <Avatar sx={{ bgcolor: "#0f172a", width: 64, height: 64, mb: 2, boxShadow: "0 12px 24px -8px rgba(15, 23, 42, 0.4)" }}>
-            <AddLocationAltRoundedIcon fontSize="large" />
-          </Avatar>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: "#0f172a" }}>
-            Infrastructure Provisioning
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Expand your geographical coverage or update existing entity attributes.
-          </Typography>
+      <Box sx={{ display: "flex", minHeight: "100%", flexDirection: "column" }}>
+        <Box sx={{ borderBottom: "1px solid rgba(15, 23, 42, 0.08)", px: 3, py: 2.5 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                {form.id ? "Edit branch" : "Add branch"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Keep branch identity, location, and services in one place.
+              </Typography>
+            </Box>
+            <IconButton onClick={onClose}>
+              <CloseRoundedIcon />
+            </IconButton>
+          </Stack>
         </Box>
 
-        <Box sx={{ p: 4, flex: 1, overflowY: "auto" }}>
-          <Stack spacing={4}>
-            <Box>
-              <FieldLabel>Core Identity</FieldLabel>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 8 }}>
-                  <TextField
-                    fullWidth
-                    label="Legal Branch Name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value, code: e.target.value.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 1000) })}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField
-                    fullWidth
-                    label="Entity Code"
-                    value={form.code}
-                    disabled
-                    InputProps={{ startAdornment: <InputAdornment position="start"><InfoRoundedIcon fontSize="small" /></InputAdornment> }}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    select
-                    fullWidth
-                    label="Operational Status"
-                    value={String(form.isActive)}
-                    onChange={(e) => setForm({ ...form, isActive: e.target.value === "true" })}
-                  >
-                    <MenuItem value="true">Active & Operational</MenuItem>
-                    <MenuItem value="false">Deactivated / Maintenance</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    type="date"
-                    label="Activation Date"
-                    value={form.openingDate}
-                    onChange={(e) => setForm({ ...form, openingDate: e.target.value })}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
+        <Stack spacing={3} sx={{ flex: 1, overflowY: "auto", px: 3, py: 3 }}>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 8 }}>
+              <TextField
+                fullWidth
+                label="Branch name"
+                value={form.name}
+                onChange={(event) => updateField("name", event.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                label="Code"
+                value={form.code}
+                onChange={(event) => updateField("code", event.target.value.toUpperCase())}
+                helperText="Leave blank to auto-generate"
+              />
+            </Grid>
 
-            <Box>
-              <FieldLabel color="secondary.main">Contact Matrix</FieldLabel>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Official Email"
-                    value={form.contactEmail}
-                    onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-                    InputProps={{ startAdornment: <InputAdornment position="start"><EmailRoundedIcon fontSize="small" /></InputAdornment> }}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Phone Matrix"
-                    value={form.contactNo}
-                    onChange={(e) => setForm({ ...form, contactNo: e.target.value })}
-                    InputProps={{ startAdornment: <InputAdornment position="start"><LocalPhoneRoundedIcon fontSize="small" /></InputAdornment> }}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                label="Official email"
+                value={form.contactEmail}
+                onChange={(event) => updateField("contactEmail", event.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                label="Phone number"
+                value={form.contactNo}
+                onChange={(event) => updateField("contactNo", event.target.value)}
+              />
+            </Grid>
 
-            <Box>
-              <FieldLabel color="success.main">Geographical Scope</FieldLabel>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12 }}>
-                  <TextField fullWidth label="Address Line 1" value={form.addressLine1} onChange={(e) => setForm({ ...form, addressLine1: e.target.value })} />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField fullWidth label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField fullWidth label="State" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <TextField fullWidth label="Pincode" value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} />
-                </Grid>
-              </Grid>
-            </Box>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Address line 1"
+                value={form.addressLine1}
+                onChange={(event) => updateField("addressLine1", event.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Address line 2"
+                value={form.addressLine2}
+                onChange={(event) => updateField("addressLine2", event.target.value)}
+              />
+            </Grid>
 
-            <Box>
-              <FieldLabel color="#eb4432">Capabilities</FieldLabel>
-              <Stack spacing={1}>
-                {[
-                  { label: "Secure Locker Vault", desc: "Physical asset security", field: "lockerFacility" },
-                  { label: "NEFT/IMPS Portal", desc: "Digital fund transfer", field: "neftImpsService" },
-                  { label: "Institutional HQ", desc: "Principal admin hub", field: "isHead" },
-                ].map((cap) => (
-                  <Paper key={cap.field} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>{cap.label}</Typography>
-                        <Typography variant="caption" color="text.secondary">{cap.desc}</Typography>
-                      </Box>
-                      <Switch checked={form[cap.field]} onChange={(e) => setForm({ ...form, [cap.field]: e.target.checked })} />
-                    </Stack>
-                  </Paper>
-                ))}
-              </Stack>
-            </Box>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                label="City"
+                value={form.city}
+                onChange={(event) => updateField("city", event.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                label="State"
+                value={form.state}
+                onChange={(event) => updateField("state", event.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                label="PIN code"
+                value={form.pincode}
+                onChange={(event) => updateField("pincode", event.target.value)}
+              />
+            </Grid>
 
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Opening date"
+                value={form.openingDate}
+                onChange={(event) => updateField("openingDate", event.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+          </Grid>
+
+          <Stack spacing={1.25}>
+            <FormControlLabel
+              control={<Switch checked={form.isHead} onChange={(event) => updateField("isHead", event.target.checked)} />}
+              label="Head office"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={form.lockerFacility}
+                  onChange={(event) => updateField("lockerFacility", event.target.checked)}
+                />
+              }
+              label="Locker service available"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={form.neftImpsService}
+                  onChange={(event) => updateField("neftImpsService", event.target.checked)}
+                />
+              }
+              label="NEFT / IMPS enabled"
+            />
+            <FormControlLabel
+              control={<Switch checked={form.isActive} onChange={(event) => updateField("isActive", event.target.checked)} />}
+              label="Active branch"
+            />
+          </Stack>
+
+          <Box sx={{ mt: "auto" }}>
             <Button
               fullWidth
               variant="contained"
-              size="large"
-              disabled={loading}
+              disabled={loading || !form.name.trim()}
               onClick={onSave}
-              sx={{ py: 2, borderRadius: 3, fontWeight: 900, bgcolor: "#0f172a" }}
+              sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
             >
-              {form.id ? "Commit Architectural Changes" : "Deploy Infrastructure Entity"}
+              {form.id ? "Save branch" : "Create branch"}
             </Button>
-          </Stack>
-        </Box>
+          </Box>
+        </Stack>
       </Box>
     </Drawer>
   );

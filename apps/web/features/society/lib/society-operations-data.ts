@@ -334,7 +334,10 @@ export function normalizeAgents(agents: any[]): AgentOption[] {
   }
 
   return agents.map((agent, index) => {
-    const fullName = `${agent.firstName ?? ""} ${agent.lastName ?? ""}`.trim() || `Agent ${index + 1}`;
+    const fullName =
+      agent.fullName ||
+      `${agent.firstName ?? ""} ${agent.lastName ?? ""}`.trim() ||
+      `Agent ${index + 1}`;
 
     return {
       id: agent.id ?? `agent-${index + 1}`,

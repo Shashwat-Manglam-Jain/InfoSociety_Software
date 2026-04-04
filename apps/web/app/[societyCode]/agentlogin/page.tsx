@@ -129,10 +129,10 @@ export default function AgentLoginPage() {
 
               <Box>
                 <Typography variant="h4" sx={{ color: "#fff", fontWeight: 800, lineHeight: 1.15 }}>
-                   {society?.name ?? "Institutional"} Operations Portal
+                  {society?.name ?? "Institutional"} Operations Portal
                 </Typography>
                 <Typography sx={{ color: "rgba(255,255,255,0.88)", mt: 1.2 }}>
-                   Access your dedicated operations desk for <strong>{normalizedSocietyCode}</strong>. Handle member transactions, society requests, and departmental workflows.
+                  Access your dedicated operations desk for <strong>{normalizedSocietyCode}</strong>. Handle member transactions, society requests, and departmental workflows.
                 </Typography>
               </Box>
 
@@ -148,7 +148,7 @@ export default function AgentLoginPage() {
                 <Stack spacing={1.5}>
                   <Stack direction="row" spacing={1.5} alignItems="center">
                     <Avatar sx={{ bgcolor: "rgba(52, 211, 153, 0.2)", color: "#fff" }}>
-                       <ApartmentRoundedIcon fontSize="small" />
+                      <ApartmentRoundedIcon fontSize="small" />
                     </Avatar>
                     <Box>
                       <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", fontWeight: 800, letterSpacing: 0.5 }}>IDENTIFIER</Typography>
@@ -177,13 +177,13 @@ export default function AgentLoginPage() {
             <CardContent sx={{ p: { xs: 2.5, md: 5 } }}>
               <Stack spacing={3.5}>
                 <Box>
-                   <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
-                      <EngineeringRoundedIcon sx={{ color: "#065f46", fontSize: 32 }} />
-                      <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>Agent Authorization</Typography>
-                   </Stack>
-                   <Typography color="text.secondary" sx={{ maxWidth: 500 }}>
-                      Please provide your operative credentials to access the <strong>{society?.name ?? normalizedSocietyCode}</strong> administrative surface.
-                   </Typography>
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
+                    <EngineeringRoundedIcon sx={{ color: "#065f46", fontSize: 32 }} />
+                    <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>Agent Authorization</Typography>
+                  </Stack>
+                  <Typography color="text.secondary" sx={{ maxWidth: 500 }}>
+                    Please provide your operative credentials to access the <strong>{society?.name ?? normalizedSocietyCode}</strong> administrative surface.
+                  </Typography>
                 </Box>
 
                 <Box
@@ -199,9 +199,9 @@ export default function AgentLoginPage() {
                 >
                   <Stack spacing={3.2}>
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Agent ID</Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Username</Typography>
                       <TextField
-                        placeholder="e.g. agt_skyline"
+                        placeholder="e.g. john.doe"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         fullWidth
@@ -234,14 +234,14 @@ export default function AgentLoginPage() {
 
                     {error && <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert>}
 
-                    <Button 
-                      type="submit" 
-                      variant="contained" 
-                      size="large" 
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      size="large"
                       disabled={loading}
-                      sx={{ 
-                        height: 54, 
-                        borderRadius: 3.5, 
+                      sx={{
+                        height: 54,
+                        borderRadius: 3.5,
                         fontWeight: 900,
                         fontSize: "1rem",
                         bgcolor: "#065f46",
@@ -253,9 +253,9 @@ export default function AgentLoginPage() {
                     </Button>
                   </Stack>
                 </Box>
-                
+
                 <Typography variant="body2" sx={{ textAlign: "center", color: "text.secondary" }}>
-                   Forget credentials? Contact your <strong>Society Administrator</strong> for recovery.
+                  Forget credentials? Contact your <strong>Society Administrator</strong> for recovery.
                 </Typography>
               </Stack>
             </CardContent>

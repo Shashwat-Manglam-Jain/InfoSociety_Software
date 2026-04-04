@@ -19,12 +19,14 @@ import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
 import StoreRoundedIcon from "@mui/icons-material/StoreRounded";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import { SectionHero } from "../operations/SectionHero";
 
 export type SocietyMasterProps = {
   societyForm: any;
   setSocietyForm: (v: any) => void;
   handleUpdateSociety: () => void;
+  handleOpenWorkspace: () => void;
   formLoading: boolean;
 };
 
@@ -32,6 +34,7 @@ export function SocietyMaster({
   societyForm,
   setSocietyForm,
   handleUpdateSociety,
+  handleOpenWorkspace,
   formLoading
 }: SocietyMasterProps) {
   const setField = (field: string, value: unknown) => {
@@ -51,30 +54,49 @@ export function SocietyMaster({
         description="Manage sovereign identity, constitutional details, and fiscal compliance identifiers."
         colorScheme="blue"
         actions={
-          <Button 
-            variant="contained" 
-            sx={{ 
-                bgcolor: "#fff", 
-                color: "#0f172a", 
-                borderRadius: 2.5, 
+          <>
+            <Button
+              variant="outlined"
+              endIcon={<ArrowForwardRoundedIcon />}
+              sx={{
+                color: "#fff",
+                borderColor: "rgba(255,255,255,0.45)",
+                borderRadius: 2.5,
                 fontWeight: 900,
-                "&:hover": { bgcolor: "#f1f5f9" }
-            }} 
-            onClick={handleUpdateSociety} 
-            disabled={formLoading}
-          >
-            Commit Integrity Updates
-          </Button>
+                "&:hover": {
+                  borderColor: "#fff",
+                  bgcolor: "rgba(255,255,255,0.08)"
+                }
+              }}
+              onClick={handleOpenWorkspace}
+            >
+              Skip To Main Workspace
+            </Button>
+            <Button 
+              variant="contained" 
+              sx={{ 
+                  bgcolor: "#fff", 
+                  color: "#0f172a", 
+                  borderRadius: 2.5, 
+                  fontWeight: 900,
+                  "&:hover": { bgcolor: "#f1f5f9" }
+              }} 
+              onClick={handleUpdateSociety} 
+              disabled={formLoading}
+            >
+              Commit Integrity Updates
+            </Button>
+          </>
         }
       />
 
       <Grid container spacing={4}>
         <Grid size={{ xs: 12, md: 4 }}>
-          <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.08)", height: "100%" }}>
+          <Paper elevation={0} sx={{ p: 4, borderRadius: 2, border: "1px solid rgba(15, 23, 42, 0.08)", height: "100%" }}>
             <Typography variant="caption" sx={{ fontWeight: 1000, color: "primary.main", letterSpacing: "0.1em", display: 'block', mb: 3 }}>VISUAL IDENTITY</Typography>
             <Stack spacing={4} alignItems="center">
               <Box sx={{ position: 'relative' }}>
-                <Avatar src={societyForm.logoUrl} sx={{ width: 140, height: 140, borderRadius: 4, border: "4px solid #f8fafc", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
+                <Avatar src={societyForm.logoUrl} sx={{ width: 140, height: 140, borderRadius: 2, border: "4px solid #f8fafc", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" }}>
                   <BusinessRoundedIcon sx={{ fontSize: 60 }} />
                 </Avatar>
                 <IconButton size="small" sx={{ position: 'absolute', bottom: -10, right: -10, bgcolor: "#fff", boxShadow: 1, "&:hover": { bgcolor: "#f1f5f9" } }}>
@@ -98,7 +120,7 @@ export function SocietyMaster({
 
         <Grid size={{ xs: 12, md: 8 }}>
           <Stack spacing={4}>
-            <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+            <Paper elevation={0} sx={{ p: 4, borderRadius: 2, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
               <Typography variant="caption" sx={{ fontWeight: 1000, color: "primary.main", letterSpacing: "0.1em", display: 'block', mb: 3 }}>CORPORATE ATTRIBUTES</Typography>
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12 }}><TextField fullWidth label="Full Legal Entity Name" value={societyForm.name ?? ""} onChange={e => setField("name", e.target.value)} /></Grid>
@@ -109,7 +131,7 @@ export function SocietyMaster({
               </Grid>
             </Paper>
 
-            <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+            <Paper elevation={0} sx={{ p: 4, borderRadius: 2, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
               <Typography variant="caption" sx={{ fontWeight: 1000, color: "secondary.main", letterSpacing: "0.1em", display: 'block', mb: 3 }}>LEGAL & FISCAL COMPLIANCE</Typography>
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="Corporate Identification Number (CIN)" value={societyForm.cin ?? ""} onChange={e => setField("cin", e.target.value)} /></Grid>
@@ -119,7 +141,7 @@ export function SocietyMaster({
               </Grid>
             </Paper>
 
-            <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+            <Paper elevation={0} sx={{ p: 4, borderRadius: 2, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
               <Typography variant="caption" sx={{ fontWeight: 1000, color: "success.main", letterSpacing: "0.1em", display: 'block', mb: 3 }}>CLASSIFICATION & EQUITY</Typography>
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 6 }}><TextField select fullWidth label="Entity Category" value={societyForm.category ?? ""} onChange={e => setField("category", e.target.value)}><MenuItem value="">Not set</MenuItem><MenuItem value="Credit Co-op">Credit Co-op</MenuItem><MenuItem value="Multi-State">Multi-State Society</MenuItem><MenuItem value="Nidhi">Nidhi Company</MenuItem></TextField></Grid>

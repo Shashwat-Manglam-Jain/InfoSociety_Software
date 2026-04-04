@@ -129,10 +129,10 @@ export default function ClientLoginPage() {
 
               <Box>
                 <Typography variant="h4" sx={{ color: "#fff", fontWeight: 800, lineHeight: 1.15 }}>
-                   Connect to {society?.name ?? "Your Institution"}
+                  Connect to {society?.name ?? "Your Institution"}
                 </Typography>
                 <Typography sx={{ color: "rgba(255,255,255,0.88)", mt: 1.2 }}>
-                   Securely manage your personal holdings, view transaction history, and access society services from your private dashboard.
+                  Securely manage your personal holdings, view transaction history, and access society services from your private dashboard.
                 </Typography>
               </Box>
 
@@ -147,7 +147,7 @@ export default function ClientLoginPage() {
               >
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <Avatar sx={{ bgcolor: "rgba(59, 130, 246, 0.2)", color: "#fff" }}>
-                      <VerifiedUserRoundedIcon fontSize="small" />
+                    <VerifiedUserRoundedIcon fontSize="small" />
                   </Avatar>
                   <Box>
                     <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", fontWeight: 800, letterSpacing: 0.5 }}>SECURE CHANNEL</Typography>
@@ -172,13 +172,13 @@ export default function ClientLoginPage() {
             <CardContent sx={{ p: { xs: 2.5, md: 5 } }}>
               <Stack spacing={3.5}>
                 <Box>
-                   <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
-                      <AccountBalanceWalletRoundedIcon sx={{ color: "#1e3a8a", fontSize: 32 }} />
-                      <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>Member Access</Typography>
-                   </Stack>
-                   <Typography color="text.secondary" sx={{ maxWidth: 500 }}>
-                      Log in to your private <strong>{society?.name ?? normalizedSocietyCode}</strong> dashboard.
-                   </Typography>
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
+                    <AccountBalanceWalletRoundedIcon sx={{ color: "#1e3a8a", fontSize: 32 }} />
+                    <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>Member Access</Typography>
+                  </Stack>
+                  <Typography color="text.secondary" sx={{ maxWidth: 500 }}>
+                    Log in to your private <strong>{society?.name ?? normalizedSocietyCode}</strong> dashboard.
+                  </Typography>
                 </Box>
 
                 <Box
@@ -194,9 +194,9 @@ export default function ClientLoginPage() {
                 >
                   <Stack spacing={3.2}>
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Member ID</Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Username</Typography>
                       <TextField
-                        placeholder="e.g. member_123"
+                        placeholder="e.g. john.doe"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         fullWidth
@@ -229,14 +229,14 @@ export default function ClientLoginPage() {
 
                     {error && <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert>}
 
-                    <Button 
-                      type="submit" 
-                      variant="contained" 
-                      size="large" 
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      size="large"
                       disabled={loading}
-                      sx={{ 
-                        height: 54, 
-                        borderRadius: 3.5, 
+                      sx={{
+                        height: 54,
+                        borderRadius: 3.5,
                         fontWeight: 900,
                         fontSize: "1rem",
                         bgcolor: "#1e3a8a",
@@ -248,9 +248,9 @@ export default function ClientLoginPage() {
                     </Button>
                   </Stack>
                 </Box>
-                
+
                 <Typography variant="body2" sx={{ textAlign: "center", color: "text.secondary" }}>
-                   New Member? Accounts are provisioned internally by the <strong>Society Administrator</strong>.
+                  New Member? Accounts are provisioned internally by the <strong>Society Administrator</strong>.
                 </Typography>
               </Stack>
             </CardContent>

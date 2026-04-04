@@ -44,29 +44,7 @@ export class AdministrationController {
     return this.service.deleteBranch(req.user, id);
   }
 
-  @Roles(UserRole.SUPER_USER)
-  @Get("directors")
-  listDirectors(@Req() req: Request & { user: RequestUser }) {
-    return this.service.listDirectors(req.user);
-  }
 
-  @Roles(UserRole.SUPER_USER)
-  @Post("directors")
-  createDirector(@Req() req: Request & { user: RequestUser }, @Body() dto: any) {
-    return this.service.createDirector(req.user, dto);
-  }
-
-  @Roles(UserRole.SUPER_USER)
-  @Patch("directors/:id")
-  updateDirector(@Req() req: Request & { user: RequestUser }, @Param("id") id: string, @Body() dto: any) {
-    return this.service.updateDirector(req.user, id, dto);
-  }
-
-  @Roles(UserRole.SUPER_USER)
-  @Post("directors/:id/delete")
-  deleteDirector(@Req() req: Request & { user: RequestUser }, @Param("id") id: string) {
-    return this.service.deleteDirector(req.user, id);
-  }
 
   @Roles(UserRole.SUPER_USER)
   @Get("society-agents")
