@@ -8,7 +8,7 @@ import { modules } from "@/features/banking/module-registry";
 import type { AppAccountType } from "@/shared/types";
 
 type UserAccessSelectorProps = {
-  accountType: Extract<AppAccountType, "AGENT" | "CLIENT">;
+  accountType: Extract<AppAccountType, "AGENT" | "CLIENT" | "SOCIETY">;
   value: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;

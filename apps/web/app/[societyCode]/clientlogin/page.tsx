@@ -1,8 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useEffect } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import EmailIcon from "@mui/icons-material/Email";
 import LockIcon from "@mui/icons-material/Lock";
@@ -25,8 +24,7 @@ import {
   TextField,
   Typography,
   Avatar,
-  Grid,
-  alpha
+  Grid
 } from "@mui/material";
 import { login, getPublicSocieties } from "@/shared/api/auth";
 import { getDefaultDashboardPath, setSession } from "@/shared/auth/session";
@@ -35,7 +33,8 @@ import type { Society } from "@/shared/types";
 
 export default function ClientLoginPage() {
   const router = useRouter();
-  const { societyCode } = useParams() as { societyCode: string };
+  const params = useParams() as { societyCode?: string | string[] };
+  const normalizedSocietyCode = String(Array.isArray(params.societyCode) ? params.societyCode[0] : params.societyCode ?? "").toUpperCase();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -51,14 +50,14 @@ export default function ClientLoginPage() {
     async function fetchSociety() {
       try {
         const societies = await getPublicSocieties();
-        const found = societies.find(s => s.code === societyCode);
+        const found = societies.find((s) => s.code.toUpperCase() === normalizedSocietyCode);
         if (found) setSociety(found);
       } catch (e) {
         console.error("Failed to fetch society info", e);
       }
     }
     fetchSociety();
-  }, [societyCode]);
+  }, [normalizedSocietyCode]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,14 +71,8 @@ export default function ClientLoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(username, password, societyCode);
+      const response = await login(username, password, normalizedSocietyCode, "CLIENT");
       const actualRole = response.user.role;
-
-      if (actualRole !== "CLIENT") {
-        setError(`Unauthorized: This portal is for Clients and Members only.`);
-        setLoading(false);
-        return;
-      }
 
       const accountType = "CLIENT";
 
@@ -158,7 +151,7 @@ export default function ClientLoginPage() {
                   </Avatar>
                   <Box>
                     <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", fontWeight: 800, letterSpacing: 0.5 }}>SECURE CHANNEL</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>Institutional Code: {societyCode.toUpperCase()}</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>Institutional Code: {normalizedSocietyCode}</Typography>
                   </Box>
                 </Stack>
               </Box>
@@ -184,7 +177,7 @@ export default function ClientLoginPage() {
                       <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>Member Access</Typography>
                    </Stack>
                    <Typography color="text.secondary" sx={{ maxWidth: 500 }}>
-                      Log in to your private <strong>{society?.name ?? societyCode}</strong> dashboard.
+                      Log in to your private <strong>{society?.name ?? normalizedSocietyCode}</strong> dashboard.
                    </Typography>
                 </Box>
 

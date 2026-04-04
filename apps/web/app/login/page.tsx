@@ -1,16 +1,18 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import EmailIcon from "@mui/icons-material/Email";
+import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
+import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import LockIcon from "@mui/icons-material/Lock";
-import PersonIcon from "@mui/icons-material/Person";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -18,53 +20,169 @@ import {
   Chip,
   CircularProgress,
   Container,
-  Divider,
   IconButton,
-  InputAdornment,
+  MenuItem,
   Stack,
-  Tab,
-  Tabs,
   TextField,
   Typography
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
-import { alpha } from "@mui/material/styles";
-import { login } from "@/shared/api/client";
-import { getDefaultDashboardPath, setSession } from "@/shared/auth/session";
+import { getPublicSocieties, login } from "@/shared/api/client";
+import { getDefaultDashboardPath, getSession, setSession } from "@/shared/auth/session";
 import { toast } from "@/shared/ui/toast";
-import type { UserRole } from "@/shared/types";
+import type { Society, UserRole } from "@/shared/types";
 
-function getRoleCopy() {
-  return {
-    title: "Society Admin Login",
-    body: "Sign in to manage your society profile, branches, users, members, plans, accounts, lockers, and daily records from one place.",
-    chips: ["Society Admin", "Branch Control", "Daily Operations"]
-  };
+const societyRoleOptions: Array<{ value: UserRole; label: string; helper: string }> = [
+  {
+    value: "SUPER_USER",
+    label: "Administrator / Authorized Society User",
+    helper: "Society dashboard access is restricted by the module permissions assigned to this account."
+  }
+];
+
+function matchesSocietyQuery(society: Society, query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return (
+    society.name.toLowerCase().includes(normalizedQuery) ||
+    society.code.toLowerCase().includes(normalizedQuery) ||
+    society.registrationState?.toLowerCase().includes(normalizedQuery)
+  );
+}
+
+function findExactSocietyMatch(societies: Society[], query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return null;
+  }
+
+  return (
+    societies.find(
+      (society) => society.name.toLowerCase() === normalizedQuery || society.code.toLowerCase() === normalizedQuery
+    ) ?? null
+  );
 }
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [societyCode, setSocietyCode] = useState("");
+  const [societySearch, setSocietySearch] = useState("");
+  const [societies, setSocieties] = useState<Society[]>([]);
+  const [selectedSociety, setSelectedSociety] = useState<Society | null>(null);
+  const [selectedRole, setSelectedRole] = useState<UserRole>("SUPER_USER");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [societiesLoading, setSocietiesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [societyLookupError, setSocietyLookupError] = useState<string | null>(null);
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const roleCopy = useMemo(() => getRoleCopy(), []);
+  const [societyCodeError, setSocietyCodeError] = useState("");
 
   useEffect(() => {
-    router.prefetch("/dashboard");
-    router.prefetch("/dashboard/agent");
-    router.prefetch("/dashboard/client");
+    const session = getSession();
+
+    if (session?.role === "SUPER_USER") {
+      router.replace(getDefaultDashboardPath("SOCIETY", session.requiresPasswordChange));
+      return;
+    }
+
+    router.prefetch("/dashboard/society");
     router.prefetch("/register");
+    router.prefetch("/admin");
   }, [router]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSocieties() {
+      try {
+        const response = await getPublicSocieties();
+
+        if (!active) {
+          return;
+        }
+
+        setSocieties([...response].sort((left, right) => left.name.localeCompare(right.name)));
+        setSocietyLookupError(null);
+      } catch (caught) {
+        console.error("Failed to load public societies", caught);
+
+        if (!active) {
+          return;
+        }
+
+        setSocietyLookupError("Society search is temporarily unavailable. You can still enter the code manually.");
+      } finally {
+        if (active) {
+          setSocietiesLoading(false);
+        }
+      }
+    }
+
+    loadSocieties();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function applySocietySelection(society: Society | null) {
+    setSelectedSociety(society);
+    setSocietySearch(society?.name ?? "");
+    setSocietyCode(society?.code ?? "");
+    setSocietyCodeError("");
+  }
+
+  function syncSocietyFromCode(nextCode: string) {
+    const normalizedCode = nextCode.trim().toUpperCase();
+    const matchingSociety = societies.find((society) => society.code.toUpperCase() === normalizedCode) ?? null;
+
+    setSelectedSociety(matchingSociety);
+
+    if (matchingSociety) {
+      setSocietySearch(matchingSociety.name);
+    }
+  }
+
+  function commitSocietySearch() {
+    const normalizedQuery = societySearch.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return;
+    }
+
+    const exactMatch = findExactSocietyMatch(societies, societySearch);
+    if (exactMatch) {
+      applySocietySelection(exactMatch);
+      return;
+    }
+
+    const matchingSocieties = societies.filter((society) => matchesSocietyQuery(society, normalizedQuery));
+
+    if (matchingSocieties.length === 1) {
+      applySocietySelection(matchingSocieties[0]);
+    }
+  }
 
   function validateForm() {
     let isValid = true;
 
     setUsernameError("");
     setPasswordError("");
+    setSocietyCodeError("");
+
+    if (!societyCode.trim()) {
+      setSocietyCodeError("Society code is required");
+      isValid = false;
+    }
 
     if (!username.trim()) {
       setUsernameError("Username is required");
@@ -93,19 +211,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(username, password);
-      
-      const actualRole = response.user.role;
-      if (actualRole === "SUPER_ADMIN") {
-        throw new Error("Access Denied: This portal is for society owners. Please use your dedicated administrator terminal.");
-      }
-
-      const accountType = actualRole === "SUPER_USER" ? "SOCIETY" : actualRole;
+      const response = await login(username, password, societyCode.trim().toUpperCase(), selectedRole);
 
       setSession({
         accessToken: response.accessToken,
-        role: actualRole,
-        accountType,
+        role: response.user.role,
+        accountType: "SOCIETY",
         username: response.user.username,
         fullName: response.user.fullName,
         societyCode: response.user.society?.code ?? null,
@@ -115,21 +226,26 @@ export default function LoginPage() {
         allowedModuleSlugs: response.user.allowedModuleSlugs ?? []
       });
 
-      toast.success(`Welcome back, ${response.user.fullName}! Redirecting to your dashboard...`);
-      router.replace(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
+      toast.success(`Welcome back, ${response.user.fullName}! Redirecting to your society workspace...`);
+      router.replace(getDefaultDashboardPath("SOCIETY", response.user.requiresPasswordChange));
     } catch (caught) {
-      console.error("[Login] error", caught);
-      const status = (caught as any)?.status ? `[${(caught as any).status}] ` : "";
-      const message = caught instanceof Error && caught.message && !caught.message.includes("Cannot read properties")
-        ? caught.message
-        : "Failed to authenticate. Please check your credentials and try again.";
-      
+      const status = (caught as { status?: number })?.status ? `[${(caught as { status: number }).status}] ` : "";
+      const message =
+        caught instanceof Error && caught.message
+          ? caught.message
+          : "Failed to authenticate. Please check your login details and try again.";
+
       const fullError = `${status}${message}`;
       setError(fullError);
       toast.error(fullError);
       setLoading(false);
     }
   }
+
+  const selectedRoleCopy = societyRoleOptions.find((option) => option.value === selectedRole) ?? societyRoleOptions[0];
+  const selectedSocietyDetails =
+    selectedSociety ?? societies.find((society) => society.code.toUpperCase() === societyCode.trim().toUpperCase()) ?? null;
+  const approvedSocietyCount = societies.length;
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
@@ -151,61 +267,101 @@ export default function LoginPage() {
                 right: "-20%",
                 width: "80%",
                 height: "80%",
-                background: "radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)",
-                zIndex: -1
-              },
-              "&::after": {
-                content: '""',
-                position: "absolute",
-                bottom: "-10%",
-                left: "-10%",
-                width: "60%",
-                height: "60%",
-                background: "radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)",
+                background: "radial-gradient(circle, rgba(59, 130, 246, 0.16) 0%, transparent 70%)",
                 zIndex: -1
               }
             }}
           >
-            <Stack spacing={2}>
-              <Chip label="Secure Login" sx={{ width: "fit-content", bgcolor: "rgba(255,255,255,0.16)", color: "#fff" }} />
+            <Stack spacing={2.2} sx={{ height: "100%" }}>
+              <Chip label="Society Workspace" sx={{ width: "fit-content", bgcolor: "rgba(255,255,255,0.16)", color: "#fff" }} />
 
               <Box>
                 <Typography variant="h4" sx={{ color: "#fff", fontWeight: 800, lineHeight: 1.12 }}>
-                  {roleCopy.title}
+                  Society Login
                 </Typography>
                 <Typography sx={{ color: "rgba(255,255,255,0.88)", mt: 1.1 }}>
-                  {roleCopy.body}
+                  Use this portal for society administrators and other authorized society workspace users.
+                  Agent and client logins stay inside the society card on the home page, and platform superadmin uses the dedicated admin terminal.
                 </Typography>
               </Box>
 
               <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
-                {roleCopy.chips.map((label) => (
-                  <Chip key={label} label={label} size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
-                ))}
+                <Chip label="Society Code Bound" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                <Chip label="Module Permissions" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                <Chip label="Role Checked in API" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
               </Stack>
 
-              <Image
-                src="/illustrations/auth-vault.svg"
-                alt="Illustration of secure vault login"
-                width={760}
-                height={520}
-                style={{ width: "100%", height: "auto", display: "block" }}
-              />
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  border: "1px solid rgba(255,255,255,0.16)",
+                  bgcolor: "rgba(7, 16, 34, 0.2)",
+                  backdropFilter: "blur(8px)"
+                }}
+              >
+                <Stack spacing={1.2}>
+                  <Typography variant="overline" sx={{ color: "rgba(255,255,255,0.72)", fontWeight: 800, letterSpacing: 1 }}>
+                    Dedicated Portals
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
+                    Agent and client users should sign in from their society entry on the home page.
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
+                    Platform superadmin should use <strong>/admin</strong>.
+                  </Typography>
+                </Stack>
+              </Box>
+
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  border: "1px solid rgba(255,255,255,0.16)",
+                  bgcolor: "rgba(7, 16, 34, 0.2)",
+                  backdropFilter: "blur(8px)"
+                }}
+              >
+                <Stack spacing={1.2}>
+                  <Typography variant="overline" sx={{ color: "rgba(255,255,255,0.72)", fontWeight: 800, letterSpacing: 1 }}>
+                    Live Directory
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
+                    {societiesLoading
+                      ? "Refreshing the approved society directory..."
+                      : `${approvedSocietyCount} approved societies are currently available for login.`}
+                  </Typography>
+                  {selectedSocietyDetails?.registrationState ? (
+                    <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
+                      Selected region: <strong>{selectedSocietyDetails.registrationState}</strong>
+                    </Typography>
+                  ) : null}
+                </Stack>
+              </Box>
+
+              <Box sx={{ mt: "auto" }}>
+                <Image
+                  src="/illustrations/auth-vault.svg"
+                  alt="Illustration of secure vault login"
+                  width={760}
+                  height={520}
+                  style={{ width: "100%", height: "auto", display: "block" }}
+                />
+              </Box>
             </Stack>
           </Grid>
 
           <Grid size={{ xs: 12, md: 7 }}>
             <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
-              <Stack spacing={2.2}>
-                <Box>
-                  <Typography variant="h4" className="section-title" sx={{ fontSize: { xs: "1.7rem", md: "2.1rem" } }}>
-                    Sign In to Continue
-                  </Typography>
-                  <Typography color="text.secondary" sx={{ mt: 0.8, maxWidth: 620 }}>
-                    Use your society admin login to open the society dashboard.
-                  </Typography>
-                </Box>
-
+              <Stack spacing={2.6}>
+              <Box>
+                <Typography variant="h4" className="section-title" sx={{ fontSize: { xs: "1.7rem", md: "2.05rem" } }}>
+                    Sign In to Your Society
+                </Typography>
+                <Typography color="text.secondary" sx={{ mt: 0.8, maxWidth: 640 }}>
+                    Search your society by name first. Once selected, we will fill the login code and show the key portal details before you continue with your assigned credentials.
+                </Typography>
+              </Box>
 
                 <Box
                   component="form"
@@ -224,9 +380,184 @@ export default function LoginPage() {
                     </Typography>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Username or Society Code</Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                        Search Society
+                      </Typography>
+                      <Autocomplete
+                        disablePortal
+                        autoHighlight
+                        loading={societiesLoading}
+                        options={societies}
+                        value={selectedSociety}
+                        inputValue={societySearch}
+                        onChange={(_, society) => applySocietySelection(society)}
+                        onInputChange={(_, nextInputValue, reason) => {
+                          setSocietySearch(nextInputValue);
+
+                          if (reason === "clear") {
+                            applySocietySelection(null);
+                            return;
+                          }
+
+                          const exactMatch = findExactSocietyMatch(societies, nextInputValue);
+
+                          if (exactMatch) {
+                            applySocietySelection(exactMatch);
+                            return;
+                          }
+
+                          if (reason === "input" && selectedSociety && nextInputValue.trim() !== selectedSociety.name) {
+                            setSelectedSociety(null);
+                          }
+                        }}
+                        isOptionEqualToValue={(option, value) => option.id === value.id}
+                        getOptionLabel={(option) => option.name}
+                        filterOptions={(options, state) =>
+                          options.filter((society) => matchesSocietyQuery(society, state.inputValue)).slice(0, 8)
+                        }
+                        noOptionsText={societySearch.trim() ? "No matching society found" : "Start typing the society name"}
+                        renderOption={(props, option) => (
+                          <Box component="li" {...props} key={option.id}>
+                            <Stack spacing={0.25}>
+                              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{option.name}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {option.code}
+                                {option.registrationState ? ` • ${option.registrationState}` : ""}
+                              </Typography>
+                            </Stack>
+                          </Box>
+                        )}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            placeholder="Search by society name or code"
+                            onBlur={commitSocietySearch}
+                            helperText={
+                              societyLookupError ??
+                              "Pick the society name you recognize. We will fill the workspace code automatically."
+                            }
+                            InputProps={{
+                              ...params.InputProps,
+                              sx: {
+                                borderRadius: 2.5,
+                                bgcolor: "#fff",
+                                "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" }
+                              },
+                              startAdornment: <SearchRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />,
+                              endAdornment: (
+                                <>
+                                  {societiesLoading ? <CircularProgress color="inherit" size={18} sx={{ mr: 1 }} /> : null}
+                                  {params.InputProps.endAdornment}
+                                </>
+                              )
+                            }}
+                          />
+                        )}
+                      />
+                    </Box>
+
+                    {selectedSocietyDetails ? (
+                      <Box
+                        sx={{
+                          p: 2,
+                          borderRadius: 3,
+                          border: "1px solid rgba(59, 130, 246, 0.16)",
+                          bgcolor: "rgba(239, 246, 255, 0.7)"
+                        }}
+                      >
+                        <Stack spacing={1.3}>
+                          <Typography variant="overline" sx={{ color: "primary.main", fontWeight: 900, letterSpacing: 1.2 }}>
+                            Selected Society
+                          </Typography>
+                          <Grid container spacing={1.5}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
+                                Registered Name
+                              </Typography>
+                              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{selectedSocietyDetails.name}</Typography>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
+                                Society Code
+                              </Typography>
+                              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{selectedSocietyDetails.code}</Typography>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
+                                Portal Status
+                              </Typography>
+                              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>Approved for sign-in</Typography>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
+                                Region
+                              </Typography>
+                              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
+                                {selectedSocietyDetails.registrationState ?? "Not provided"}
+                              </Typography>
+                            </Grid>
+                          </Grid>
+                        </Stack>
+                      </Box>
+                    ) : null}
+
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                        Society Code
+                      </Typography>
                       <TextField
-                        placeholder="e.g. superuser or SOC-001"
+                        placeholder="e.g. SOC-001"
+                        value={societyCode}
+                        onChange={(event) => {
+                          const nextCode = event.target.value.toUpperCase();
+
+                          setSocietyCode(nextCode);
+                          syncSocietyFromCode(nextCode);
+
+                          if (event.target.value.trim()) {
+                            setSocietyCodeError("");
+                          }
+                        }}
+                        required
+                        fullWidth
+                        error={Boolean(societyCodeError)}
+                        helperText={societyCodeError || "Filled automatically from society search. You can still edit it manually if needed."}
+                        InputProps={{
+                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          startAdornment: <ApartmentRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
+                        }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                        Access Role
+                      </Typography>
+                      <TextField
+                        select
+                        value={selectedRole}
+                        onChange={(event) => setSelectedRole(event.target.value as UserRole)}
+                        fullWidth
+                        helperText={selectedRoleCopy.helper}
+                        InputProps={{
+                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          startAdornment: <BadgeRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
+                        }}
+                      >
+                        {societyRoleOptions.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Box>
+
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                        Username
+                      </Typography>
+                      <TextField
+                        placeholder="e.g. adm_skyline"
                         value={username}
                         onChange={(event) => {
                           setUsername(event.target.value);
@@ -237,27 +568,25 @@ export default function LoginPage() {
                         required
                         fullWidth
                         error={Boolean(usernameError)}
-                        helperText={usernameError}
+                        helperText={usernameError || "Use the username issued for your society workspace account."}
                         InputProps={{
                           sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <PersonIcon sx={{ mr: 0.5, color: "primary.main", fontSize: 20 }} />
-                            </InputAdornment>
-                          )
+                          startAdornment: <BadgeRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
                         }}
                       />
                     </Box>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Password</Typography>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                        Password
+                      </Typography>
                       <TextField
-                        placeholder="••••••••"
                         type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
                         value={password}
                         onChange={(event) => {
                           setPassword(event.target.value);
-                          if (event.target.value.length >= 6) {
+                          if (event.target.value) {
                             setPasswordError("");
                           }
                         }}
@@ -267,22 +596,11 @@ export default function LoginPage() {
                         helperText={passwordError}
                         InputProps={{
                           sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <LockIcon sx={{ mr: 0.5, color: "primary.main", fontSize: 20 }} />
-                            </InputAdornment>
-                          ),
+                          startAdornment: <LockIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />,
                           endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton
-                                onClick={() => setShowPassword((prev) => !prev)}
-                                edge="end"
-                                size="small"
-                                aria-label={showPassword ? "Hide password" : "Show password"}
-                              >
-                                {showPassword ? <VisibilityOffIcon sx={{ fontSize: 20 }} /> : <VisibilityIcon sx={{ fontSize: 20 }} />}
-                              </IconButton>
-                            </InputAdornment>
+                            <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end" size="small">
+                              {showPassword ? <VisibilityOffIcon sx={{ fontSize: 20 }} /> : <VisibilityIcon sx={{ fontSize: 20 }} />}
+                            </IconButton>
                           )
                         }}
                       />
@@ -290,29 +608,20 @@ export default function LoginPage() {
 
                     {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
 
-                    <Stack spacing={2} sx={{ pt: 1 }}>
-                      <Button 
-                        type="submit" 
-                        variant="contained" 
-                        size="large" 
-                        disabled={loading}
-                        sx={{ 
-                          height: 52, 
-                          borderRadius: 3, 
-                          fontWeight: 900,
-                          fontSize: "1rem",
-                          boxShadow: "0 10px 20px -5px rgba(59, 130, 246, 0.4)"
-                        }}
-                      >
-                        {loading ? <CircularProgress size={24} sx={{ color: "inherit" }} /> : "Sign In"}
-                      </Button>
-
-                      <Button component={Link} href="/register" variant="text" sx={{ textTransform: "none", color: "text.secondary", fontWeight: 700 }}>
-                        New society? <strong style={{ color: "#2563eb" }}>&nbsp;Register here</strong>
-                      </Button>
-                    </Stack>
+                    <Button type="submit" variant="contained" size="large" disabled={loading} sx={{ height: 54, borderRadius: 3, fontWeight: 900 }}>
+                      {loading ? "Authorizing..." : "Open Society Workspace"}
+                    </Button>
                   </Stack>
                 </Box>
+
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
+                  <Typography variant="body2" color="text.secondary">
+                    New society? <Link href="/register">Submit a registration request</Link>
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Platform admin? <Link href="/admin">Use the admin terminal</Link>
+                  </Typography>
+                </Stack>
               </Stack>
             </CardContent>
           </Grid>

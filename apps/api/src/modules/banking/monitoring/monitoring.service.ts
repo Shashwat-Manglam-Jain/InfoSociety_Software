@@ -8,8 +8,11 @@ import {
   SubscriptionStatus,
   UserRole
 } from "@prisma/client";
+import { hash } from "bcryptjs";
 import { RequestUser } from "../../../common/auth/request-user.interface";
 import { PrismaService } from "../../../common/database/prisma.service";
+import { updateUserAllowedModules } from "../../../common/database/user-module-access";
+import { getDefaultAllowedModules } from "../shared/module-access";
 import { CreateSocietyDto } from "./dto/create-society.dto";
 import { UpdateSocietyAccessDto } from "./dto/update-society-access.dto";
 
@@ -39,17 +42,57 @@ export class MonitoringService {
       throw new ForbiddenException("Only platform superadmin can onboard a new society");
     }
 
-    return this.prisma.society.create({
-      data: {
-        code: dto.code.trim().toUpperCase(),
-        name: dto.name.trim(),
-        status: dto.status ?? SocietyStatus.ACTIVE,
-        billingEmail: dto.billingEmail?.trim() || undefined,
-        billingPhone: dto.billingPhone?.trim() || undefined,
-        billingAddress: dto.billingAddress?.trim() || undefined,
-        acceptsDigitalPayments: dto.acceptsDigitalPayments ?? false,
-        upiId: dto.upiId?.trim() || undefined
-      }
+    const code = dto.code.trim().toUpperCase();
+    const name = dto.name.trim();
+    const status = dto.status ?? SocietyStatus.PENDING;
+    const isActive = status === SocietyStatus.ACTIVE;
+    const temporaryPassword = "admin123";
+    const username = `superadmin_${code.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+    const passwordHash = await hash(temporaryPassword, 10);
+
+    return this.prisma.$transaction(async (tx) => {
+      const society = await tx.society.create({
+        data: {
+          code,
+          name,
+          status,
+          isActive,
+          billingEmail: dto.billingEmail?.trim() || undefined,
+          billingPhone: dto.billingPhone?.trim() || undefined,
+          billingAddress: dto.billingAddress?.trim() || undefined,
+          acceptsDigitalPayments: dto.acceptsDigitalPayments ?? false,
+          upiId: dto.upiId?.trim() || undefined
+        }
+      });
+
+      const superAdmin = await tx.user.create({
+        data: {
+          username,
+          passwordHash,
+          fullName: `${name} Superadmin`,
+          role: UserRole.SUPER_USER,
+          societyId: society.id,
+          requiresPasswordChange: true
+        },
+        select: {
+          id: true,
+          username: true,
+          fullName: true,
+          role: true,
+          requiresPasswordChange: true
+        }
+      });
+
+      await this.updateAllowedModules(tx, superAdmin.id, getDefaultAllowedModules(UserRole.SUPER_USER));
+
+      return {
+        ...society,
+        superAdmin: {
+          ...superAdmin,
+          temporaryPassword,
+          loginSocietyCode: society.code
+        }
+      };
     });
   }
 
@@ -77,30 +120,51 @@ export class MonitoringService {
       throw new ForbiddenException("Only platform superadmin can approve or suspend a society");
     }
 
-    return this.prisma.society.update({
-      where: { id },
-      data: {
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
-        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-        ...(dto.billingEmail !== undefined ? { billingEmail: dto.billingEmail == null ? null : dto.billingEmail.trim() } : {}),
-        ...(dto.billingPhone !== undefined ? { billingPhone: dto.billingPhone == null ? null : dto.billingPhone.trim() } : {}),
-        ...(dto.billingAddress !== undefined ? { billingAddress: dto.billingAddress == null ? null : dto.billingAddress.trim() } : {}),
-        ...(dto.acceptsDigitalPayments !== undefined ? { acceptsDigitalPayments: dto.acceptsDigitalPayments } : {}),
-        ...(dto.upiId !== undefined ? { upiId: dto.upiId == null ? null : dto.upiId.trim() } : {}),
-        ...(dto.panNo !== undefined ? { panNo: dto.panNo == null ? null : dto.panNo.trim().toUpperCase() } : {}),
-        ...(dto.tanNo !== undefined ? { tanNo: dto.tanNo == null ? null : dto.tanNo.trim().toUpperCase() } : {}),
-        ...(dto.gstNo !== undefined ? { gstNo: dto.gstNo == null ? null : dto.gstNo.trim().toUpperCase() } : {}),
-        ...(dto.category !== undefined ? { category: dto.category == null ? null : dto.category.trim() } : {}),
-        ...(dto.authorizedCapital !== undefined ? { authorizedCapital: dto.authorizedCapital ?? null } : {}),
-        ...(dto.paidUpCapital !== undefined ? { paidUpCapital: dto.paidUpCapital ?? null } : {}),
-        ...(dto.shareNominalValue !== undefined ? { shareNominalValue: dto.shareNominalValue ?? null } : {}),
-        ...(dto.registrationDate !== undefined ? { registrationDate: dto.registrationDate == null ? null : new Date(dto.registrationDate) } : {}),
-        ...(dto.registrationNumber !== undefined ? { registrationNumber: dto.registrationNumber == null ? null : dto.registrationNumber.trim() } : {}),
-        ...(dto.registrationState !== undefined ? { registrationState: dto.registrationState == null ? null : dto.registrationState.trim() } : {}),
-        ...(dto.registrationAuthority !== undefined
-          ? { registrationAuthority: dto.registrationAuthority == null ? null : dto.registrationAuthority.trim() }
-          : {})
-      }
+    return this.prisma.$transaction(async (tx) => {
+      const updatedSociety = await tx.society.update({
+        where: { id },
+        data: {
+          ...(dto.status !== undefined ? { status: dto.status } : {}),
+          ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+          ...(dto.billingEmail !== undefined ? { billingEmail: dto.billingEmail == null ? null : dto.billingEmail.trim() } : {}),
+          ...(dto.billingPhone !== undefined ? { billingPhone: dto.billingPhone == null ? null : dto.billingPhone.trim() } : {}),
+          ...(dto.billingAddress !== undefined ? { billingAddress: dto.billingAddress == null ? null : dto.billingAddress.trim() } : {}),
+          ...(dto.acceptsDigitalPayments !== undefined ? { acceptsDigitalPayments: dto.acceptsDigitalPayments } : {}),
+          ...(dto.upiId !== undefined ? { upiId: dto.upiId == null ? null : dto.upiId.trim() } : {}),
+          ...(dto.panNo !== undefined ? { panNo: dto.panNo == null ? null : dto.panNo.trim().toUpperCase() } : {}),
+          ...(dto.tanNo !== undefined ? { tanNo: dto.tanNo == null ? null : dto.tanNo.trim().toUpperCase() } : {}),
+          ...(dto.gstNo !== undefined ? { gstNo: dto.gstNo == null ? null : dto.gstNo.trim().toUpperCase() } : {}),
+          ...(dto.category !== undefined ? { category: dto.category == null ? null : dto.category.trim() } : {}),
+          ...(dto.authorizedCapital !== undefined ? { authorizedCapital: dto.authorizedCapital ?? null } : {}),
+          ...(dto.paidUpCapital !== undefined ? { paidUpCapital: dto.paidUpCapital ?? null } : {}),
+          ...(dto.shareNominalValue !== undefined ? { shareNominalValue: dto.shareNominalValue ?? null } : {}),
+          ...(dto.registrationDate !== undefined ? { registrationDate: dto.registrationDate == null ? null : new Date(dto.registrationDate) } : {}),
+          ...(dto.registrationNumber !== undefined ? { registrationNumber: dto.registrationNumber == null ? null : dto.registrationNumber.trim() } : {}),
+          ...(dto.registrationState !== undefined ? { registrationState: dto.registrationState == null ? null : dto.registrationState.trim() } : {}),
+          ...(dto.registrationAuthority !== undefined
+            ? { registrationAuthority: dto.registrationAuthority == null ? null : dto.registrationAuthority.trim() }
+            : {})
+        },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          status: true,
+          isActive: true,
+          acceptsDigitalPayments: true,
+          upiId: true
+        }
+      });
+
+      const provisionedSuperAdmin =
+        isSuperAdmin && updatedSociety.status === SocietyStatus.ACTIVE && updatedSociety.isActive
+          ? await this.ensureSocietySuperAdmin(tx, updatedSociety)
+          : null;
+
+      return {
+        ...updatedSociety,
+        provisionedSuperAdmin
+      };
     });
   }
 
@@ -151,7 +215,19 @@ export class MonitoringService {
     const societies = await this.listSocieties(currentUser);
 
     if (societies.length === 0) {
-      throw new BadRequestException("No societies are available for this user");
+      return {
+        scope: isPlatformSuperAdmin ? "platform" : "assigned_society",
+        totals: {
+          societies: 0,
+          customers: 0,
+          accounts: 0,
+          transactions: 0,
+          totalBalance: 0,
+          successfulPaymentVolume: 0
+        },
+        userRoleBreakdown: {},
+        societies: []
+      };
     }
 
     const societiesWithMetrics = await Promise.all(
@@ -177,6 +253,14 @@ export class MonitoringService {
           name: society.name,
           status: society.status,
           isActive: society.isActive,
+          billingEmail: society.billingEmail,
+          billingPhone: society.billingPhone,
+          billingAddress: society.billingAddress,
+          upiId: society.upiId,
+          category: society.category,
+          registrationState: society.registrationState,
+          registrationNumber: society.registrationNumber,
+          registrationAuthority: society.registrationAuthority,
           activeUsers: society._count.users,
           customers: society._count.customers,
           accounts: society._count.accounts,
@@ -232,5 +316,91 @@ export class MonitoringService {
 
   private decimalToNumber(value: Prisma.Decimal | null): number {
     return value ? Number(value.toString()) : 0;
+  }
+
+  private async ensureSocietySuperAdmin(
+    tx: Prisma.TransactionClient,
+    society: {
+      id: string;
+      code: string;
+      name: string;
+    }
+  ) {
+    const existingSuperAdmin = await tx.user.findFirst({
+      where: {
+        societyId: society.id,
+        role: UserRole.SUPER_USER
+      },
+      select: {
+        id: true,
+        username: true
+      }
+    });
+
+    if (existingSuperAdmin) {
+      return null;
+    }
+
+    const temporaryPassword = "admin123";
+    const username = await this.reserveSocietyAdminUsername(tx, society.code);
+    const passwordHash = await hash(temporaryPassword, 10);
+    const createdUser = await tx.user.create({
+      data: {
+        username,
+        passwordHash,
+        fullName: `${society.name} Administrator`,
+        role: UserRole.SUPER_USER,
+        societyId: society.id,
+        isActive: true,
+        requiresPasswordChange: true
+      },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        role: true,
+        requiresPasswordChange: true
+      }
+    });
+
+    await this.updateAllowedModules(tx, createdUser.id, getDefaultAllowedModules(UserRole.SUPER_USER));
+
+    return {
+      ...createdUser,
+      temporaryPassword,
+      loginSocietyCode: society.code
+    };
+  }
+
+  private async reserveSocietyAdminUsername(tx: Prisma.TransactionClient, societyCode: string) {
+    const base = `adm_${societyCode.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`;
+    let attempt = 0;
+
+    while (attempt < 50) {
+      const candidate = attempt === 0 ? base : `${base}_${attempt + 1}`;
+      const existingUser = await tx.user.findFirst({
+        where: {
+          username: {
+            equals: candidate,
+            mode: "insensitive"
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+
+      if (!existingUser) {
+        return candidate;
+      }
+
+      attempt += 1;
+    }
+
+    return `${base}_${Date.now().toString().slice(-6)}`;
+  }
+
+  private async updateAllowedModules(tx: Prisma.TransactionClient | PrismaService, userId: string, allowedModuleSlugs: string[]) {
+    await updateUserAllowedModules(tx, userId, allowedModuleSlugs);
   }
 }

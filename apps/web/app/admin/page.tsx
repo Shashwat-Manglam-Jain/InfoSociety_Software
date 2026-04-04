@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
 import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import {
   Alert,
   Box,
@@ -16,10 +18,11 @@ import {
   TextField,
   Typography,
   InputAdornment,
-  CircularProgress
+  CircularProgress,
+  IconButton
 } from "@mui/material";
 import { login } from "@/shared/api/client";
-import { getSession, setSession } from "@/shared/auth/session";
+import { getDefaultDashboardPath, getSession, setSession } from "@/shared/auth/session";
 import { toast } from "@/shared/ui/toast";
 
 export default function AdminLoginPage() {
@@ -29,10 +32,15 @@ export default function AdminLoginPage() {
     const session = getSession();
     if (session && session.role === "SUPER_ADMIN") {
       router.replace("/dashboard/superadmin");
+      return;
     }
+
+    router.prefetch("/dashboard/superadmin");
+    router.prefetch("/auth/change-password");
   }, [router]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,11 +50,7 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(username, password);
-      
-      if (response.user.role !== "SUPER_ADMIN") {
-        throw new Error("Access Denied: High-level privilege required for this terminal.");
-      }
+      const response = await login(username, password, undefined, "SUPER_ADMIN");
 
       setSession({
         accessToken: response.accessToken,
@@ -62,7 +66,7 @@ export default function AdminLoginPage() {
       });
 
       toast.success("Executive terminal initialized. Accessing Platform Governance Hub.");
-      router.push("/dashboard/superadmin"); 
+      router.replace(getDefaultDashboardPath("PLATFORM", response.user.requiresPasswordChange));
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Authentication failed.";
       setError(message);
@@ -143,7 +147,7 @@ export default function AdminLoginPage() {
                   <TextField 
                     fullWidth
                     label="Access Key"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -152,6 +156,13 @@ export default function AdminLoginPage() {
                       startAdornment: (
                         <InputAdornment position="start">
                            <LockOpenRoundedIcon sx={{ color: "primary.main", fontSize: 20 }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end" size="small">
+                            {showPassword ? <VisibilityOffRoundedIcon fontSize="small" /> : <VisibilityRoundedIcon fontSize="small" />}
+                          </IconButton>
                         </InputAdornment>
                       )
                     }}

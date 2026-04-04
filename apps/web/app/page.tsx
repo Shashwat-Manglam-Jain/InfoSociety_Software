@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getHomePageCopy } from "@/shared/i18n/marketing-copy";
@@ -14,11 +14,13 @@ import { PricingSection } from "@/components/home/pricing-section";
 import { getWorkspaceDefinitions, getWorkspaceUiCopy } from "@/features/roles/workspace-definitions";
 import { toast } from "@/shared/ui/toast";
 import { getSession, getDefaultDashboardPath } from "@/shared/auth/session";
+import { getBillingPlans } from "@/shared/api/client";
 import { Box } from "@mui/material";
 import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import SpeedRoundedIcon from "@mui/icons-material/SpeedRounded";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
+import type { BillingPlansResponse } from "@/shared/types";
 
 export default function HomePage() {
   const router = useRouter();
@@ -26,6 +28,9 @@ export default function HomePage() {
   const homeCopy = getHomePageCopy(locale);
   const workspaceUi = getWorkspaceUiCopy(locale);
   const workspaces = getWorkspaceDefinitions(locale);
+  const [billingPlans, setBillingPlans] = useState<BillingPlansResponse["plans"]>([]);
+  const [pricingLoading, setPricingLoading] = useState(true);
+  const [pricingError, setPricingError] = useState<string | null>(null);
 
   useEffect(() => {
     const session = getSession();
@@ -33,6 +38,39 @@ export default function HomePage() {
       router.replace(getDefaultDashboardPath(session.accountType));
     }
   }, [router]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadBillingPlans() {
+      try {
+        const response = await getBillingPlans();
+
+        if (!active) {
+          return;
+        }
+
+        setBillingPlans(response.plans);
+        setPricingError(null);
+      } catch (caught) {
+        if (!active) {
+          return;
+        }
+
+        setPricingError(caught instanceof Error ? caught.message : "Unable to load live pricing plans.");
+      } finally {
+        if (active) {
+          setPricingLoading(false);
+        }
+      }
+    }
+
+    void loadBillingPlans();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleAction = (msg: string) => {
     toast.info(msg);
@@ -50,21 +88,14 @@ export default function HomePage() {
     icon: featureIcons[i] || featureIcons[0]
   }));
 
-  const pricingPlans = [
-    { 
-      id: "FREE", 
-      price: t("register.plan.free"), 
-      descriptionKey: "pricing.free.description", 
-      features: homeCopy.freePlanFeatures 
-    },
-    { 
-      id: "PREMIUM", 
-      highlighted: true, 
-      price: t("register.plan.premium"), 
-      descriptionKey: "pricing.premium.description", 
-      features: homeCopy.premiumPlanFeatures 
-    }
-  ];
+  const pricingPlans = useMemo(
+    () =>
+      billingPlans.map((plan) => ({
+        ...plan,
+        highlighted: plan.id === "PREMIUM"
+      })),
+    [billingPlans]
+  );
 
   return (
     <Box>
@@ -76,10 +107,17 @@ export default function HomePage() {
       <WorkspacesSection workspaceUi={workspaceUi} workspaces={workspaces} locale={locale} />
 
       <FeaturesSection homeCopy={homeCopy} features={features} />
-      
+
       <CapabilitiesSection homeCopy={homeCopy} />
 
-      <PricingSection t={t} pricingPlans={pricingPlans} handleAction={handleAction} homeCopy={homeCopy} />
+      <PricingSection
+        t={t}
+        pricingPlans={pricingPlans}
+        pricingLoading={pricingLoading}
+        pricingError={pricingError}
+        handleAction={handleAction}
+        homeCopy={homeCopy}
+      />
       
       <CtaSection homeCopy={homeCopy} handleAction={handleAction} />
     </Box>

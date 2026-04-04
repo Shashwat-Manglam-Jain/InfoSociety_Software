@@ -121,10 +121,10 @@ export function getDefaultDashboardPath(accountType: AppAccountType, requiresPas
 
   switch (accountType) {
     case "PLATFORM": return "/dashboard/superadmin";
-    case "SOCIETY": return "/dashboard";
+    case "SOCIETY": return "/dashboard/society?view=overview";
     case "AGENT": return "/dashboard/agent";
     case "CLIENT": return "/dashboard/client";
-    default: return "/dashboard";
+    default: return "/dashboard/society?view=overview";
   }
 }
 

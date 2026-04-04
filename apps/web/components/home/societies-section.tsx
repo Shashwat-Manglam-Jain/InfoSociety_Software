@@ -71,6 +71,45 @@ export function SocietiesSection() {
             <Typography color="error" sx={{ fontWeight: 700 }}>{error}</Typography>
             <Button onClick={() => window.location.reload()} sx={{ mt: 2 }}>Try Again</Button>
           </Box>
+        ) : societies.length === 0 ? (
+          <Card
+            elevation={0}
+            sx={{
+              maxWidth: 720,
+              mx: "auto",
+              borderRadius: 5,
+              border: "1px dashed rgba(15, 23, 42, 0.16)",
+              bgcolor: "#ffffff"
+            }}
+          >
+            <CardContent sx={{ px: { xs: 3, md: 6 }, py: { xs: 5, md: 7 } }}>
+              <Stack spacing={2.5} alignItems="center" textAlign="center">
+                <Box
+                  sx={{
+                    width: 88,
+                    height: 88,
+                    borderRadius: "50%",
+                    display: "grid",
+                    placeItems: "center",
+                    bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.12),
+                    color: "secondary.main"
+                  }}
+                >
+                  <SearchRoundedIcon sx={{ fontSize: 44 }} />
+                </Box>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: "#0f172a" }}>
+                  No societies available yet
+                </Typography>
+                <Typography sx={{ maxWidth: 520, color: "text.secondary" }}>
+                  Once a society is approved, it will appear here for secure agent and client access.
+                  Until then, you can register your institution to get started.
+                </Typography>
+                <Button component={Link} href="/register" variant="contained" color="secondary" sx={{ mt: 1, px: 4 }}>
+                  Enroll Society
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
         ) : (
           <Grid container spacing={4}>
             {societies.map((society) => (
@@ -164,15 +203,6 @@ export function SocietiesSection() {
               </Grid>
             ))}
           </Grid>
-        )}
-
-        {!loading && societies.length === 0 && (
-          <Box sx={{ py: 10, textAlign: "center" }}>
-            <SearchRoundedIcon sx={{ fontSize: 80, color: "text.disabled", mb: 2 }} />
-            <Typography variant="h5" sx={{ fontWeight: 700, color: "text.secondary" }}>No societies found</Typography>
-            <Typography color="text.secondary">Be the first to enroll your institution today.</Typography>
-            <Button component={Link} href="/register" variant="contained" color="secondary" sx={{ mt: 3, px: 4 }}>Enroll Society</Button>
-          </Box>
         )}
       </Container>
     </Box>

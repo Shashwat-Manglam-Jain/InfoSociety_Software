@@ -36,7 +36,7 @@ export default function SuperadminApprovalsPage() {
   async function loadData() {
     const session = getSession();
     if (!session || session.role !== "SUPER_ADMIN") {
-      router.replace("/login");
+      router.replace("/admin");
       return;
     }
     try {
@@ -61,8 +61,14 @@ export default function SuperadminApprovalsPage() {
     setProcessing(societyId);
     try {
       const status = action === "APPROVE" ? "ACTIVE" : "SUSPENDED";
-      await updateSocietyAccess(session.accessToken, societyId, { status, isActive: action === "APPROVE" });
-      toast.success(action === "APPROVE" ? "Society approved successfully." : "Society application rejected.");
+      const response = await updateSocietyAccess(session.accessToken, societyId, { status, isActive: action === "APPROVE" });
+      if (action === "APPROVE" && response.provisionedSuperAdmin) {
+        toast.success(
+          `Society approved. Recovery admin @${response.provisionedSuperAdmin.username} was created with temporary password ${response.provisionedSuperAdmin.temporaryPassword}.`
+        );
+      } else {
+        toast.success(action === "APPROVE" ? "Society approved successfully." : "Society application rejected.");
+      }
       void loadData();
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "Action failed.");

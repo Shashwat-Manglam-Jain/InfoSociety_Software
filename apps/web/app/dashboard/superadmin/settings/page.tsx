@@ -42,7 +42,7 @@ export default function SuperadminSettings() {
     async function init() {
       const session = getSession();
       if (!session || session.role !== "SUPER_ADMIN") {
-        router.replace("/login");
+        router.replace("/admin");
         return;
       }
       try {
@@ -50,7 +50,7 @@ export default function SuperadminSettings() {
         setUser(u);
       } catch (err) {
         clearSession();
-        router.replace("/login");
+        router.replace("/admin");
       } finally {
         setLoading(false);
       }

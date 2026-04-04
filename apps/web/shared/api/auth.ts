@@ -1,4 +1,4 @@
-import type { AuthUser, LoginResponse, Society } from "../types";
+import type { AuthUser, LoginResponse, Society, UserRole } from "../types";
 import { apiRequest, requestJson } from "./http";
 
 export type RegisterClientPayload = {
@@ -41,11 +41,16 @@ export type RegisterSocietyPayload = {
   registrationAuthority?: string;
 };
 
-export async function login(username: string, password: string, societyCode?: string): Promise<LoginResponse> {
+export async function login(
+  username: string,
+  password: string,
+  societyCode?: string,
+  expectedRole?: UserRole
+): Promise<LoginResponse> {
   return requestJson<LoginResponse>({
     method: "POST",
     path: "/auth/login",
-    body: { username, password, societyCode }
+    body: { username, password, societyCode, expectedRole }
   });
 }
 
@@ -98,4 +103,3 @@ export async function changePassword(token: string, currentPassword: string, new
     body: { currentPassword, newPassword }
   });
 }
-
