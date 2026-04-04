@@ -423,28 +423,60 @@ export class AdministrationService {
   async updateSociety(currentUser: RequestUser, dto: any) {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
+
+    const normalizeText = (value: unknown): string | null | undefined => {
+      if (value === undefined) {
+        return undefined;
+      }
+
+      if (typeof value !== "string") {
+        return value == null ? null : String(value);
+      }
+
+      const trimmed = value.trim();
+      return trimmed ? trimmed : null;
+    };
+
+    const normalizeNumber = (value: unknown) => {
+      if (value === undefined) {
+        return undefined;
+      }
+
+      if (value === "" || value == null) {
+        return null;
+      }
+
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+
     return this.prisma.society.update({
       where: { id: societyId },
       data: {
-        name: dto.name,
-        billingEmail: dto.billingEmail,
-        billingPhone: dto.billingPhone,
-        billingAddress: dto.billingAddress,
-        registrationNumber: dto.registrationNumber,
-        panNo: dto.panNo,
-        gstNo: dto.gstNo,
-        logoUrl: dto.logoUrl,
-        faviconUrl: dto.faviconUrl,
-        about: dto.about,
-        softwareUrl: dto.softwareUrl,
-        cin: dto.cin,
-        class: dto.class,
-        authorizedCapital: dto.authorizedCapital,
-        paidUpCapital: dto.paidUpCapital,
-        shareNominalValue: dto.shareNominalValue,
-        registrationState: dto.registrationState,
-        category: dto.category,
-        registrationDate: dto.registrationDate ? new Date(dto.registrationDate) : undefined,
+        name: normalizeText(dto.name) ?? undefined,
+        billingEmail: normalizeText(dto.billingEmail),
+        billingPhone: normalizeText(dto.billingPhone),
+        billingAddress: normalizeText(dto.billingAddress),
+        registrationNumber: normalizeText(dto.registrationNumber),
+        panNo: typeof dto.panNo === "string" ? normalizeText(dto.panNo)?.toUpperCase() ?? null : normalizeText(dto.panNo),
+        gstNo: typeof dto.gstNo === "string" ? normalizeText(dto.gstNo)?.toUpperCase() ?? null : normalizeText(dto.gstNo),
+        logoUrl: normalizeText(dto.logoUrl),
+        faviconUrl: normalizeText(dto.faviconUrl),
+        about: normalizeText(dto.about),
+        softwareUrl: normalizeText(dto.softwareUrl),
+        cin: normalizeText(dto.cin),
+        class: normalizeText(dto.class),
+        authorizedCapital: normalizeNumber(dto.authorizedCapital),
+        paidUpCapital: normalizeNumber(dto.paidUpCapital),
+        shareNominalValue: normalizeNumber(dto.shareNominalValue),
+        registrationState: normalizeText(dto.registrationState),
+        category: normalizeText(dto.category),
+        registrationDate:
+          dto.registrationDate === undefined
+            ? undefined
+            : dto.registrationDate
+              ? new Date(dto.registrationDate)
+              : null,
       }
     });
   }
