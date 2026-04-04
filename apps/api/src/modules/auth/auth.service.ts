@@ -20,6 +20,13 @@ const userProfileInclude = Prisma.validator<Prisma.UserInclude>()({
       name: true,
       status: true,
       isActive: true,
+      imageUrl: true,
+      logoUrl: true,
+      faviconUrl: true,
+      about: true,
+      softwareUrl: true,
+      cin: true,
+      class: true,
       acceptsDigitalPayments: true,
       upiId: true,
       billingEmail: true,
@@ -120,6 +127,32 @@ export class AuthService {
 
       if (society && society.users.length > 0) {
         user = society.users[0] as any;
+      }
+    }
+
+    if (!user && dto.societyCode?.trim()) {
+      const desiredHandle = this.normalizeLooseHandle(dto.username);
+      const candidateUsers = await this.prisma.user.findMany({
+        where: {
+          society: {
+            code: dto.societyCode.trim().toUpperCase()
+          },
+          ...(expectedRole ? { role: expectedRole } : {})
+        },
+        include: userProfileInclude,
+        take: 25
+      });
+
+      const matchingUsersByHandle = candidateUsers.filter(
+        (candidate) =>
+          this.normalizeLooseHandle(candidate.username) === desiredHandle ||
+          this.normalizeLooseHandle(candidate.fullName) === desiredHandle
+      );
+
+      if (matchingUsersByHandle.length === 1) {
+        user = matchingUsersByHandle[0];
+      } else if (matchingUsersByHandle.length > 1) {
+        throw new UnauthorizedException("Multiple accounts match this handle in the selected society. Please use your exact username.");
       }
     }
 
@@ -269,7 +302,7 @@ export class AuthService {
       }
 
       // Autogenerate username from society code if not provided or to ensure consistent naming
-      const autoUsername = `adm_${societyCode.toLowerCase()}`;
+      const autoUsername = this.createInitialSocietyAdminUsername(dto.fullName, societyCode);
       const usernameToUse = dto.username?.trim() || autoUsername;
 
       const identity = this.normalizeIdentity(usernameToUse, dto.fullName);
@@ -391,12 +424,33 @@ export class AuthService {
   private normalizeIdentity(username: string, fullName: string): RegistrationIdentity {
     return {
       username: this.normalizeUsername(username),
-      fullName: fullName.trim().replace(/\s+/g, " ")
+      fullName: this.normalizeFullName(fullName)
     };
   }
 
   private normalizeUsername(username: string) {
-    return username.trim().toLowerCase().replace(/^@+/, "");
+    return username.trim().toLowerCase().replace(/^@+/, "").replace(/\s+/g, "");
+  }
+
+  private normalizeFullName(fullName: string) {
+    return fullName.trim().replace(/\s+/g, " ");
+  }
+
+  private normalizeLooseHandle(value: string) {
+    return value.trim().toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9]+/g, "");
+  }
+
+  private createInitialSocietyAdminUsername(fullName: string, societyCode: string) {
+    const slug = this.normalizeFullName(fullName)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "")
+      .slice(0, 20);
+
+    if (slug) {
+      return slug;
+    }
+
+    return `adm_${societyCode.toLowerCase()}`;
   }
 
   private async buildLoginResponse(user: UserProfileRecord) {
@@ -424,6 +478,13 @@ export class AuthService {
             code: user.society.code,
             name: user.society.name,
             status: (user.society as any).status ?? SocietyStatus.ACTIVE,
+            imageUrl: user.society.imageUrl,
+            logoUrl: user.society.logoUrl,
+            faviconUrl: user.society.faviconUrl,
+            about: user.society.about,
+            softwareUrl: user.society.softwareUrl,
+            cin: user.society.cin,
+            class: user.society.class,
             acceptsDigitalPayments: user.society.acceptsDigitalPayments,
             upiId: user.society.upiId,
             billingEmail: user.society.billingEmail,

@@ -65,7 +65,7 @@ describe("RegisterPage", () => {
       accessToken: "ignored-token",
       user: {
         id: "user-1",
-        username: "adm_headoffice",
+        username: "headofficeadmin",
         fullName: "Head Office Admin",
         role: "SUPER_USER",
         requiresPasswordChange: false,
@@ -90,7 +90,7 @@ describe("RegisterPage", () => {
 
     await waitFor(() =>
       expect(registerSociety).toHaveBeenCalledWith({
-        username: "adm_headoffice",
+        username: "headofficeadmin",
         password: "Society@123",
         fullName: "Head Office Admin",
         societyCode: "HEAD-OFFICE",

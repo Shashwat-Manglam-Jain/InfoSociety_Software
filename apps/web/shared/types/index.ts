@@ -15,6 +15,13 @@ export type Society = {
   code: string;
   name: string;
   status: SocietyStatus;
+  imageUrl?: string | null;
+  logoUrl?: string | null;
+  faviconUrl?: string | null;
+  about?: string | null;
+  softwareUrl?: string | null;
+  cin?: string | null;
+  class?: string | null;
   acceptsDigitalPayments?: boolean;
   upiId?: string | null;
   billingEmail?: string | null;

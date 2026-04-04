@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -33,6 +33,16 @@ interface DashboardShellProps {
   accessibleModules?: any[];
 }
 
+function createExpandedGroupsState(accessibleModules: any[]) {
+  const initial: Record<number, boolean> = {};
+
+  accessibleModules.forEach((_, index) => {
+    initial[index] = true;
+  });
+
+  return initial;
+}
+
 export function DashboardShell({
   children,
   user = null,
@@ -43,26 +53,69 @@ export function DashboardShell({
   accessibleModules = []
 }: DashboardShellProps) {
   const router = useRouter();
-  const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>(() => {
-    // Expand all by default
-    const initial: Record<number, boolean> = {};
-    accessibleModules.forEach((_, i) => { initial[i] = true; });
-    return initial;
-  });
+
+  const normalizedAccessibleModules = useMemo(() => {
+    if (!Array.isArray(accessibleModules) || accessibleModules.length === 0) {
+      return [];
+    }
+
+    const directItems: any[] = [];
+    const groups: any[] = [];
+
+    accessibleModules.forEach((entry) => {
+      if (!entry) {
+        return;
+      }
+
+      if (Array.isArray(entry.items)) {
+        groups.push({
+          ...entry,
+          items: entry.items.filter(Boolean)
+        });
+        return;
+      }
+
+      directItems.push(entry);
+    });
+
+    if (directItems.length > 0) {
+      groups.unshift({ items: directItems });
+    }
+
+    return groups.filter((group) => Array.isArray(group.items) && group.items.length > 0);
+  }, [accessibleModules]);
+
+  const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>(() =>
+    createExpandedGroupsState(normalizedAccessibleModules)
+  );
 
   const toggleGroup = (idx: number) => {
     setExpandedGroups(prev => ({ ...prev, [idx]: !prev[idx] }));
   };
 
   useEffect(() => {
-    accessibleModules
+    setExpandedGroups((previous) => {
+      const next = createExpandedGroupsState(normalizedAccessibleModules);
+
+      Object.entries(previous).forEach(([index, isExpanded]) => {
+        if (isExpanded === false && Number(index) in next) {
+          next[Number(index)] = false;
+        }
+      });
+
+      return next;
+    });
+  }, [normalizedAccessibleModules]);
+
+  useEffect(() => {
+    normalizedAccessibleModules
       .flatMap((group: any) => group.items ?? [])
       .map((item: any) => item.href)
       .filter((href: unknown): href is string => typeof href === "string" && href.startsWith("/"))
       .forEach((href) => {
         router.prefetch(href);
       });
-  }, [accessibleModules, router]);
+  }, [normalizedAccessibleModules, router]);
 
   return (
     <>
@@ -195,7 +248,7 @@ export function DashboardShell({
 
           {/* Navigation Tracks */}
           <Box sx={{ flex: 1, py: 2 }}>
-            {accessibleModules.map((group: any, gIdx: number) => {
+            {normalizedAccessibleModules.map((group: any, gIdx: number) => {
               if (!group.heading) {
                 return (
                   <Stack key={gIdx} spacing={0.5} sx={{ px: 1.5, mb: 2 }}>

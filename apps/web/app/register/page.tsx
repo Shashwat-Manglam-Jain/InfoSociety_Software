@@ -42,18 +42,18 @@ function generateSocietyCode(societyName: string) {
   return base.length > 12 ? base.slice(0, 12) : base;
 }
 
-function generateSocietyUsername(societyName: string) {
-  const slug = societyName
+function generateSocietyUsername(fullName: string) {
+  const slug = fullName
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "")
-    .slice(0, 15);
+    .slice(0, 20);
 
   if (!slug) {
     return "";
   }
 
-  return `adm_${slug}`;
+  return slug;
 }
 
 function formatPlanPrice(monthlyPrice: number | null) {
@@ -82,7 +82,7 @@ export default function RegisterPage() {
   const [platformSnapshotError, setPlatformSnapshotError] = useState<string | null>(null);
 
   const generatedCode = useMemo(() => generateSocietyCode(societyName), [societyName]);
-  const generatedUsername = useMemo(() => generateSocietyUsername(societyName), [societyName]);
+  const generatedUsername = useMemo(() => generateSocietyUsername(fullName), [fullName]);
 
   useEffect(() => {
     let active = true;
@@ -144,7 +144,7 @@ export default function RegisterPage() {
     }
 
     if (!generatedCode || !generatedUsername) {
-      setError("Please enter a valid society name to generate the login details.");
+      setError("Please enter both the society name and administrator name to generate the login details.");
       return;
     }
 
@@ -211,7 +211,7 @@ export default function RegisterPage() {
               <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
                 <Chip label="Society Only" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
                 <Chip label="Approval Required" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
-                <Chip label="Admin Username Auto-Generated" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                <Chip label="Admin Username From Name" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
               </Stack>
 
               <Box
@@ -323,12 +323,12 @@ export default function RegisterPage() {
                       <Box sx={{ flex: 1, p: 1.8, borderRadius: 3, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
                         <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>Admin Username</Typography>
                         <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: "#0f172a", fontFamily: "monospace" }}>
-                          {generatedUsername ? `@${generatedUsername}` : "Waiting for society name"}
+                          {generatedUsername ? `@${generatedUsername}` : "Waiting for administrator name"}
                         </Typography>
                       </Box>
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
-                      These credentials are generated from the details you enter here and are used after superadmin approval.
+                      The society code comes from the society name, and the first admin username comes from the administrator name you enter here.
                     </Typography>
                   </Stack>
                 </Box>
@@ -364,7 +364,7 @@ export default function RegisterPage() {
                         }}
                         fullWidth
                         error={Boolean(formErrors.societyName)}
-                        helperText={formErrors.societyName || "This name is used to generate the society code and admin username."}
+                        helperText={formErrors.societyName || "This name is used to generate the society code."}
                         InputProps={{
                           sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
                           startAdornment: <ApartmentRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
@@ -387,7 +387,7 @@ export default function RegisterPage() {
                         }}
                         fullWidth
                         error={Boolean(formErrors.fullName)}
-                        helperText={formErrors.fullName}
+                        helperText={formErrors.fullName || "This name is used to generate the first admin username."}
                         InputProps={{
                           sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
                           startAdornment: <PersonIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />

@@ -34,6 +34,14 @@ export function SocietyMaster({
   handleUpdateSociety,
   formLoading
 }: SocietyMasterProps) {
+  const setField = (field: string, value: unknown) => {
+    setSocietyForm({ ...societyForm, [field]: value });
+  };
+
+  const setOptionalNumberField = (field: string, value: string) => {
+    setField(field, value === "" ? "" : Number(value));
+  };
+
   return (
     <Stack spacing={4}>
       <SectionHero
@@ -93,33 +101,33 @@ export function SocietyMaster({
             <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
               <Typography variant="caption" sx={{ fontWeight: 1000, color: "primary.main", letterSpacing: "0.1em", display: 'block', mb: 3 }}>CORPORATE ATTRIBUTES</Typography>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12 }}><TextField fullWidth label="Full Legal Entity Name" value={societyForm.name} onChange={e => setSocietyForm({...societyForm, name: e.target.value})} /></Grid>
-                <Grid size={{ xs: 12 }}><TextField fullWidth multiline rows={3} label="Institutional Abstract" value={societyForm.about} onChange={e => setSocietyForm({...societyForm, about: e.target.value})} placeholder="Describe the mission and history of the society..." /></Grid>
-                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="SaaS Software URL" value={societyForm.softwareUrl} onChange={e => setSocietyForm({...societyForm, softwareUrl: e.target.value})} InputProps={{ startAdornment: <InputAdornment position="start"><LanguageRoundedIcon fontSize="small" /></InputAdornment> }} /></Grid>
-                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="Official Email Matrix" value={societyForm.billingEmail} onChange={e => setSocietyForm({...societyForm, billingEmail: e.target.value})} InputProps={{ startAdornment: <InputAdornment position="start"><EmailRoundedIcon fontSize="small" /></InputAdornment> }} /></Grid>
-                <Grid size={{ xs: 12 }}><TextField fullWidth multiline rows={2} label="Registered Secretariat Address" value={societyForm.billingAddress} onChange={e => setSocietyForm({...societyForm, billingAddress: e.target.value})} InputProps={{ startAdornment: <InputAdornment position="start"><StoreRoundedIcon fontSize="small" /></InputAdornment> }} /></Grid>
+                <Grid size={{ xs: 12 }}><TextField fullWidth label="Full Legal Entity Name" value={societyForm.name ?? ""} onChange={e => setField("name", e.target.value)} /></Grid>
+                <Grid size={{ xs: 12 }}><TextField fullWidth multiline rows={3} label="Institutional Abstract" value={societyForm.about ?? ""} onChange={e => setField("about", e.target.value)} placeholder="Describe the mission and history of the society..." /></Grid>
+                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="SaaS Software URL" value={societyForm.softwareUrl ?? ""} onChange={e => setField("softwareUrl", e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><LanguageRoundedIcon fontSize="small" /></InputAdornment> }} /></Grid>
+                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="Official Email Matrix" value={societyForm.billingEmail ?? ""} onChange={e => setField("billingEmail", e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><EmailRoundedIcon fontSize="small" /></InputAdornment> }} /></Grid>
+                <Grid size={{ xs: 12 }}><TextField fullWidth multiline rows={2} label="Registered Secretariat Address" value={societyForm.billingAddress ?? ""} onChange={e => setField("billingAddress", e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><StoreRoundedIcon fontSize="small" /></InputAdornment> }} /></Grid>
               </Grid>
             </Paper>
 
             <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
               <Typography variant="caption" sx={{ fontWeight: 1000, color: "secondary.main", letterSpacing: "0.1em", display: 'block', mb: 3 }}>LEGAL & FISCAL COMPLIANCE</Typography>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="Corporate Identification Number (CIN)" value={societyForm.cin} onChange={e => setSocietyForm({...societyForm, cin: e.target.value})} /></Grid>
-                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="Permanent Account Number (PAN)" value={societyForm.panNo} onChange={e => setSocietyForm({...societyForm, panNo: e.target.value})} /></Grid>
-                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="GST Identification Number" value={societyForm.gstNo} onChange={e => setSocietyForm({...societyForm, gstNo: e.target.value})} /></Grid>
-                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth type="date" label="Incorporation Pulse Date" value={societyForm.registrationDate} onChange={e => setSocietyForm({...societyForm, registrationDate: e.target.value})} InputLabelProps={{ shrink: true }} /></Grid>
+                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="Corporate Identification Number (CIN)" value={societyForm.cin ?? ""} onChange={e => setField("cin", e.target.value)} /></Grid>
+                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="Permanent Account Number (PAN)" value={societyForm.panNo ?? ""} onChange={e => setField("panNo", e.target.value)} /></Grid>
+                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="GST Identification Number" value={societyForm.gstNo ?? ""} onChange={e => setField("gstNo", e.target.value)} /></Grid>
+                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth type="date" label="Incorporation Pulse Date" value={societyForm.registrationDate ?? ""} onChange={e => setField("registrationDate", e.target.value)} InputLabelProps={{ shrink: true }} /></Grid>
               </Grid>
             </Paper>
 
             <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
               <Typography variant="caption" sx={{ fontWeight: 1000, color: "success.main", letterSpacing: "0.1em", display: 'block', mb: 3 }}>CLASSIFICATION & EQUITY</Typography>
               <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 6 }}><TextField select fullWidth label="Entity Category" value={societyForm.category} onChange={e => setSocietyForm({...societyForm, category: e.target.value})}><MenuItem value="Credit Co-op">Credit Co-op</MenuItem><MenuItem value="Multi-State">Multi-State Society</MenuItem><MenuItem value="Nidhi">Nidhi Company</MenuItem></TextField></Grid>
-                <Grid size={{ xs: 12, md: 6 }}><TextField select fullWidth label="Institutional Class" value={societyForm.class} onChange={e => setSocietyForm({...societyForm, class: e.target.value})}><MenuItem value="Class A">Class A (Premium)</MenuItem><MenuItem value="Class B">Class B (Standard)</MenuItem></TextField></Grid>
-                <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Authorized Equity" value={societyForm.authorizedCapital} onChange={e => setSocietyForm({...societyForm, authorizedCapital: Number(e.target.value)})} /></Grid>
-                <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Paid-up Liquidity" value={societyForm.paidUpCapital} onChange={e => setSocietyForm({...societyForm, paidUpCapital: Number(e.target.value)})} /></Grid>
-                <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Share Nominal Scale" value={societyForm.shareNominalValue} onChange={e => setSocietyForm({...societyForm, shareNominalValue: Number(e.target.value)})} /></Grid>
-                <Grid size={{ xs: 12 }}><TextField fullWidth label="State of Jurisdiction" value={societyForm.registrationState} onChange={e => setSocietyForm({...societyForm, registrationState: e.target.value})} /></Grid>
+                <Grid size={{ xs: 12, md: 6 }}><TextField select fullWidth label="Entity Category" value={societyForm.category ?? ""} onChange={e => setField("category", e.target.value)}><MenuItem value="">Not set</MenuItem><MenuItem value="Credit Co-op">Credit Co-op</MenuItem><MenuItem value="Multi-State">Multi-State Society</MenuItem><MenuItem value="Nidhi">Nidhi Company</MenuItem></TextField></Grid>
+                <Grid size={{ xs: 12, md: 6 }}><TextField select fullWidth label="Institutional Class" value={societyForm.class ?? ""} onChange={e => setField("class", e.target.value)}><MenuItem value="">Not set</MenuItem><MenuItem value="Class A">Class A (Premium)</MenuItem><MenuItem value="Class B">Class B (Standard)</MenuItem></TextField></Grid>
+                <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Authorized Equity" value={societyForm.authorizedCapital ?? ""} onChange={e => setOptionalNumberField("authorizedCapital", e.target.value)} /></Grid>
+                <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Paid-up Liquidity" value={societyForm.paidUpCapital ?? ""} onChange={e => setOptionalNumberField("paidUpCapital", e.target.value)} /></Grid>
+                <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth type="number" label="Share Nominal Scale" value={societyForm.shareNominalValue ?? ""} onChange={e => setOptionalNumberField("shareNominalValue", e.target.value)} /></Grid>
+                <Grid size={{ xs: 12 }}><TextField fullWidth label="State of Jurisdiction" value={societyForm.registrationState ?? ""} onChange={e => setField("registrationState", e.target.value)} /></Grid>
               </Grid>
             </Paper>
           </Stack>

@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   Box, 
   CircularProgress, 
-  Container, 
-  Stack, 
   Typography,
   Snackbar,
   Alert
@@ -16,9 +14,15 @@ import { useTheme } from "@mui/material/styles";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { MainAdministrationWorkspace, type AdminView } from "@/features/society/components/administration/MainAdministrationWorkspace";
 import { SocietyOperationsWorkspace } from "@/features/society/components/society-operations-workspace";
+import { modules } from "@/features/banking/module-registry";
+import { getAccessibleModules } from "@/features/banking/account-access";
+import { localizeBankingModule } from "@/features/banking/module-localization";
+import { getMe, updateSociety } from "@/shared/api/client";
 import { clearSession, getSession } from "@/shared/auth/session";
+import { useLanguage } from "@/shared/i18n/language-provider";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
 import type { AuthUser } from "@/shared/types";
+import { toast } from "@/shared/ui/toast";
 
 import { BranchDrawer } from "@/features/society/components/administration/drawers/BranchDrawer";
 import { DirectorDrawer } from "@/features/society/components/administration/drawers/DirectorDrawer";
@@ -26,16 +30,100 @@ import { UserProvisioningDrawer } from "@/features/society/components/administra
 import { AgentDetailDrawer } from "@/features/society/components/administration/drawers/AgentDetailDrawer";
 import { ShareholdingAdminDrawer } from "@/features/society/components/administration/drawers/ShareholdingAdminDrawer";
 
+type SocietyFormState = {
+  name: string;
+  about: string;
+  softwareUrl: string;
+  billingEmail: string;
+  billingAddress: string;
+  cin: string;
+  panNo: string;
+  gstNo: string;
+  registrationDate: string;
+  category: string;
+  class: string;
+  authorizedCapital: number | "";
+  paidUpCapital: number | "";
+  shareNominalValue: number | "";
+  registrationState: string;
+  logoUrl: string;
+  faviconUrl: string;
+};
+
+function createEmptySocietyForm(): SocietyFormState {
+  return {
+    name: "",
+    about: "",
+    softwareUrl: "",
+    billingEmail: "",
+    billingAddress: "",
+    cin: "",
+    panNo: "",
+    gstNo: "",
+    registrationDate: "",
+    category: "",
+    class: "",
+    authorizedCapital: "",
+    paidUpCapital: "",
+    shareNominalValue: "",
+    registrationState: "",
+    logoUrl: "",
+    faviconUrl: ""
+  };
+}
+
+function formatDateForInput(value?: string | Date | null) {
+  if (!value) {
+    return "";
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function mapSocietyToForm(user: AuthUser | null): SocietyFormState {
+  const society = user?.society;
+
+  if (!society) {
+    return createEmptySocietyForm();
+  }
+
+  return {
+    name: society.name ?? "",
+    about: society.about ?? "",
+    softwareUrl: society.softwareUrl ?? "",
+    billingEmail: society.billingEmail ?? "",
+    billingAddress: society.billingAddress ?? "",
+    cin: society.cin ?? "",
+    panNo: society.panNo ?? "",
+    gstNo: society.gstNo ?? "",
+    registrationDate: formatDateForInput(society.registrationDate),
+    category: society.category ?? "",
+    class: society.class ?? "",
+    authorizedCapital: society.authorizedCapital ?? "",
+    paidUpCapital: society.paidUpCapital ?? "",
+    shareNominalValue: society.shareNominalValue ?? "",
+    registrationState: society.registrationState ?? "",
+    logoUrl: society.logoUrl ?? "",
+    faviconUrl: society.faviconUrl ?? ""
+  };
+}
+
 export default function SocietyDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentView = (searchParams.get("view") || "master_company") as any;
   const theme = useTheme();
+  const { locale } = useLanguage();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
 
   // --- SOCIETY DATA ---
-  const [society, setSociety] = useState<any>(null);
+  const [societyForm, setSocietyForm] = useState<SocietyFormState>(createEmptySocietyForm);
   const [branches, setBranches] = useState<any[]>([]);
   const [directors, setDirectors] = useState<any[]>([]);
   const [managedUsers, setManagedUsers] = useState<any[]>([]);
@@ -57,42 +145,48 @@ export default function SocietyDashboard() {
 
   // --- SUCCESS FEEDBACK ---
   const [successData, setSuccessData] = useState<any>(null);
+  const [formLoading, setFormLoading] = useState(false);
+
+  const accessibleModules = useMemo(
+    () => getAccessibleModules(modules, "SOCIETY", shellUser?.allowedModuleSlugs).map((module) => localizeBankingModule(module, locale)),
+    [locale, shellUser?.allowedModuleSlugs]
+  );
 
   useEffect(() => {
-    const session = getSession();
-    if (!session || session.role !== "SUPER_USER") {
-      router.replace("/login");
-      return;
+    async function loadData() {
+      const session = getSession();
+      if (!session || session.role !== "SUPER_USER") {
+        router.replace("/login");
+        return;
+      }
+
+      try {
+        const profile = await getMe(session.accessToken);
+        setShellUser(profile);
+        setSocietyForm(mapSocietyToForm(profile));
+        setBranches([]);
+        setDirectors([]);
+        setManagedUsers([]);
+        setAgents([]);
+        setShareholdings([]);
+        setError(null);
+      } catch (caught) {
+        const status = (caught as { status?: number })?.status;
+        const message = caught instanceof Error ? caught.message : "Unable to load the society profile.";
+
+        if (status === 401 || status === 403) {
+          clearSession();
+          router.replace("/login");
+          return;
+        }
+
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
     }
 
-    setShellUser({
-      id: session.username,
-      username: session.username,
-      fullName: session.fullName,
-      role: "SUPER_USER",
-      allowedModuleSlugs: session.allowedModuleSlugs ?? [],
-      requiresPasswordChange: session.requiresPasswordChange,
-      society: session.societyCode
-        ? {
-            id: session.societyCode,
-            code: session.societyCode,
-            name: session.societyCode,
-            status: "ACTIVE"
-          }
-        : null
-    });
-
-    // Mock initial data fetch
-    setTimeout(() => {
-      setBranches([
-        { id: "b1", name: "Metro Hub Branch", code: "MH01", city: "Mumbai", state: "Maharashtra", isActive: true },
-        { id: "b2", name: "Coastal Hub", code: "CH02", city: "Panaji", state: "Goa", isActive: true }
-      ]);
-      setAgents([
-        { id: "a1", firstName: "Rahul", lastName: "Sharma", code: "AG001", phone: "9876543210", email: "rahul@society.com", branch: { name: "Metro Hub Branch" } }
-      ]);
-      setLoading(false);
-    }, 1000);
+    void loadData();
   }, [router]);
 
   // --- HANDLERS ---
@@ -109,11 +203,77 @@ export default function SocietyDashboard() {
     setActiveDrawer(null);
   };
 
+  const handleUpdateSociety = async () => {
+    const session = getSession();
+    if (!session) {
+      router.replace("/login");
+      return;
+    }
+
+    setFormLoading(true);
+
+    try {
+      const updated = await updateSociety(session.accessToken, {
+        name: societyForm.name,
+        about: societyForm.about,
+        softwareUrl: societyForm.softwareUrl,
+        billingEmail: societyForm.billingEmail,
+        billingAddress: societyForm.billingAddress,
+        cin: societyForm.cin,
+        panNo: societyForm.panNo,
+        gstNo: societyForm.gstNo,
+        registrationDate: societyForm.registrationDate || null,
+        category: societyForm.category,
+        class: societyForm.class,
+        authorizedCapital: societyForm.authorizedCapital === "" ? null : societyForm.authorizedCapital,
+        paidUpCapital: societyForm.paidUpCapital === "" ? null : societyForm.paidUpCapital,
+        shareNominalValue: societyForm.shareNominalValue === "" ? null : societyForm.shareNominalValue,
+        registrationState: societyForm.registrationState,
+        logoUrl: societyForm.logoUrl,
+        faviconUrl: societyForm.faviconUrl
+      });
+
+      const nextUser = shellUser
+        ? {
+            ...shellUser,
+            society: {
+              ...shellUser.society,
+              ...updated,
+              status: shellUser.society?.status ?? "ACTIVE",
+              registrationDate: updated.registrationDate
+            }
+          }
+        : shellUser;
+
+      setShellUser(nextUser);
+      setSocietyForm(mapSocietyToForm(nextUser));
+      setSuccessData({ label: "Institutional profile updated successfully." });
+      toast.success("Institutional profile updated successfully.");
+      setError(null);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Unable to update the society profile.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   if (loading) return (
     <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: surfaces.background }}>
       <CircularProgress thickness={5} size={60} />
     </Box>
   );
+
+  if (error) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: surfaces.background, p: 3 }}>
+        <Alert severity="error" sx={{ maxWidth: 640, width: "100%" }}>
+          {error}
+        </Alert>
+      </Box>
+    );
+  }
 
   const isOperationsView = ["membership_clients", "plan_catalogue", "account_registry", "share_register", "guarantor_registry"].includes(currentView);
 
@@ -126,7 +286,7 @@ export default function SocietyDashboard() {
         clearSession();
         router.replace("/");
       }}
-      accessibleModules={[]}
+      accessibleModules={accessibleModules}
     >
       <Box sx={{ p: { xs: 2, sm: 4 }, minHeight: "100vh", bgcolor: surfaces.background }}>
         {isOperationsView ? (
@@ -138,10 +298,10 @@ export default function SocietyDashboard() {
         ) : (
           <MainAdministrationWorkspace 
             view={currentView}
-            societyForm={{}}
-            setSocietyForm={() => {}}
-            handleUpdateSociety={() => {}}
-            formLoading={false}
+            societyForm={societyForm}
+            setSocietyForm={setSocietyForm}
+            handleUpdateSociety={() => void handleUpdateSociety()}
+            formLoading={formLoading}
             branches={branches}
             handleOpenDrawer={handleOpenDrawer}
             handleDeleteBranch={() => {}}

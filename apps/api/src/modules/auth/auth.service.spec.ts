@@ -13,6 +13,7 @@ describe("AuthService", () => {
       user: {
         findUnique: jest.fn(),
         findFirst: jest.fn(),
+        findMany: jest.fn(),
         create: jest.fn()
       },
       society: {
@@ -165,6 +166,53 @@ describe("AuthService", () => {
         expectedRole: UserRole.AGENT
       })
     ).rejects.toThrow("Selected access role does not match this account");
+  });
+
+  it("allows society login with @name or spaced name inside the selected society", async () => {
+    const { service, prisma, jwtService } = buildService();
+    prisma.$queryRaw.mockResolvedValue([{ allowedModuleSlugs: ["administration", "users"] }]);
+
+    prisma.user.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "user-1"
+      });
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: "user-1",
+        username: "adm_gokuldham",
+        fullName: "bhide",
+        role: UserRole.SUPER_USER,
+        isActive: true,
+        passwordHash: "stored-hash",
+        societyId: "soc-1",
+        customerId: null,
+        allowedModuleSlugs: ["administration", "users"],
+        branch: null,
+        society: { id: "soc-1", code: "GOKULDHAM", name: "gokuldham", status: SocietyStatus.ACTIVE, isActive: true },
+        customerProfile: null,
+        subscription: null
+      }
+    ]);
+    (compare as jest.Mock).mockResolvedValue(true);
+
+    const result = await service.login({
+      username: " @b hi de ",
+      password: "123456789",
+      societyCode: "GOKULDHAM",
+      expectedRole: UserRole.SUPER_USER
+    });
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          society: { code: "GOKULDHAM" },
+          role: UserRole.SUPER_USER
+        })
+      })
+    );
+    expect(jwtService.sign).toHaveBeenCalled();
+    expect(result.user.username).toBe("adm_gokuldham");
   });
 
   it("normalizes agent registration before persistence", async () => {
