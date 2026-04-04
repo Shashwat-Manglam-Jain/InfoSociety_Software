@@ -1,8 +1,6 @@
 "use client";
 
-import React from "react";
 import {
-  Avatar,
   Box,
   Button,
   Drawer,
@@ -10,34 +8,31 @@ import {
   MenuItem,
   Stack,
   TextField,
-  Typography,
-  InputAdornment,
-  Grid,
+  Tooltip,
+  Typography
 } from "@mui/material";
+import Grid from "@mui/material/Grid";
+import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
-import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
-import KeyRoundedIcon from "@mui/icons-material/KeyRounded";
-import { alpha } from "@mui/material/styles";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { UserAccessSelector } from "../../user-access-selector";
+import type { UserFormState } from "../../../lib/society-admin-dashboard";
+import { ROLE_META, toAccountType } from "../../../lib/society-admin-dashboard";
+import type { Branch, UserRole } from "@/shared/types";
 
 type UserProvisioningDrawerProps = {
   open: boolean;
   onClose: () => void;
-  form: any;
-  setForm: (v: any) => void;
+  form: UserFormState;
+  setForm: (value: UserFormState) => void;
   onSave: () => void;
   loading: boolean;
-  branches: any[];
-  agents: any[];
-  updateStaffName: (v: string) => void;
+  branches: Branch[];
+  updateStaffName: (value: string) => void;
+  regeneratePassword: () => void;
 };
 
-const FieldLabel = ({ children, color = "primary.main" }: { children: React.ReactNode; color?: string }) => (
-  <Typography variant="caption" sx={{ fontWeight: 1000, color, letterSpacing: "0.1em", mb: 2, display: "block" }}>
-    {String(children).toUpperCase()}
-  </Typography>
-);
+const roleOptions: UserRole[] = ["SUPER_USER", "AGENT", "CLIENT"];
 
 export function UserProvisioningDrawer({
   open,
@@ -47,11 +42,10 @@ export function UserProvisioningDrawer({
   onSave,
   loading,
   branches,
-  agents,
   updateStaffName,
+  regeneratePassword
 }: UserProvisioningDrawerProps) {
-  const accountType = form.role === "SUPER_USER" ? "SOCIETY" : form.role;
-  const accountLabel = form.role === "SUPER_USER" ? "Society Staff" : form.role;
+  const roleMeta = ROLE_META[form.role];
 
   return (
     <Drawer
@@ -59,96 +53,127 @@ export function UserProvisioningDrawer({
       open={open}
       onClose={onClose}
       PaperProps={{
-        sx: { width: { xs: "100%", sm: 550 }, borderRadius: "24px 0 0 24px" },
+        sx: { width: { xs: "100%", sm: 520 } }
       }}
     >
-      <Box sx={{ flex: 1, height: "100%", display: "flex", flexDirection: "column" }}>
-        <Box sx={{ p: 4, pb: 6, bgcolor: alpha("#0f172a", 0.03), borderBottom: "1px solid rgba(15, 23, 42, 0.1)", position: "relative" }}>
-          <IconButton onClick={onClose} sx={{ position: "absolute", right: 16, top: 16, color: "#64748b" }}>
-            <CloseRoundedIcon />
-          </IconButton>
-          <Avatar sx={{ bgcolor: "#0f172a", width: 56, height: 56, mb: 2, boxShadow: "0 8px 16px -4px rgba(15, 23, 42, 0.4)" }}>
-            <BadgeRoundedIcon fontSize="large" />
-          </Avatar>
-          <Typography variant="h5" sx={{ fontWeight: 900, color: "#0f172a" }}>
-            Provision Institutional Identity
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Create a new operative or administrative account with role-safe defaults.
-          </Typography>
+      <Box sx={{ display: "flex", minHeight: "100%", flexDirection: "column" }}>
+        <Box sx={{ borderBottom: "1px solid rgba(15, 23, 42, 0.08)", px: 3, py: 2.5 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Add account
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Create a society admin, field agent, or client account with the right modules.
+              </Typography>
+            </Box>
+            <IconButton onClick={onClose}>
+              <CloseRoundedIcon />
+            </IconButton>
+          </Stack>
         </Box>
 
-        <Box sx={{ p: 4, flex: 1, overflowY: "auto" }}>
-          <Stack spacing={4}>
-            <Box>
-              <FieldLabel>Personal Details</FieldLabel>
-              <TextField fullWidth label="Full Name" value={form.fullName} onChange={(e) => updateStaffName(e.target.value)} />
-            </Box>
+        <Stack spacing={3} sx={{ flex: 1, overflowY: "auto", px: 3, py: 3 }}>
+          <TextField fullWidth label="Full name" value={form.fullName} onChange={(event) => updateStaffName(event.target.value)} />
 
-            <Box>
-              <FieldLabel color="secondary.main">Role & Location</FieldLabel>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField 
-                    select 
-                    fullWidth 
-                    label="Role" 
-                    value={form.role} 
-                    onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  >
-                    <MenuItem value="SUPER_USER">Administrator / Staff</MenuItem>
-                    <MenuItem value="AGENT">Field Agent</MenuItem>
-                    <MenuItem value="CLIENT">Member Client</MenuItem>
-                  </TextField>
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField select fullWidth label="Branch" value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })}>
-                    {branches.map((b) => (
-                      <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-              </Grid>
-            </Box>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                select
+                label="Account type"
+                value={form.role}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    role: event.target.value as UserRole
+                  })
+                }
+              >
+                {roleOptions.map((role) => (
+                  <MenuItem key={role} value={role}>
+                    {ROLE_META[role].label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                select
+                label="Branch"
+                value={form.branchId}
+                onChange={(event) => setForm({ ...form, branchId: event.target.value })}
+              >
+                <MenuItem value="">Head office / unassigned</MenuItem>
+                {branches.map((branch) => (
+                  <MenuItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          </Grid>
 
-            <Box sx={{ p: 3, bgcolor: "#f8fafc", borderRadius: 3, border: "1px solid #e2e8f0" }}>
-              <FieldLabel color="text.secondary">Auth Credentials</FieldLabel>
-              <Stack spacing={2}>
-                <TextField 
-                  fullWidth 
-                  label="Username" 
-                  value={form.username} 
-                  InputProps={{ readOnly: true, startAdornment: <InputAdornment position="start"><VerifiedUserRoundedIcon fontSize="small" color="primary" /></InputAdornment> }} 
-                  helperText="Generated automatically"
-                />
-                <TextField 
-                  fullWidth 
-                  label="Login Password" 
-                  value={form.password} 
-                  InputProps={{ endAdornment: <IconButton size="small" onClick={() => setForm({ ...form, password: Math.random().toString(36).slice(-8) })}><KeyRoundedIcon fontSize="small" /></IconButton> }} 
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                />
-              </Stack>
-            </Box>
+          <Stack spacing={0.75}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                {roleMeta.label}
+              </Typography>
+              <Tooltip title={roleMeta.description}>
+                <InfoOutlinedIcon sx={{ color: "text.secondary", fontSize: 18 }} />
+              </Tooltip>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              {roleMeta.description}
+            </Typography>
+          </Stack>
 
-            <UserAccessSelector
-              accountType={accountType}
-              value={form.allowedModuleSlugs || []}
-              onChange={(next) => setForm({ ...form, allowedModuleSlugs: next })}
-            />
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Username"
+                value={form.username}
+                onChange={(event) => setForm({ ...form, username: event.target.value })}
+                helperText="Use a clear login id. It is auto-filled from the name and can still be adjusted."
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Temporary password"
+                value={form.password}
+                onChange={(event) => setForm({ ...form, password: event.target.value })}
+                InputProps={{
+                  endAdornment: (
+                    <IconButton size="small" onClick={regeneratePassword}>
+                      <AutorenewRoundedIcon fontSize="small" />
+                    </IconButton>
+                  )
+                }}
+              />
+            </Grid>
+          </Grid>
 
+          <UserAccessSelector
+            accountType={toAccountType(form.role) as "SOCIETY" | "AGENT" | "CLIENT"}
+            value={form.allowedModuleSlugs}
+            onChange={(allowedModuleSlugs) => setForm({ ...form, allowedModuleSlugs })}
+          />
+
+          <Box sx={{ mt: "auto" }}>
             <Button
               fullWidth
               variant="contained"
-              size="large"
-              disabled={loading}
+              disabled={loading || !form.fullName.trim() || !form.username.trim() || !form.password.trim()}
               onClick={onSave}
-              sx={{ py: 2, borderRadius: 3, fontWeight: 900, bgcolor: "#0f172a" }}
+              sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
             >
-              Provision {accountLabel} Account
+              Create {roleMeta.shortLabel.toLowerCase()} account
             </Button>
-          </Stack>
-        </Box>
+          </Box>
+        </Stack>
       </Box>
     </Drawer>
   );

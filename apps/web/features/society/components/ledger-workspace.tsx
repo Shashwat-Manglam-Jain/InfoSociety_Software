@@ -304,21 +304,25 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
 
       {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
 
-      <Paper elevation={0} sx={{ borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
         <TableContainer>
-          <Table sx={{ minWidth: 1080 }}>
+          <Table sx={{ minWidth: 1080, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: "#f8fafc" }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 900 }}>Head Code</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Head Name</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Type</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Mode</TableCell>
-                <TableCell sx={{ fontWeight: 900 }} align="right">
-                  Amount
-                </TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Entry Date</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Remark</TableCell>
+                {[
+                  { label: "Head Code", width: "12%", align: "left" },
+                  { label: "Head Name", width: "20%", align: "left" },
+                  { label: "Type", width: "10%", align: "left" },
+                  { label: "Mode", width: "10%", align: "left" },
+                  { label: "Amount", width: "12%", align: "right" },
+                  { label: "Entry Date", width: "12%", align: "left" },
+                  { label: "Status", width: "9%", align: "center" },
+                  { label: "Remark", width: "15%", align: "left" }
+                ].map((col, idx) => (
+                  <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid rgba(15, 23, 42, 0.08)` }}>
+                    {col.label}
+                  </TableCell>
+                ))}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -332,15 +336,38 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
                 </TableRow>
               ) : (
                 rows.map((entry) => (
-                  <TableRow key={entry.id} hover>
-                    <TableCell sx={{ fontWeight: 800 }}>{entry.headCode}</TableCell>
-                    <TableCell>{entry.headName}</TableCell>
-                    <TableCell>{entry.type}</TableCell>
-                    <TableCell>{entry.mode}</TableCell>
-                    <TableCell align="right">{formatCurrency(entry.amount)}</TableCell>
-                    <TableCell>{formatDate(entry.entryDate)}</TableCell>
-                    <TableCell><StatusChip isPosted={entry.isPosted} /></TableCell>
-                    <TableCell>{entry.remark || "-"}</TableCell>
+                  <TableRow 
+                    key={entry.id} 
+                    hover
+                    sx={{ 
+                      transition: "background-color 0.2s ease",
+                      "&:hover": { bgcolor: "rgba(16, 185, 129, 0.02)" }
+                    }}
+                  >
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>{entry.headCode}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: "text.secondary" }}>{entry.headName}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary" }}>{entry.type}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{entry.mode}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(entry.amount)}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{formatDate(entry.entryDate)}</Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <StatusChip isPosted={entry.isPosted} />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{entry.remark || "-"}</Typography>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -360,7 +387,7 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
         />
       </Paper>
 
-      <Paper elevation={0} sx={{ borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
         <Box sx={{ p: 2.4, borderBottom: "1px solid rgba(15, 23, 42, 0.08)" }}>
           <Typography variant="h6" sx={{ fontWeight: 900 }}>
             Head Summary
@@ -370,17 +397,19 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
           </Typography>
         </Box>
         <TableContainer>
-          <Table>
+          <Table sx={{ tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: "#f8fafc" }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 900 }}>Head Code</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Head Name</TableCell>
-                <TableCell sx={{ fontWeight: 900 }} align="right">
-                  Debit
-                </TableCell>
-                <TableCell sx={{ fontWeight: 900 }} align="right">
-                  Credit
-                </TableCell>
+                {[
+                  { label: "Head Code", width: "25%", align: "left" },
+                  { label: "Head Name", width: "35%", align: "left" },
+                  { label: "Debit", width: "20%", align: "right" },
+                  { label: "Credit", width: "20%", align: "right" }
+                ].map((col, idx) => (
+                  <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid rgba(15, 23, 42, 0.08)` }}>
+                    {col.label}
+                  </TableCell>
+                ))}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -394,11 +423,26 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
                 </TableRow>
               ) : (
                 headSummaryRows.map(([headCode, entry]) => (
-                  <TableRow key={headCode}>
-                    <TableCell sx={{ fontWeight: 800 }}>{headCode}</TableCell>
-                    <TableCell>{entry.headName}</TableCell>
-                    <TableCell align="right">{formatCurrency(entry.debit)}</TableCell>
-                    <TableCell align="right">{formatCurrency(entry.credit)}</TableCell>
+                  <TableRow 
+                    key={headCode}
+                    hover
+                    sx={{ 
+                      transition: "background-color 0.2s ease",
+                      "&:hover": { bgcolor: "rgba(16, 185, 129, 0.02)" }
+                    }}
+                  >
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>{headCode}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: "text.secondary" }}>{entry.headName}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(entry.debit)}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(entry.credit)}</Typography>
+                    </TableCell>
                   </TableRow>
                 ))
               )}

@@ -1,139 +1,229 @@
 "use client";
 
-import React from "react";
-import { 
-  Box, 
-  Button, 
-  Chip, 
-  Grid, 
-  Paper, 
-  Stack, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
+import {
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Tooltip,
-  Typography,
-  IconButton
+  Typography
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
 import AddLocationAltRoundedIcon from "@mui/icons-material/AddLocationAltRounded";
-import MapRoundedIcon from "@mui/icons-material/MapRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
-import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
-import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import PlaceRoundedIcon from "@mui/icons-material/PlaceRounded";
+import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
+import { alpha, useTheme } from "@mui/material/styles";
 import { SectionHero } from "../operations/SectionHero";
 import { MetricCard } from "../operations/MetricCard";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
+import type { Branch } from "@/shared/types";
 
 export type BranchInfrastructureProps = {
-  branches: any[];
-  handleOpenDrawer: (type: "branch", branch?: any) => void;
+  branches: Branch[];
+  handleOpenDrawer: (type: "branch", branch?: Branch) => void;
   handleDeleteBranch: (id: string) => void;
 };
 
-export function BranchInfrastructure({
-  branches,
-  handleOpenDrawer,
-  handleDeleteBranch
-}: BranchInfrastructureProps) {
+export function BranchInfrastructure({ branches, handleOpenDrawer, handleDeleteBranch }: BranchInfrastructureProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
 
   const metrics = [
-    { label: "Total Nodes", value: String(branches.length), caption: "Geographical operational points." },
-    { label: "Active Channels", value: String(branches.filter(b => b.isActive).length), caption: "Operational & online units." },
-    { label: "Expansion Score", value: "85%", caption: "Institutional coverage health." },
-    { label: "Compliance", value: "Verified", caption: "Infrastructure regulatory status." }
+    { label: "Branches", value: String(branches.length), caption: "Registered branches in this society." },
+    { label: "Active", value: String(branches.filter((branch) => branch.isActive).length), caption: "Currently available for operations." },
+    { label: "Head Offices", value: String(branches.filter((branch) => branch.isHead).length), caption: "Main operating hubs." },
+    {
+      label: "Digital Services",
+      value: String(branches.filter((branch) => branch.neftImpsService).length),
+      caption: "Branches with online transfer support."
+    }
   ];
 
   return (
-    <Stack spacing={4}>
+    <Stack spacing={3}>
       <SectionHero
-        icon={<AddLocationAltRoundedIcon />}
+        icon={<PlaceRoundedIcon />}
         eyebrow="Infrastructure"
-        title="Branch Network"
-        description="Scalable geographic deployment and operational control across the society's physical and digital network."
+        title="Branch network"
+        description="Maintain branch identity, location, and available services for each operating point."
         colorScheme="emerald"
         actions={
-          <Button 
-            variant="contained" 
-            startIcon={<AddLocationAltRoundedIcon />} 
+          <Button
+            variant="contained"
+            startIcon={<AddLocationAltRoundedIcon />}
             onClick={() => handleOpenDrawer("branch")}
-            sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2.5, fontWeight: 900, "&:hover": { bgcolor: "#f1f5f9" } }}
+            sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2.5, fontWeight: 800, "&:hover": { bgcolor: "#f8fafc" } }}
           >
-            Deploy Hub Entity
+            Add branch
           </Button>
         }
       />
 
-      <Grid container spacing={3}>
-        {metrics.map((m, idx) => (
-          <Grid item xs={12} sm={6} md={3} key={idx}>
-            <MetricCard {...m} />
-          </Grid>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" }
+        }}
+      >
+        {metrics.map((metric) => (
+          <MetricCard key={metric.label} {...metric} />
         ))}
-      </Grid>
+      </Box>
 
-      {branches.length === 0 ? (
-        <Paper elevation={0} sx={{ p: 8, borderRadius: 6, border: "1px dashed rgba(15, 23, 42, 0.2)", textAlign: 'center' }}>
-          <MapRoundedIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 3 }} />
-          <Typography variant="h5" sx={{ fontWeight: 900 }}>No Institutional Infrastructure Setup</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 4, maxWidth: 400, mx: 'auto' }}>Your society currently has no physical or digital branches mapped. Deploy your headquarters to begin operations.</Typography>
-          <Button variant="contained" size="large" onClick={() => handleOpenDrawer("branch")} sx={{ bgcolor: "#0f172a", py: 1.5, px: 4, borderRadius: 3, fontWeight: 900 }}>Provision First Branch</Button>
-        </Paper>
-      ) : (
-        <Paper elevation={0} sx={{ borderRadius: 6, border: `1px solid ${surfaces.border}`, overflow: 'hidden', bgcolor: surfaces.paper }}>
-          <TableContainer>
-            <Table>
-              <TableHead sx={{ bgcolor: surfaces.tableHead }}>
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          borderRadius: 1.5, 
+          border: `1px solid ${surfaces.border}`, 
+          overflow: "hidden", 
+          bgcolor: surfaces.paper,
+          boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(15, 23, 42, 0.04)"
+        }}
+      >
+        <TableContainer>
+          <Table size="small" sx={{ minWidth: 900, tableLayout: "fixed" }}>
+            <TableHead sx={{ bgcolor: surfaces.tableHead }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: "30%", py: 2 }}>Branch Details</TableCell>
+                <TableCell sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: "22%" }}>Location</TableCell>
+                <TableCell sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: "22%" }}>Contact Info</TableCell>
+                <TableCell sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: "12%" }}>Support</TableCell>
+                <TableCell sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: "10%" }}>Status</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: "4%" }}>
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {branches.length === 0 ? (
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 900, py: 2.5 }}>Branch Artifact</TableCell>
-                  <TableCell sx={{ fontWeight: 900 }}>Geographic Point</TableCell>
-                  <TableCell sx={{ fontWeight: 900 }}>Infrastructure</TableCell>
-                  <TableCell sx={{ fontWeight: 900 }}>Governance Status</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 900 }}>Actions</TableCell>
+                  <TableCell colSpan={6} align="center" sx={{ py: 12 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary", opacity: 0.7 }}>
+                      No branches registered yet. Start by defining your local presence.
+                    </Typography>
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {branches.map((b) => (
-                  <TableRow key={b.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 800 }}>{b.name}</Typography>
-                      <Typography variant="caption" sx={{ fontFamily: "monospace", color: "primary.main", fontWeight: 700 }}>ID: {b.code}</Typography>
+              ) : (
+                branches.map((branch) => (
+                  <TableRow 
+                    key={branch.id} 
+                    hover
+                    sx={{ 
+                      transition: "background-color 0.2s ease",
+                      "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.02) }
+                    }}
+                  >
+                    <TableCell sx={{ py: 2 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Box
+                          sx={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 2,
+                            display: "grid",
+                            placeItems: "center",
+                            bgcolor: alpha(theme.palette.primary.main, 0.1),
+                            color: theme.palette.primary.main,
+                            fontWeight: 900,
+                            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
+                          }}
+                        >
+                          <PlaceRoundedIcon sx={{ fontSize: 20 }} />
+                        </Box>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary", lineHeight: 1.2 }}>
+                            {branch.name}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, display: "block", mt: 0.2 }}>
+                            {branch.code} {branch.isHead ? "• Head Office" : ""}
+                          </Typography>
+                        </Box>
+                      </Stack>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{b.city}, {b.state}</Typography>
-                      <Typography variant="caption" color="text.secondary">{b.pincode}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary" }}>
+                        {[branch.city, branch.state].filter(Boolean).join(", ") || "Geo-location Unset"}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>
+                        {branch.pincode || "No Pincode"}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary" }}>
+                        {branch.contactNo || "Phone Entry Missing"}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>
+                        {branch.contactEmail || "Email Unassigned"}
+                      </Typography>
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={1}>
-                        {b.isHead && <Tooltip title="Corporate Headquarters"><VerifiedUserRoundedIcon sx={{ fontSize: 18, color: "primary.main" }} /></Tooltip>}
-                        {b.lockerFacility && <Tooltip title="Locker Vault Enabled"><ShieldRoundedIcon sx={{ fontSize: 18, color: "#10b981" }} /></Tooltip>}
-                        {b.neftImpsService && <Tooltip title="Digital RTGS/IMPS Hub"><LanguageRoundedIcon sx={{ fontSize: 18, color: "#8b5cf6" }} /></Tooltip>}
+                        {branch.isHead && (
+                          <Tooltip title="Certified Head Office">
+                            <VerifiedRoundedIcon sx={{ fontSize: 18, color: theme.palette.primary.main }} />
+                          </Tooltip>
+                        )}
+                        {branch.lockerFacility && (
+                          <Tooltip title="Secure Locker Access">
+                            <LockRoundedIcon sx={{ fontSize: 18, color: DESIGN_SYSTEM.COLORS.emerald }} />
+                          </Tooltip>
+                        )}
+                        {branch.neftImpsService && (
+                          <Tooltip title="Digital Banking Enabled">
+                            <LanguageRoundedIcon sx={{ fontSize: 18, color: DESIGN_SYSTEM.COLORS.blue }} />
+                          </Tooltip>
+                        )}
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      <Chip label={b.isActive ? "Operational" : "Deactivated"} size="small" sx={{ fontWeight: 900, bgcolor: b.isActive ? alpha("#10b981", 0.1) : alpha("#f43f5e", 0.1), color: b.isActive ? "#10b981" : "#f43f5e" }} />
+                      <Chip
+                        size="small"
+                        label={branch.isActive ? "Operating" : "Closed"}
+                        sx={{
+                          height: 22,
+                          fontWeight: 800,
+                          fontSize: "0.65rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.02em",
+                          bgcolor: branch.isActive ? alpha("#10b981", 0.1) : alpha("#64748b", 0.08),
+                          color: branch.isActive ? "#059669" : "#475569",
+                          border: `1px solid ${branch.isActive ? alpha("#10b981", 0.1) : alpha("#64748b", 0.1)}`
+                        }}
+                      />
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <IconButton size="small" sx={{ color: "primary.main" }} onClick={() => handleOpenDrawer("branch", b)}><EditRoundedIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" sx={{ color: "error.main" }} onClick={() => handleDeleteBranch(b.id)}><DeleteRoundedIcon fontSize="small" /></IconButton>
+                        <Tooltip title="Edit Infrastructure">
+                          <IconButton size="small" onClick={() => handleOpenDrawer("branch", branch)} sx={{ color: "text.secondary", "&:hover": { color: "primary.main", bgcolor: alpha(theme.palette.primary.main, 0.08) } }}>
+                            <EditRoundedIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Decommission Branch">
+                          <IconButton size="small" color="error" onClick={() => handleDeleteBranch(branch.id)} sx={{ "&:hover": { bgcolor: alpha(theme.palette.error.main, 0.08) } }}>
+                            <DeleteOutlineRoundedIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
                       </Stack>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      )}
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
     </Stack>
   );
 }

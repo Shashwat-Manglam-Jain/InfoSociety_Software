@@ -18,7 +18,7 @@ import {
   Tooltip,
   Typography
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
@@ -130,22 +130,22 @@ export function AccountRegistry({
         }
       />
 
-      <Paper elevation={0} sx={{ borderRadius: 6, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
-          <Table sx={{ minWidth: 1000 }}>
+          <Table sx={{ minWidth: 880, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
                 {[
-                  "Account Identity",
-                  "Member Associated",
-                  "Plan Mapping",
-                  "Orientation Date",
-                  "Account Status",
-                  "Liquid Balance",
-                  "Actions"
-                ].map((label, idx) => (
-                  <TableCell key={label} align={idx === 5 || idx === 6 ? "right" : "left"} sx={{ fontWeight: 900, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
-                    {label}
+                  { label: "Account Info", width: "15%", align: "left" },
+                  { label: "Member Details", width: "22%", align: "left" },
+                  { label: "Subscribed Plan", width: "20%", align: "left" },
+                  { label: "Opened On", width: "12%", align: "left" },
+                  { label: "Status", width: "11%", align: "left" },
+                  { label: "Current Balance", width: "15%", align: "right" },
+                  { label: "", width: "5%", align: "right" }
+                ].map((col, idx) => (
+                  <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
+                    {col.label}
                   </TableCell>
                 ))}
               </TableRow>
@@ -157,27 +157,45 @@ export function AccountRegistry({
                 filteredAccounts
                   .slice(accountPage * accountRowsPerPage, accountPage * accountRowsPerPage + accountRowsPerPage)
                   .map((account) => (
-                    <TableRow key={account.id} hover sx={{ cursor: "pointer" }} onClick={() => openAccountDetail(account.id)}>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 800 }}>{account.accountNo}</Typography>
-                        <Chip label={account.accountType} size="small" sx={{ fontSize: "0.6rem", fontWeight: 900, height: 18, borderRadius: 1 }} />
+                    <TableRow 
+                      key={account.id} 
+                      hover 
+                      sx={{ 
+                        cursor: "pointer",
+                        transition: "background-color 0.2s ease",
+                        "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.02) }
+                      }} 
+                      onClick={() => openAccountDetail(account.id)}
+                    >
+                      <TableCell sx={{ py: 2 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>{account.accountNo}</Typography>
+                        <Chip label={account.accountType} size="small" sx={{ fontSize: "0.6rem", fontWeight: 900, height: 18, borderRadius: 1.5, mt: 0.5, bgcolor: alpha(theme.palette.secondary.main, 0.1), color: theme.palette.secondary.main, border: "none" }} />
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{account.memberName}</Typography>
-                        <Typography variant="caption" color="text.secondary">{account.branch}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>{account.memberName}</Typography>
+                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>{account.branch}</Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 700, color: "primary.main" }}>{account.planName}</Typography>
                       </TableCell>
-                      <TableCell>{formatDate(account.openDate)}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{formatDate(account.openDate)}</Typography>
+                      </TableCell>
                       <TableCell>
                         <StatusChip label={account.status} tone={account.status === "Active" ? "success" : "warning"} />
                       </TableCell>
                       <TableCell align="right">
-                        <Typography variant="body2" sx={{ fontWeight: 900 }}>{formatCurrency(account.amount)}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(account.amount)}</Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); openAccountDetail(account.id); }}>
+                        <IconButton 
+                          size="small" 
+                          onClick={(e) => { e.stopPropagation(); openAccountDetail(account.id); }}
+                          sx={{
+                            color: "text.secondary",
+                            "&:hover": { color: "primary.main", bgcolor: alpha(theme.palette.primary.main, 0.08) }
+                          }}
+                        >
                           <VisibilityRoundedIcon fontSize="small" />
                         </IconButton>
                       </TableCell>

@@ -31,8 +31,8 @@ export function SectionHero({
   return (
     <Box
       sx={{
-        p: { xs: 1.8, md: 2.2 },
-        borderRadius: 4,
+        p: { xs: 2, md: 2.25 },
+        borderRadius: 3,
         position: "relative",
         overflow: "hidden",
         background: gradients[colorScheme],
@@ -60,16 +60,16 @@ export function SectionHero({
         <Stack direction="row" spacing={2} alignItems="center">
           <Box
             sx={{
-              width: 52,
-              height: 52,
-              borderRadius: "14px",
+              width: 46,
+              height: 46,
+              borderRadius: "12px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               bgcolor: "rgba(255,255,255,0.1)",
               border: "1px solid rgba(255,255,255,0.15)",
               backdropFilter: "blur(8px)",
-              "& svg": { fontSize: "1.6rem", color: accentColor },
+              "& svg": { fontSize: "1.45rem", color: accentColor },
               boxShadow: "inset 0 0 12px rgba(255,255,255,0.05)"
             }}
           >
@@ -79,16 +79,16 @@ export function SectionHero({
             <Typography variant="overline" sx={{ letterSpacing: 1.5, fontWeight: 900, color: "rgba(255,255,255,0.65)", mb: 0, display: "block", lineHeight: 1.1, fontSize: '0.65rem' }}>
               {eyebrow}
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1, mb: 0.5, fontSize: { xs: '1.25rem', md: '1.45rem' } }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.05, mb: 0.5, fontSize: { xs: '1.15rem', md: '1.35rem' } }}>
               {title}
             </Typography>
-            <Typography sx={{ color: "rgba(255,255,255,0.6)", maxWidth: { xs: "100%", lg: 600 }, fontSize: "0.8rem", lineHeight: 1.3, fontWeight: 500 }}>
+            <Typography sx={{ color: "rgba(255,255,255,0.68)", maxWidth: { xs: "100%", lg: 640 }, fontSize: "0.85rem", lineHeight: 1.45, fontWeight: 500 }}>
               {description}
             </Typography>
           </Box>
         </Stack>
         {actions && (
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ alignItems: "center", width: { xs: "100%", lg: "auto" } }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ alignItems: "center", width: { xs: "100%", lg: "auto" } }}>
             {actions}
           </Stack>
         )}

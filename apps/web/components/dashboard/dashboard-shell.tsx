@@ -3,18 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
-import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import LogoutIcon from "@mui/icons-material/Logout";
-import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
-import FeedbackRoundedIcon from "@mui/icons-material/FeedbackRounded";
-import HelpRoundedIcon from "@mui/icons-material/HelpRounded";
-import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
 import SavingsRoundedIcon from "@mui/icons-material/SavingsRounded";
-import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
-import LockRoundedIcon from "@mui/icons-material/LockRounded";
-import DnsRoundedIcon from "@mui/icons-material/DnsRounded";
-import { AppBar, Avatar, Box, Button, Chip, Divider, IconButton, Stack, Toolbar, Typography, Tooltip, Collapse } from "@mui/material";
+import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import { AppBar, Avatar, Box, Button, Chip, Collapse, Divider, Drawer, IconButton, Stack, Toolbar, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
@@ -88,6 +80,7 @@ export function DashboardShell({
   const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>(() =>
     createExpandedGroupsState(normalizedAccessibleModules)
   );
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const toggleGroup = (idx: number) => {
     setExpandedGroups(prev => ({ ...prev, [idx]: !prev[idx] }));
@@ -117,6 +110,237 @@ export function DashboardShell({
       });
   }, [normalizedAccessibleModules, router]);
 
+  const closeMobileSidebar = () => {
+    setMobileSidebarOpen(false);
+  };
+
+  const sidebarContent = (
+    <>
+      <Box sx={{ p: { xs: 2, md: 3 }, borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar
+            src={avatarDataUrl ?? undefined}
+            variant="rounded"
+            sx={{
+              width: 44,
+              height: 44,
+              borderRadius: "12px",
+              bgcolor: "primary.main",
+              color: "primary.contrastText",
+              fontSize: "1.1rem",
+              fontWeight: 800,
+              boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`
+            }}
+          >
+            {user?.society?.name?.[0] ?? user?.fullName?.[0] ?? "A"}
+          </Avatar>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography
+              sx={{
+                fontWeight: 800,
+                fontSize: "0.95rem",
+                color: "text.primary",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                letterSpacing: "-0.01em"
+              }}
+            >
+              {user?.society?.name ?? user?.fullName ?? "Platform"}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                color: "text.secondary",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                mt: 0.2
+              }}
+            >
+              {accountTypeLabel}
+            </Typography>
+          </Box>
+        </Stack>
+      </Box>
+
+      <Box sx={{ flex: 1, py: 2 }}>
+        {normalizedAccessibleModules.map((group: any, gIdx: number) => {
+          if (!group.heading) {
+            return (
+              <Stack key={gIdx} spacing={0.5} sx={{ px: 1.5, mb: 2 }}>
+                {group.items.map((item: any, idx: number) => (
+                  <Button
+                    key={idx}
+                    component={Link}
+                    href={item.href || "/dashboard"}
+                    prefetch
+                    fullWidth
+                    startIcon={item.icon}
+                    onClick={closeMobileSidebar}
+                    sx={{
+                      justifyContent: "flex-start",
+                      px: 2,
+                      py: 1.25,
+                      borderRadius: "12px",
+                      color: item.active ? "primary.main" : "text.secondary",
+                      bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.08) : "transparent",
+                      textTransform: "none",
+                      fontSize: "0.875rem",
+                      fontWeight: item.active ? 700 : 500,
+                      position: "relative",
+                      "&::before": item.active
+                        ? {
+                            content: '""',
+                            position: "absolute",
+                            left: -12,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            height: "60%",
+                            width: "4px",
+                            borderRadius: "0 4px 4px 0",
+                            bgcolor: "primary.main"
+                          }
+                        : {},
+                      "& .MuiButton-startIcon": {
+                        mr: 2,
+                        color: item.active ? "primary.main" : "text.secondary",
+                        "& svg": { fontSize: "1.3rem" }
+                      },
+                      "&:hover": {
+                        bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.12) : "action.hover",
+                        color: item.active ? "primary.main" : "text.primary"
+                      }
+                    }}
+                  >
+                    <Box sx={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.label || item.name}
+                    </Box>
+                    {item.badge && (
+                      <Chip
+                        label={item.badge}
+                        size="small"
+                        sx={{ ml: 1, height: 18, fontSize: "0.6rem", fontWeight: 1000, bgcolor: "action.hover", color: "text.secondary" }}
+                      />
+                    )}
+                  </Button>
+                ))}
+              </Stack>
+            );
+          }
+
+          return (
+            <Box key={gIdx} sx={{ mb: 1.5 }}>
+              <Box
+                onClick={() => toggleGroup(gIdx)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  px: 2,
+                  py: 1,
+                  cursor: "pointer",
+                  mb: 0.5,
+                  "&:hover .heading-text": { color: "text.primary" }
+                }}
+              >
+                <Typography
+                  className="heading-text"
+                  sx={{
+                    color: "text.secondary",
+                    textTransform: "uppercase",
+                    fontWeight: 800,
+                    fontSize: "0.65rem",
+                    letterSpacing: "0.1em",
+                    transition: "color 0.2s"
+                  }}
+                >
+                  {group.heading}
+                </Typography>
+                {expandedGroups[gIdx] !== false ? (
+                  <KeyboardArrowDownRoundedIcon sx={{ fontSize: 16, color: "text.secondary", opacity: 0.5 }} />
+                ) : (
+                  <KeyboardArrowRightRoundedIcon sx={{ fontSize: 16, color: "text.secondary", opacity: 0.5 }} />
+                )}
+              </Box>
+
+              <Collapse in={expandedGroups[gIdx] !== false}>
+                <Stack spacing={0.5} sx={{ px: 1 }}>
+                  {group.items.map((item: any, idx: number) => (
+                    <Button
+                      key={idx}
+                      component={Link}
+                      href={item.href || "/dashboard"}
+                      prefetch
+                      fullWidth
+                      startIcon={item.icon}
+                      onClick={closeMobileSidebar}
+                      sx={{
+                        justifyContent: "flex-start",
+                        px: 1.5,
+                        pl: 2,
+                        py: 1,
+                        borderRadius: "10px",
+                        color: item.active ? "primary.main" : "text.secondary",
+                        bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.06) : "transparent",
+                        textTransform: "none",
+                        fontSize: "0.875rem",
+                        fontWeight: item.active ? 600 : 500,
+                        transition: "all 0.2s ease",
+                        "& .MuiButton-startIcon": {
+                          mr: 1.5,
+                          color: item.active ? "primary.main" : "text.secondary",
+                          "& svg": { fontSize: "1.2rem" }
+                        },
+                        "&:hover": {
+                          bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.08) : "action.hover",
+                          color: item.active ? "primary.main" : "text.primary"
+                        }
+                      }}
+                    >
+                      <Box sx={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {item.label || item.name}
+                      </Box>
+                      {item.badge && (
+                        <Chip label={item.badge} size="small" sx={{ ml: 1, height: 18, fontSize: "0.6rem", fontWeight: 1000, bgcolor: "#f1f5f9", color: "#64748b" }} />
+                      )}
+                    </Button>
+                  ))}
+                </Stack>
+              </Collapse>
+            </Box>
+          );
+        })}
+      </Box>
+
+      <Box sx={{ p: 2, borderTop: "1px solid #f1f5f9", bgcolor: "#fcfdfe" }}>
+        <Button
+          onClick={() => {
+            closeMobileSidebar();
+            onLogout();
+          }}
+          variant="text"
+          fullWidth
+          startIcon={<LogoutIcon sx={{ fontSize: 18 }} />}
+          sx={{
+            py: 1.2,
+            borderRadius: "10px",
+            fontWeight: 900,
+            color: "#94a3b8",
+            textTransform: "none",
+            fontSize: "0.82rem",
+            "&:hover": {
+              color: "#ef4444",
+              bgcolor: alpha("#ef4444", 0.05)
+            }
+          }}
+        >
+          Sign out
+        </Button>
+      </Box>
+    </>
+  );
+
   return (
     <>
       <AppBar
@@ -133,6 +357,18 @@ export function DashboardShell({
         }}
       >
         <Toolbar sx={{ minHeight: 64, gap: 2, flexWrap: "nowrap", py: 0, px: { xs: 1.5, md: 3 } }}>
+          <IconButton
+            size="small"
+            onClick={() => setMobileSidebarOpen(true)}
+            sx={{
+              display: { xs: "inline-flex", md: "none" },
+              color: "#fff",
+              bgcolor: "rgba(255,255,255,0.08)"
+            }}
+          >
+            <MenuRoundedIcon fontSize="small" />
+          </IconButton>
+
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexGrow: 1, minWidth: 0 }}>
             <Box
               sx={{
@@ -193,8 +429,37 @@ export function DashboardShell({
               <LogoutIcon fontSize="inherit" />
             </IconButton>
           </Stack>
+
+          <IconButton
+            size="small"
+            onClick={onLogout}
+            sx={{
+              display: { xs: "inline-flex", md: "none" },
+              color: "#fff",
+              bgcolor: "rgba(255,255,255,0.08)",
+              "&:hover": { bgcolor: "#ef4444", color: "#fff" }
+            }}
+          >
+            <LogoutIcon fontSize="inherit" />
+          </IconButton>
         </Toolbar>
       </AppBar>
+
+      <Drawer
+        open={mobileSidebarOpen}
+        onClose={closeMobileSidebar}
+        PaperProps={{
+          sx: {
+            width: 300,
+            display: { xs: "flex", md: "none" },
+            borderRight: (theme) => `1px solid ${theme.palette.divider}`
+          }
+        }}
+      >
+        <Box sx={{ display: "flex", minHeight: "100%", flexDirection: "column", bgcolor: "background.paper" }}>
+          {sidebarContent}
+        </Box>
+      </Drawer>
 
       <Box sx={{ 
         display: "flex", 
@@ -218,201 +483,7 @@ export function DashboardShell({
             "&::-webkit-scrollbar-thumb": { bgcolor: (theme) => alpha(theme.palette.text.primary, 0.1), borderRadius: "10px" }
           }}
         >
-          {/* User Banner */}
-          <Box sx={{ p: { xs: 2, md: 3 }, borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}>
-             <Stack direction="row" spacing={2} alignItems="center">
-                <Avatar 
-                 src={avatarDataUrl ?? undefined}
-                 variant="rounded"
-                 sx={{ 
-                   width: 44, 
-                   height: 44, 
-                   borderRadius: "12px",
-                   bgcolor: "primary.main", 
-                   color: "primary.contrastText",
-                   fontSize: "1.1rem", 
-                   fontWeight: 800,
-                   boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`
-                 }}
-                >
-                  {user?.society?.name?.[0] ?? user?.fullName?.[0] ?? "A"}
-                </Avatar>
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                   <Typography sx={{ fontWeight: 800, fontSize: "0.95rem", color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "-0.01em" }}>
-                     {user?.society?.name ?? user?.fullName ?? "Platform"}
-                   </Typography>
-                   <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, mt: 0.2 }}>{accountTypeLabel}</Typography>
-                </Box>
-             </Stack>
-          </Box>
-
-          {/* Navigation Tracks */}
-          <Box sx={{ flex: 1, py: 2 }}>
-            {normalizedAccessibleModules.map((group: any, gIdx: number) => {
-              if (!group.heading) {
-                return (
-                  <Stack key={gIdx} spacing={0.5} sx={{ px: 1.5, mb: 2 }}>
-                    {group.items.map((item: any, idx: number) => (
-                      <Button
-                        key={idx}
-                        component={Link}
-                        href={item.href || "/dashboard"}
-                        prefetch
-                        fullWidth
-                        startIcon={item.icon}
-                        sx={{
-                          justifyContent: "flex-start",
-                          px: 2,
-                          py: 1.25,
-                          borderRadius: "12px",
-                          color: item.active ? "primary.main" : "text.secondary",
-                          bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.08) : "transparent",
-                          textTransform: "none",
-                          fontSize: "0.875rem",
-                          fontWeight: item.active ? 700 : 500,
-                          position: "relative",
-                          "&::before": item.active ? {
-                            content: '""',
-                            position: "absolute",
-                            left: -12,
-                            top: "50%",
-                            transform: "translateY(-50%)",
-                            height: "60%",
-                            width: "4px",
-                            borderRadius: "0 4px 4px 0",
-                            bgcolor: "primary.main"
-                          } : {},
-                          "& .MuiButton-startIcon": { 
-                             mr: 2, 
-                             color: item.active ? "primary.main" : "text.secondary",
-                             "& svg": { fontSize: "1.3rem" }
-                          },
-                          "&:hover": {
-                            bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.12) : "action.hover",
-                            color: item.active ? "primary.main" : "text.primary"
-                          }
-                        }}
-                      >
-                        <Box sx={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {item.label || item.name}
-                        </Box>
-                        {item.badge && (
-                           <Chip label={item.badge} size="small" sx={{ ml: 1, height: 18, fontSize: "0.6rem", fontWeight: 1000, bgcolor: "action.hover", color: "text.secondary" }} />
-                        )}
-                      </Button>
-                    ))}
-                  </Stack>
-                );
-              }
-
-              return (
-                <Box key={gIdx} sx={{ mb: 1.5 }}>
-                  <Box 
-                    onClick={() => toggleGroup(gIdx)}
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      px: 2,
-                      py: 1,
-                      cursor: "pointer",
-                      mb: 0.5,
-                      "&:hover .heading-text": { color: "text.primary" }
-                    }}
-                  >
-                    <Typography 
-                      className="heading-text"
-                      sx={{ 
-                        color: "text.secondary",
-                        textTransform: "uppercase",
-                        fontWeight: 800,
-                        fontSize: "0.65rem",
-                        letterSpacing: "0.1em",
-                        transition: "color 0.2s"
-                      }}
-                    >
-                      {group.heading}
-                    </Typography>
-                    {expandedGroups[gIdx] !== false ? (
-                      <KeyboardArrowDownRoundedIcon sx={{ fontSize: 16, color: "text.secondary", opacity: 0.5 }} />
-                    ) : (
-                      <KeyboardArrowRightRoundedIcon sx={{ fontSize: 16, color: "text.secondary", opacity: 0.5 }} />
-                    )}
-                  </Box>
-                  
-                  <Collapse in={expandedGroups[gIdx] !== false}>
-                    <Stack spacing={0.5} sx={{ px: 1 }}>
-                      {group.items.map((item: any, idx: number) => (
-                        <Button
-                          key={idx}
-                          component={Link}
-                          href={item.href || "/dashboard"}
-                          prefetch
-                          fullWidth
-                          startIcon={item.icon}
-                          sx={{
-                            justifyContent: "flex-start",
-                            px: 1.5,
-                            pl: 2,
-                            py: 1,
-                            borderRadius: "10px",
-                            color: item.active ? "primary.main" : "text.secondary",
-                            bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.06) : "transparent",
-                            textTransform: "none",
-                            fontSize: "0.875rem",
-                            fontWeight: item.active ? 600 : 500,
-                            transition: "all 0.2s ease",
-                            "& .MuiButton-startIcon": { 
-                              mr: 1.5, 
-                              color: item.active ? "primary.main" : "text.secondary",
-                              "& svg": { fontSize: "1.2rem" }
-                            },
-                            "&:hover": {
-                              bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.08) : "action.hover",
-                              color: item.active ? "primary.main" : "text.primary"
-                            }
-                          }}
-                        >
-                          <Box sx={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {item.label || item.name}
-                          </Box>
-                          {item.badge && (
-                             <Chip label={item.badge} size="small" sx={{ ml: 1, height: 18, fontSize: "0.6rem", fontWeight: 1000, bgcolor: "#f1f5f9", color: "#64748b" }} />
-                          )}
-                        </Button>
-                      ))}
-                    </Stack>
-                  </Collapse>
-                </Box>
-              );
-            })}
-
-
-          </Box>
-
-          {/* Action Log / Sidebar Footer */}
-          <Box sx={{ p: 2, borderTop: "1px solid #f1f5f9", bgcolor: "#fcfdfe" }}>
-            <Button
-              onClick={onLogout}
-              variant="text"
-              fullWidth
-              startIcon={<LogoutIcon sx={{ fontSize: 18 }} />}
-              sx={{
-                py: 1.2,
-                borderRadius: "10px",
-                fontWeight: 900,
-                color: "#94a3b8",
-                textTransform: "none",
-                fontSize: "0.82rem",
-                "&:hover": {
-                  color: "#ef4444",
-                  bgcolor: alpha("#ef4444", 0.05)
-                }
-              }}
-            >
-              Terminate Pulse
-            </Button>
-          </Box>
+          {sidebarContent}
         </Box>
 
         {/* Independently Scrollable Main Content */}

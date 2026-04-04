@@ -1,5 +1,25 @@
 import { apiRequest } from "./http";
 
+export type CustomerListRecord = {
+  id: string;
+  customerCode: string;
+  firstName: string;
+  lastName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  society?: { code: string; name: string } | null;
+};
+
+export type CustomerUpdatePayload = {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  kycVerified?: boolean;
+};
+
 export async function listCustomers(token: string, q?: string) {
   const params = new URLSearchParams({
     page: "1",
@@ -14,14 +34,12 @@ export async function listCustomers(token: string, q?: string) {
     page: number;
     limit: number;
     total: number;
-    rows: Array<{
-      id: string;
-      customerCode: string;
-      firstName: string;
-      lastName?: string | null;
-      society?: { code: string; name: string } | null;
-    }>;
+    rows: CustomerListRecord[];
   }>(token, "GET", `/customers?${params.toString()}`);
+}
+
+export async function updateCustomer(token: string, id: string, payload: CustomerUpdatePayload) {
+  return apiRequest<CustomerListRecord>(token, "PATCH", `/customers/${id}`, payload);
 }
 
 export async function getCustomerMe(token: string) {

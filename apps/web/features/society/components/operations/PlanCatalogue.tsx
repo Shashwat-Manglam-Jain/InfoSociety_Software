@@ -14,8 +14,7 @@ import {
   TableHead, 
   TableRow, 
   TextField, 
-  Tab, 
-  Tabs,
+  MenuItem,
   Typography,
   Grid
 } from "@mui/material";
@@ -81,6 +80,27 @@ export function PlanCatalogue({
         actions={
           <>
             <TextField
+              select
+              size="small"
+              value={planTab}
+              onChange={(e) => setPlanTab(e.target.value)}
+              sx={{
+                minWidth: { xs: "100%", sm: 160 },
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 3,
+                  bgcolor: surfaces.input,
+                  color: "#fff",
+                  border: `1px solid ${surfaces.inputBorder}`
+                }
+              }}
+            >
+              {planCategoryOptions.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
               size="small"
               value={planSearch}
               onChange={(event) => setPlanSearch(event.target.value)}
@@ -120,7 +140,7 @@ export function PlanCatalogue({
         }
       />
 
-      <Grid container spacing={2}>
+      <Grid container spacing={4}>
         {metrics.map((metric) => (
           <Grid key={metric.label} size={{ xs: 12, sm: 6, xl: 3 }}>
             <MetricCard {...metric} />
@@ -128,35 +148,21 @@ export function PlanCatalogue({
         ))}
       </Grid>
 
-      <Paper elevation={0} sx={{ borderRadius: 6, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
-        <Tabs
-          value={planTab}
-          onChange={(_, value) => setPlanTab(value)}
-          sx={{ 
-            px: 3, 
-            borderBottom: `1px solid ${surfaces.tableBorder}`,
-            "& .MuiTab-root": { fontWeight: 900, py: 2.5, transition: "all 0.2s" }
-          }}
-        >
-          {planCategoryOptions.map((opt) => (
-            <Tab key={opt.value} label={opt.label} value={opt.value} />
-          ))}
-        </Tabs>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
-          <Table sx={{ minWidth: 900 }}>
+          <Table sx={{ minWidth: 900, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
                 {[
-                  "Plan Code",
-                  "Plan Name",
-                  "Min Amount",
-                  "Tenure Scope",
-                  "Rate (APR)",
-                  "Sr. Benefit",
-                  "Actions"
-                ].map((label, idx) => (
-                  <TableCell key={label} align={idx === 2 || idx === 4 || idx === 6 ? "right" : "left"} sx={{ fontWeight: 900, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
-                    {label}
+                  { label: "Plan Details", width: "30%", align: "left" },
+                  { label: "Requirements", width: "15%", align: "right" },
+                  { label: "Tenure Scope", width: "20%", align: "left" },
+                  { label: "Returns (APR)", width: "15%", align: "right" },
+                  { label: "Benefits", width: "15%", align: "left" },
+                  { label: "", width: "5%", align: "right" }
+                ].map((col, idx) => (
+                  <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
+                    {col.label}
                   </TableCell>
                 ))}
               </TableRow>
@@ -164,33 +170,76 @@ export function PlanCatalogue({
             <TableBody>
               {planRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 12 }}>
-                    <Typography variant="body2" color="text.secondary">No plans matched the selected category and search.</Typography>
+                  <TableCell colSpan={6} align="center" sx={{ py: 12 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary", opacity: 0.7 }}>
+                      No plans matched the selected category and search.
+                    </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
                 planRows.map((plan) => (
-                  <TableRow key={plan.id} hover sx={{ cursor: "pointer" }} onClick={() => openPlanDrawer(plan)}>
-                    <TableCell>
-                      <Chip label={plan.planCode} size="small" sx={{ fontWeight: 800, borderRadius: 1.5, bgcolor: alpha(theme.palette.secondary.main, 0.1), color: theme.palette.secondary.main, border: "none" }} />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 800, color: "primary.main" }}>{plan.planName}</Typography>
+                  <TableRow 
+                    key={plan.id} 
+                    hover 
+                    onClick={() => openPlanDrawer(plan)}
+                    sx={{ 
+                      cursor: "pointer",
+                      transition: "background-color 0.2s ease",
+                      "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.02) }
+                    }}
+                  >
+                    <TableCell sx={{ py: 2 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary", lineHeight: 1.2 }}>
+                            {plan.planName}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, display: "block", mt: 0.2 }}>
+                            {plan.planCode}
+                          </Typography>
+                        </Box>
+                      </Stack>
                     </TableCell>
                     <TableCell align="right">
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{formatCurrency(plan.minAmount)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary" }}>
+                        {formatCurrency(plan.minAmount)}
+                      </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">{plan.tenure}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
+                        {plan.tenure}
+                      </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Typography variant="body2" sx={{ fontWeight: 800, color: "success.main" }}>{plan.interestRate}%</Typography>
+                      <Chip
+                        size="small"
+                        label={`${plan.interestRate}%`}
+                        sx={{
+                          height: 22,
+                          fontWeight: 800,
+                          fontSize: "0.7rem",
+                          bgcolor: alpha(DESIGN_SYSTEM.COLORS.emerald, 0.1),
+                          color: DESIGN_SYSTEM.COLORS.emerald,
+                          border: `1px solid ${alpha(DESIGN_SYSTEM.COLORS.emerald, 0.2)}`
+                        }}
+                      />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">{plan.seniorCitizenMargin ? `${plan.seniorCitizenMargin}% additional` : "-"}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>
+                        {plan.seniorCitizenMargin ? `+${plan.seniorCitizenMargin}% Senior` : "-"}
+                      </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Button size="small" onClick={(e) => { e.stopPropagation(); openPlanDrawer(plan); }}>
+                      <Button 
+                        size="small" 
+                        onClick={(e) => { e.stopPropagation(); openPlanDrawer(plan); }}
+                        sx={{
+                          minWidth: "auto",
+                          p: 1,
+                          color: "text.secondary",
+                          "&:hover": { color: "primary.main", bgcolor: alpha(theme.palette.primary.main, 0.08) }
+                        }}
+                      >
                         <EditRoundedIcon fontSize="small" />
                       </Button>
                     </TableCell>

@@ -489,23 +489,27 @@ export function LockerWorkspace({ token, clients, branches }: LockerWorkspacePro
 
       {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
 
-      <Paper elevation={0} sx={{ borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
         <TableContainer>
-          <Table sx={{ minWidth: 1080 }}>
+          <Table sx={{ minWidth: 1080, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: "#f8fafc" }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 900 }}>Locker No</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Customer</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Customer Code</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Branch</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Size</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Opening Date</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Annual Charge</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Visits</TableCell>
-                <TableCell sx={{ fontWeight: 900 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 900 }} align="right">
-                  Action
-                </TableCell>
+                {[
+                  { label: "Locker No", width: "12%", align: "left" },
+                  { label: "Customer", width: "16%", align: "left" },
+                  { label: "Customer Code", width: "14%", align: "left" },
+                  { label: "Branch", width: "12%", align: "left" },
+                  { label: "Size", width: "8%", align: "left" },
+                  { label: "Opened", width: "10%", align: "left" },
+                  { label: "Annual Charge", width: "11%", align: "right" },
+                  { label: "Visits", width: "6%", align: "right" },
+                  { label: "Status", width: "6%", align: "center" },
+                  { label: "", width: "5%", align: "right" }
+                ].map((col, idx) => (
+                  <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid rgba(15, 23, 42, 0.08)` }}>
+                    {col.label}
+                  </TableCell>
+                ))}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -523,18 +527,58 @@ export function LockerWorkspace({ token, clients, branches }: LockerWorkspacePro
                   const branch = client?.branchId ? branchMap.get(client.branchId) : null;
 
                   return (
-                    <TableRow key={locker.id} hover>
-                      <TableCell sx={{ fontWeight: 800 }}>{locker.lockerNumber}</TableCell>
-                      <TableCell>{formatClientName(locker)}</TableCell>
-                      <TableCell>{locker.customer.customerCode}</TableCell>
-                      <TableCell>{branch?.name ?? "-"}</TableCell>
-                      <TableCell>{locker.size}</TableCell>
-                      <TableCell>{formatDate(locker.openingDate)}</TableCell>
-                      <TableCell>{formatCurrency(locker.annualCharge)}</TableCell>
-                      <TableCell>{locker._count?.visits ?? 0}</TableCell>
-                      <TableCell><StatusChip status={locker.status} /></TableCell>
+                    <TableRow 
+                      key={locker.id} 
+                      hover
+                      sx={{ 
+                        transition: "background-color 0.2s ease",
+                        "&:hover": { bgcolor: "rgba(16, 185, 129, 0.02)" }
+                      }}
+                    >
+                      <TableCell>
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                          <Box
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 1.5,
+                              display: "grid",
+                              placeItems: "center",
+                              bgcolor: "rgba(15, 23, 42, 0.04)",
+                              color: "text.secondary",
+                            }}
+                          >
+                            <LockRoundedIcon sx={{ fontSize: 16 }} />
+                          </Box>
+                          <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>{locker.lockerNumber}</Typography>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>{formatClientName(locker)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>{locker.customer.customerCode}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: "text.secondary" }}>{branch?.name ?? "-"}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: "text.primary" }}>{locker.size}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{formatDate(locker.openingDate)}</Typography>
+                      </TableCell>
                       <TableCell align="right">
-                        <IconButton size="small" onClick={() => void openLockerDetail(locker)}>
+                        <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(locker.annualCharge)}</Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" sx={{ fontWeight: 900 }}>{locker._count?.visits ?? 0}</Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <StatusChip status={locker.status} />
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton size="small" onClick={() => void openLockerDetail(locker)} sx={{ color: "text.secondary", "&:hover": { color: "primary.main", bgcolor: "rgba(16, 185, 129, 0.08)" } }}>
                           <VisibilityRoundedIcon fontSize="small" />
                         </IconButton>
                       </TableCell>
