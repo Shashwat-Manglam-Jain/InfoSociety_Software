@@ -36,6 +36,14 @@ export async function updateSocietyAccess(token: string, societyId: string, payl
       isActive: boolean;
       acceptsDigitalPayments: boolean;
       upiId?: string | null;
+      provisionedSuperAdmin?: {
+        username: string;
+        fullName: string;
+        role: "SUPER_USER";
+        requiresPasswordChange: boolean;
+        temporaryPassword: string;
+        loginSocietyCode: string;
+      } | null;
     }
   >(token, "PATCH", `/monitoring/societies/${societyId}/access`, payload);
 }

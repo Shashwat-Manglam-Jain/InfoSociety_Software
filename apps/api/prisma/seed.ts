@@ -143,24 +143,7 @@ async function main() {
   });
 
   // 2) Staff and client users (demo credentials remain stable for local testing).
-  const superAdmin = await prisma.user.upsert({
-    where: { username: "superadmin" },
-    update: {
-      passwordHash: password("Admin@123"),
-      fullName: "Platform Superadmin",
-      role: UserRole.SUPER_ADMIN,
-      isActive: true,
-      societyId: null,
-      customerId: null
-    },
-    create: {
-      username: "superadmin",
-      passwordHash: password("Admin@123"),
-      fullName: "Platform Superadmin",
-      role: UserRole.SUPER_ADMIN
-    }
-  });
-
+  // Platform superadmin is provisioned from backend env during application bootstrap.
   const superUser = await prisma.user.upsert({
     where: { username: "superuser" },
     update: {
@@ -388,23 +371,6 @@ async function main() {
   });
 
   // 4) Subscription samples for billing workflows.
-  await prisma.subscription.upsert({
-    where: { userId: superAdmin.id },
-    update: {
-      plan: SubscriptionPlan.PREMIUM,
-      status: SubscriptionStatus.ACTIVE,
-      monthlyPrice: 0,
-      nextBillingDate: null,
-      cancelAtPeriodEnd: false
-    },
-    create: {
-      userId: superAdmin.id,
-      plan: SubscriptionPlan.PREMIUM,
-      status: SubscriptionStatus.ACTIVE,
-      monthlyPrice: 0
-    }
-  });
-
   await prisma.subscription.upsert({
     where: { userId: superUser.id },
     update: {

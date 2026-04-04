@@ -43,7 +43,7 @@ export default function SuperadminReports() {
     async function init() {
       const session = getSession();
       if (!session || session.role !== "SUPER_ADMIN") {
-        router.replace("/login");
+        router.replace("/admin");
         return;
       }
       try {
@@ -51,7 +51,7 @@ export default function SuperadminReports() {
         setUser(u);
       } catch (err) {
         clearSession();
-        router.replace("/login");
+        router.replace("/admin");
       } finally {
         setLoading(false);
       }

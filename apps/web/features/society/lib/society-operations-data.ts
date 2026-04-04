@@ -163,9 +163,12 @@ export type PlanRecord = {
   planCode: string;
   planName: string;
   minAmount: number;
+  maxAmount: number;
   tenure: string;
+  durationMonths: number;
   lockInPeriod: string;
   interestLockInPeriod: string;
+  interestRate: number;
   annualInterestRate: number;
   seniorCitizen: string;
 };
@@ -246,6 +249,9 @@ export const planCategoryOptions: Array<{ value: PlanCategory; label: string; co
   { value: "personal-loan", label: "Personal Loan Plan", codePrefix: "PL" },
   { value: "property-loan", label: "Property Loan Plan", codePrefix: "PR" }
 ];
+
+export const memberSourceOptions = ["Agent", "Reference", "Direct", "Digital"];
+export const membershipTypeOptions = ["Active", "Deferred", "Suspended", "Deactivated"];
 
 function padNumber(value: number, size = 4) {
   return String(value).padStart(size, "0");
@@ -453,9 +459,12 @@ export function createEmptyPlan(category: PlanCategory = "fd"): PlanRecord {
     planCode: `${option.codePrefix}-${padNumber(1, 3)}`,
     planName: option.label,
     minAmount: 0,
+    maxAmount: 0,
     tenure: "",
+    durationMonths: 12,
     lockInPeriod: "",
     interestLockInPeriod: "",
+    interestRate: 0,
     annualInterestRate: 0,
     seniorCitizen: "No"
   };

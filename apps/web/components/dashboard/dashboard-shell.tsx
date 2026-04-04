@@ -25,21 +25,21 @@ import type { AuthUser } from "@/shared/types";
 
 interface DashboardShellProps {
   children: ReactNode;
-  user: AuthUser | null;
-  accountTypeLabel: string;
-  avatarDataUrl: string | null;
-  onLogout: () => void;
-  t: (key: string, options?: any) => string;
+  user?: AuthUser | null;
+  accountTypeLabel?: string;
+  avatarDataUrl?: string | null;
+  onLogout?: () => void;
+  t?: (key: string, options?: any) => string;
   accessibleModules?: any[];
 }
 
 export function DashboardShell({
   children,
-  user,
-  accountTypeLabel,
-  avatarDataUrl,
-  onLogout,
-  t,
+  user = null,
+  accountTypeLabel = "Workspace",
+  avatarDataUrl = null,
+  onLogout = () => undefined,
+  t = (key: string) => key,
   accessibleModules = []
 }: DashboardShellProps) {
   const router = useRouter();
@@ -156,27 +156,39 @@ export function DashboardShell({
             height: "100%",
             overflowY: "auto",
             overflowX: "hidden",
-            borderRight: "1px solid #e2e8f0",
-            background: "#ffffff",
+            borderRight: (theme) => `1px solid ${theme.palette.divider}`,
+            background: (theme) => theme.palette.background.paper,
             display: { xs: "none", md: "flex" },
             flexDirection: "column",
             scrollbarWidth: "thin",
             "&::-webkit-scrollbar": { width: "3px" },
-            "&::-webkit-scrollbar-thumb": { bgcolor: "rgba(15, 23, 42, 0.1)", borderRadius: "10px" }
+            "&::-webkit-scrollbar-thumb": { bgcolor: (theme) => alpha(theme.palette.text.primary, 0.1), borderRadius: "10px" }
           }}
         >
           {/* User Banner */}
-          <Box sx={{ p: 2.5, borderBottom: "1px solid #f1f5f9" }}>
-             <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box sx={{ p: { xs: 2, md: 3 }, borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}>
+             <Stack direction="row" spacing={2} alignItems="center">
                 <Avatar 
                  src={avatarDataUrl ?? undefined}
-                 sx={{ width: 34, height: 34, border: "2px solid #f8fafc", bgcolor: "#0f172a", fontSize: "0.8rem", fontWeight: 1000 }}
+                 variant="rounded"
+                 sx={{ 
+                   width: 44, 
+                   height: 44, 
+                   borderRadius: "12px",
+                   bgcolor: "primary.main", 
+                   color: "primary.contrastText",
+                   fontSize: "1.1rem", 
+                   fontWeight: 800,
+                   boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`
+                 }}
                 >
-                  {user?.fullName?.[0] ?? "A"}
+                  {user?.society?.name?.[0] ?? user?.fullName?.[0] ?? "A"}
                 </Avatar>
-                <Box sx={{ minWidth: 0 }}>
-                   <Typography sx={{ fontWeight: 1000, fontSize: "0.85rem", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.fullName}</Typography>
-                   <Typography sx={{ fontSize: "0.65rem", fontWeight: 800, color: "primary.main", textTransform: "uppercase", letterSpacing: 0.5 }}>{accountTypeLabel}</Typography>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                   <Typography sx={{ fontWeight: 800, fontSize: "0.95rem", color: "text.primary", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "-0.01em" }}>
+                     {user?.society?.name ?? user?.fullName ?? "Platform"}
+                   </Typography>
+                   <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: 0.5, mt: 0.2 }}>{accountTypeLabel}</Typography>
                 </Box>
              </Stack>
           </Box>
@@ -197,21 +209,34 @@ export function DashboardShell({
                         startIcon={item.icon}
                         sx={{
                           justifyContent: "flex-start",
-                          px: 1.5,
-                          py: 1.2,
-                          minHeight: 44,
-                          borderRadius: "10px",
-                          color: item.active ? "primary.main" : "#0f172a",
-                          bgcolor: item.active ? alpha("#3b82f6", 0.08) : "transparent",
+                          px: 2,
+                          py: 1.25,
+                          borderRadius: "12px",
+                          color: item.active ? "primary.main" : "text.secondary",
+                          bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.08) : "transparent",
                           textTransform: "none",
-                          fontSize: "0.85rem",
-                          fontWeight: 1000,
-                          border: item.active ? "1px solid rgba(59, 130, 246, 0.15)" : "1px solid transparent",
-                          boxShadow: item.active ? "0 4px 12px -2px rgba(59, 130, 246, 0.15)" : "none",
-                          "& .MuiButton-startIcon": { mr: 1.5, color: item.active ? "primary.main" : "#64748b" },
+                          fontSize: "0.875rem",
+                          fontWeight: item.active ? 700 : 500,
+                          position: "relative",
+                          "&::before": item.active ? {
+                            content: '""',
+                            position: "absolute",
+                            left: -12,
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            height: "60%",
+                            width: "4px",
+                            borderRadius: "0 4px 4px 0",
+                            bgcolor: "primary.main"
+                          } : {},
+                          "& .MuiButton-startIcon": { 
+                             mr: 2, 
+                             color: item.active ? "primary.main" : "text.secondary",
+                             "& svg": { fontSize: "1.3rem" }
+                          },
                           "&:hover": {
-                            bgcolor: item.active ? alpha("#3b82f6", 0.12) : "#f8fafc",
-                            color: "primary.main"
+                            bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.12) : "action.hover",
+                            color: item.active ? "primary.main" : "text.primary"
                           }
                         }}
                       >
@@ -219,7 +244,7 @@ export function DashboardShell({
                           {item.label || item.name}
                         </Box>
                         {item.badge && (
-                           <Chip label={item.badge} size="small" sx={{ ml: 1, height: 18, fontSize: "0.6rem", fontWeight: 1000, bgcolor: "#f1f5f9", color: "#64748b" }} />
+                           <Chip label={item.badge} size="small" sx={{ ml: 1, height: 18, fontSize: "0.6rem", fontWeight: 1000, bgcolor: "action.hover", color: "text.secondary" }} />
                         )}
                       </Button>
                     ))}
@@ -228,29 +253,42 @@ export function DashboardShell({
               }
 
               return (
-                <Box key={gIdx} sx={{ mb: 1 }}>
-                  <Button
-                    fullWidth
+                <Box key={gIdx} sx={{ mb: 1.5 }}>
+                  <Box 
                     onClick={() => toggleGroup(gIdx)}
                     sx={{
-                      justifyContent: "flex-start",
-                      px: 2.5,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      px: 2,
                       py: 1,
-                      color: "#64748b",
-                      textTransform: "none",
-                      fontWeight: 900,
-                      fontSize: "0.75rem",
-                      letterSpacing: "0.05em",
-                      "&:hover": { bgcolor: "transparent", color: "#0f172a" },
-                      gap: 1
+                      cursor: "pointer",
+                      mb: 0.5,
+                      "&:hover .heading-text": { color: "text.primary" }
                     }}
-                    startIcon={expandedGroups[gIdx] !== false ? <KeyboardArrowDownRoundedIcon sx={{ fontSize: 18 }} /> : <KeyboardArrowRightRoundedIcon sx={{ fontSize: 18 }} />}
                   >
-                    {group.heading}
-                  </Button>
+                    <Typography 
+                      className="heading-text"
+                      sx={{ 
+                        color: "text.secondary",
+                        textTransform: "uppercase",
+                        fontWeight: 800,
+                        fontSize: "0.65rem",
+                        letterSpacing: "0.1em",
+                        transition: "color 0.2s"
+                      }}
+                    >
+                      {group.heading}
+                    </Typography>
+                    {expandedGroups[gIdx] !== false ? (
+                      <KeyboardArrowDownRoundedIcon sx={{ fontSize: 16, color: "text.secondary", opacity: 0.5 }} />
+                    ) : (
+                      <KeyboardArrowRightRoundedIcon sx={{ fontSize: 16, color: "text.secondary", opacity: 0.5 }} />
+                    )}
+                  </Box>
                   
                   <Collapse in={expandedGroups[gIdx] !== false}>
-                    <Stack spacing={0.5} sx={{ px: 1.5, mt: 0.5 }}>
+                    <Stack spacing={0.5} sx={{ px: 1 }}>
                       {group.items.map((item: any, idx: number) => (
                         <Button
                           key={idx}
@@ -262,19 +300,23 @@ export function DashboardShell({
                           sx={{
                             justifyContent: "flex-start",
                             px: 1.5,
+                            pl: 2,
                             py: 1,
-                            minHeight: 40,
-                            borderRadius: "8px",
-                            color: item.active ? "primary.main" : "#475569",
-                            bgcolor: item.active ? alpha("#3b82f6", 0.08) : "transparent",
+                            borderRadius: "10px",
+                            color: item.active ? "primary.main" : "text.secondary",
+                            bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.06) : "transparent",
                             textTransform: "none",
-                            fontSize: "0.85rem",
-                            fontWeight: item.active ? 900 : 700,
-                            border: item.active ? "1px solid rgba(59, 130, 246, 0.1)" : "1px solid transparent",
-                            "& .MuiButton-startIcon": { mr: 1.5, color: item.active ? "primary.main" : "#94a3b8" },
+                            fontSize: "0.875rem",
+                            fontWeight: item.active ? 600 : 500,
+                            transition: "all 0.2s ease",
+                            "& .MuiButton-startIcon": { 
+                              mr: 1.5, 
+                              color: item.active ? "primary.main" : "text.secondary",
+                              "& svg": { fontSize: "1.2rem" }
+                            },
                             "&:hover": {
-                              bgcolor: item.active ? alpha("#3b82f6", 0.12) : "#f8fafc",
-                              color: item.active ? "primary.main" : "#0f172a"
+                              bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.08) : "action.hover",
+                              color: item.active ? "primary.main" : "text.primary"
                             }
                           }}
                         >
@@ -292,52 +334,7 @@ export function DashboardShell({
               );
             })}
 
-            {/* Static Security Section */}
-            <Box sx={{ mt: 4 }}>
-               <Button
-                  fullWidth
-                  sx={{
-                    justifyContent: "flex-start",
-                    px: 2.5,
-                    py: 1,
-                    color: "#94a3b8",
-                    textTransform: "none",
-                    fontWeight: 900,
-                    fontSize: "0.72rem",
-                    letterSpacing: "0.05em",
-                    "&:hover": { bgcolor: "transparent" }
-                  }}
-                  startIcon={<ShieldRoundedIcon sx={{ fontSize: 16 }} />}
-               >
-                 SYSTEM NODES
-               </Button>
-               <Stack spacing={0.5} sx={{ px: 1.5, mt: 0.5 }}>
-                  {[
-                    { icon: <LockRoundedIcon sx={{ fontSize: 18 }} />, label: "Security Vault", href: "#" },
-                    { icon: <DnsRoundedIcon sx={{ fontSize: 18 }} />, label: "Registry Hub", href: "#" }
-                  ].map((item, idx) => (
-                    <Button
-                      key={idx}
-                      fullWidth
-                      startIcon={item.icon}
-                      sx={{
-                        justifyContent: "flex-start",
-                        px: 1.5,
-                        py: 1,
-                        borderRadius: "8px",
-                        color: "#94a3b8",
-                        textTransform: "none",
-                        fontSize: "0.82rem",
-                        fontWeight: 700,
-                        "& .MuiButton-startIcon": { mr: 1.5 },
-                        "&:hover": { bgcolor: "#f1f5f9", color: "#64748b" }
-                      }}
-                    >
-                      {item.label}
-                    </Button>
-                  ))}
-               </Stack>
-            </Box>
+
           </Box>
 
           {/* Action Log / Sidebar Footer */}

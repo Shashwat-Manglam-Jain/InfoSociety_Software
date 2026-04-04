@@ -1,8 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useEffect } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import EmailIcon from "@mui/icons-material/Email";
 import LockIcon from "@mui/icons-material/Lock";
@@ -25,8 +24,7 @@ import {
   TextField,
   Typography,
   Avatar,
-  Grid,
-  alpha
+  Grid
 } from "@mui/material";
 import { login, getPublicSocieties } from "@/shared/api/auth";
 import { getDefaultDashboardPath, setSession } from "@/shared/auth/session";
@@ -35,7 +33,8 @@ import type { Society } from "@/shared/types";
 
 export default function AgentLoginPage() {
   const router = useRouter();
-  const { societyCode } = useParams() as { societyCode: string };
+  const params = useParams() as { societyCode?: string | string[] };
+  const normalizedSocietyCode = String(Array.isArray(params.societyCode) ? params.societyCode[0] : params.societyCode ?? "").toUpperCase();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -51,14 +50,14 @@ export default function AgentLoginPage() {
     async function fetchSociety() {
       try {
         const societies = await getPublicSocieties();
-        const found = societies.find(s => s.code === societyCode);
+        const found = societies.find((s) => s.code.toUpperCase() === normalizedSocietyCode);
         if (found) setSociety(found);
       } catch (e) {
         console.error("Failed to fetch society info", e);
       }
     }
     fetchSociety();
-  }, [societyCode]);
+  }, [normalizedSocietyCode]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,14 +71,8 @@ export default function AgentLoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(username, password, societyCode);
+      const response = await login(username, password, normalizedSocietyCode, "AGENT");
       const actualRole = response.user.role;
-
-      if (actualRole !== "AGENT") {
-        setError(`Unauthorized: This portal is for Agents only. You appear to be registered as a ${actualRole.toLowerCase()}.`);
-        setLoading(false);
-        return;
-      }
 
       const accountType = "AGENT";
 
@@ -139,7 +132,7 @@ export default function AgentLoginPage() {
                    {society?.name ?? "Institutional"} Operations Portal
                 </Typography>
                 <Typography sx={{ color: "rgba(255,255,255,0.88)", mt: 1.2 }}>
-                   Access your dedicated operations desk for <strong>{societyCode}</strong>. Handle member transactions, society requests, and departmental workflows.
+                   Access your dedicated operations desk for <strong>{normalizedSocietyCode}</strong>. Handle member transactions, society requests, and departmental workflows.
                 </Typography>
               </Box>
 
@@ -159,7 +152,7 @@ export default function AgentLoginPage() {
                     </Avatar>
                     <Box>
                       <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", fontWeight: 800, letterSpacing: 0.5 }}>IDENTIFIER</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{societyCode.toUpperCase()}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{normalizedSocietyCode}</Typography>
                     </Box>
                   </Stack>
                   <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.75)" }}>
@@ -189,7 +182,7 @@ export default function AgentLoginPage() {
                       <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>Agent Authorization</Typography>
                    </Stack>
                    <Typography color="text.secondary" sx={{ maxWidth: 500 }}>
-                      Please provide your operative credentials to access the <strong>{society?.name ?? societyCode}</strong> administrative surface.
+                      Please provide your operative credentials to access the <strong>{society?.name ?? normalizedSocietyCode}</strong> administrative surface.
                    </Typography>
                 </Box>
 

@@ -5,6 +5,8 @@ import { Prisma, SocietyStatus, SubscriptionPlan, SubscriptionStatus, UserRole }
 import { compare, hash } from "bcryptjs";
 import { RequestUser } from "../../common/auth/request-user.interface";
 import { PrismaService } from "../../common/database/prisma.service";
+import { resolveUserAllowedModules, updateUserAllowedModules } from "../../common/database/user-module-access";
+import { getDefaultAllowedModules } from "../banking/shared/module-access";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterAgentDto } from "./dto/register-agent.dto";
 import { RegisterClientDto } from "./dto/register-client.dto";
@@ -75,11 +77,31 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    const input = dto.username.trim().toLowerCase().replace(/^@/, "");
+    const input = this.normalizeUsername(dto.username);
+    const expectedRole = dto.expectedRole;
+
+    if (expectedRole && expectedRole !== UserRole.SUPER_ADMIN && !dto.societyCode?.trim()) {
+      throw new UnauthorizedException("Society code is required for this login portal");
+    }
     
     // 1. Attempt to find user by Administrative Handle / Username
-    let user = await this.prisma.user.findUnique({
-      where: { username: input },
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          {
+            username: {
+              equals: input,
+              mode: "insensitive"
+            }
+          },
+          {
+            username: {
+              equals: `@${input}`,
+              mode: "insensitive"
+            }
+          }
+        ]
+      },
       include: userProfileInclude
     });
 
@@ -102,6 +124,35 @@ export class AuthService {
     }
 
     if (!user) {
+      if (dto.societyCode?.trim()) {
+        const targetSociety = await this.prisma.society.findUnique({
+          where: { code: dto.societyCode.trim().toUpperCase() },
+          select: {
+            id: true,
+            status: true,
+            isActive: true
+          }
+        });
+
+        if (targetSociety?.isActive && targetSociety.status === SocietyStatus.ACTIVE) {
+          const societyAdminExists = await this.prisma.user.findFirst({
+            where: {
+              societyId: targetSociety.id,
+              role: UserRole.SUPER_USER
+            },
+            select: {
+              id: true
+            }
+          });
+
+          if (!societyAdminExists) {
+            throw new UnauthorizedException(
+              "This approved society does not have an administrator login yet. Ask the platform superadmin to re-approve it so a recovery admin can be created."
+            );
+          }
+        }
+      }
+
       throw new UnauthorizedException("User account not found");
     }
     
@@ -112,6 +163,10 @@ export class AuthService {
     const valid = await compare(dto.password, user.passwordHash);
     if (!valid) {
       throw new UnauthorizedException("Incorrect password");
+    }
+
+    if (expectedRole && user.role !== expectedRole) {
+      throw new UnauthorizedException("Selected access role does not match this account");
     }
 
     // 4. Institutional Boundary Enforcement (New)
@@ -126,18 +181,17 @@ export class AuthService {
       }
     }
 
-    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.SUPER_USER && user.society?.status === SocietyStatus.PENDING) {
-      throw new UnauthorizedException("Your society registration is pending verification by Super Admin");
-    }
+    this.assertSocietyAccessAllowed(user);
 
     return this.buildLoginResponse(user);
   }
 
   async listActiveSocieties() {
-    // Some DB states may not yet include a `status` column (migrations differ).
-    // `isActive` is always available, so we rely on that for the frontend society list.
     return this.prisma.society.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        status: SocietyStatus.ACTIVE
+      },
       select: {
         id: true,
         code: true,
@@ -182,6 +236,7 @@ export class AuthService {
         }
       });
 
+      await this.updateAllowedModules(tx, user.id, getDefaultAllowedModules(UserRole.CLIENT));
       await this.createFreeSubscription(tx, user.id);
       return this.loadUserProfile(tx, user.id, "Failed to provision subscription profile");
     });
@@ -213,30 +268,6 @@ export class AuthService {
         throw new ConflictException("Society code already exists");
       }
 
-      const society = await this.prisma.society.create({
-        data: {
-          code: societyCode,
-          name: dto.societyName.trim(),
-          isActive: true,
-          billingEmail: dto.billingEmail?.trim() || null,
-          billingPhone: dto.billingPhone?.trim() || null,
-          billingAddress: dto.billingAddress?.trim() || null,
-          acceptsDigitalPayments: dto.acceptsDigitalPayments ?? false,
-          upiId: dto.upiId?.trim() || null,
-          panNo: dto.panNo?.trim().toUpperCase() || null,
-          tanNo: dto.tanNo?.trim().toUpperCase() || null,
-          gstNo: dto.gstNo?.trim().toUpperCase() || null,
-          category: dto.category?.trim() || null,
-          authorizedCapital: dto.authorizedCapital ?? null,
-          paidUpCapital: dto.paidUpCapital ?? null,
-          shareNominalValue: dto.shareNominalValue ?? null,
-          registrationDate: dto.registrationDate ? new Date(dto.registrationDate) : null,
-          registrationNumber: dto.registrationNumber?.trim() || null,
-          registrationState: dto.registrationState?.trim() || null,
-          registrationAuthority: dto.registrationAuthority?.trim() || null,
-        }
-      });
-
       // Autogenerate username from society code if not provided or to ensure consistent naming
       const autoUsername = `adm_${societyCode.toLowerCase()}`;
       const usernameToUse = dto.username?.trim() || autoUsername;
@@ -246,6 +277,31 @@ export class AuthService {
       const passwordHash = await hash(dto.password, 10);
 
       const created = await this.prisma.$transaction(async (tx) => {
+        const society = await tx.society.create({
+          data: {
+            code: societyCode,
+            name: dto.societyName.trim(),
+            status: SocietyStatus.PENDING,
+            isActive: false,
+            billingEmail: dto.billingEmail?.trim() || null,
+            billingPhone: dto.billingPhone?.trim() || null,
+            billingAddress: dto.billingAddress?.trim() || null,
+            acceptsDigitalPayments: dto.acceptsDigitalPayments ?? false,
+            upiId: dto.upiId?.trim() || null,
+            panNo: dto.panNo?.trim().toUpperCase() || null,
+            tanNo: dto.tanNo?.trim().toUpperCase() || null,
+            gstNo: dto.gstNo?.trim().toUpperCase() || null,
+            category: dto.category?.trim() || null,
+            authorizedCapital: dto.authorizedCapital ?? null,
+            paidUpCapital: dto.paidUpCapital ?? null,
+            shareNominalValue: dto.shareNominalValue ?? null,
+            registrationDate: dto.registrationDate ? new Date(dto.registrationDate) : null,
+            registrationNumber: dto.registrationNumber?.trim() || null,
+            registrationState: dto.registrationState?.trim() || null,
+            registrationAuthority: dto.registrationAuthority?.trim() || null
+          }
+        });
+
         const user = await tx.user.create({
           data: {
             username: identity.username,
@@ -256,6 +312,7 @@ export class AuthService {
           }
         });
 
+        await this.updateAllowedModules(tx, user.id, getDefaultAllowedModules(UserRole.SUPER_USER));
         await tx.subscription.create({
           data: {
             userId: user.id,
@@ -301,7 +358,7 @@ export class AuthService {
     return {
       ...this.buildUserProfile(user),
       isActive: user.isActive,
-      allowedModuleSlugs: await this.getAllowedModuleSlugs(user.id)
+      allowedModuleSlugs: await this.resolveUserAllowedModules(user.id, user.role)
     };
   }
 
@@ -333,15 +390,24 @@ export class AuthService {
 
   private normalizeIdentity(username: string, fullName: string): RegistrationIdentity {
     return {
-      username: username.trim(),
+      username: this.normalizeUsername(username),
       fullName: fullName.trim().replace(/\s+/g, " ")
     };
   }
 
-  private buildLoginResponse(user: UserProfileRecord) {
+  private normalizeUsername(username: string) {
+    return username.trim().toLowerCase().replace(/^@+/, "");
+  }
+
+  private async buildLoginResponse(user: UserProfileRecord) {
+    const allowedModuleSlugs = await this.resolveUserAllowedModules(user.id, user.role);
+
     return {
       accessToken: this.signToken(this.toRequestUser(user)),
-      user: this.buildUserProfile(user)
+      user: {
+        ...this.buildUserProfile(user),
+        allowedModuleSlugs
+      }
     };
   }
 
@@ -414,6 +480,7 @@ export class AuthService {
         }
       });
 
+      await this.updateAllowedModules(tx, user.id, getDefaultAllowedModules(role));
       await this.createFreeSubscription(tx, user.id);
       return this.loadUserProfile(tx, user.id, errorMessage);
     });
@@ -444,8 +511,27 @@ export class AuthService {
   }
 
   private async assertUsernameAvailable(username: string) {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { username: username.trim() }
+    const normalizedUsername = this.normalizeUsername(username);
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          {
+            username: {
+              equals: normalizedUsername,
+              mode: "insensitive"
+            }
+          },
+          {
+            username: {
+              equals: `@${normalizedUsername}`,
+              mode: "insensitive"
+            }
+          }
+        ]
+      },
+      select: {
+        id: true
+      }
     });
 
     if (existingUser) {
@@ -457,14 +543,38 @@ export class AuthService {
     const code = societyCode.trim().toUpperCase();
     const society = await this.prisma.society.findUnique({
       where: { code },
-      select: { id: true, code: true, name: true, isActive: true }
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        isActive: true,
+        status: true
+      }
     });
 
-    if (!society || !society.isActive) {
+    if (!society || !society.isActive || society.status !== SocietyStatus.ACTIVE) {
       throw new NotFoundException("Society not found");
     }
 
     return society;
+  }
+
+  private assertSocietyAccessAllowed(user: UserProfileRecord) {
+    if (user.role === UserRole.SUPER_ADMIN || !user.society) {
+      return;
+    }
+
+    const societyStatus = user.society.status ?? SocietyStatus.PENDING;
+
+    if (user.society.isActive && societyStatus === SocietyStatus.ACTIVE) {
+      return;
+    }
+
+    if (societyStatus === SocietyStatus.PENDING) {
+      throw new UnauthorizedException("Your society access is pending platform approval");
+    }
+
+    throw new UnauthorizedException("Your society access is currently inactive. Please contact the platform superadmin.");
   }
 
   private resolveEffectiveSubscription(user: UserProfileRecord) {
@@ -553,11 +663,11 @@ export class AuthService {
     };
   }
 
-  private async getAllowedModuleSlugs(userId: string) {
-    const rows = await this.prisma.$queryRaw<Array<{ allowedModuleSlugs: string[] | null }>>(
-      Prisma.sql`SELECT "allowedModuleSlugs" FROM "User" WHERE id = ${userId} LIMIT 1`
-    );
+  private async resolveUserAllowedModules(userId: string, role: UserRole) {
+    return resolveUserAllowedModules(this.prisma, userId, role);
+  }
 
-    return rows[0]?.allowedModuleSlugs ?? [];
+  private async updateAllowedModules(tx: Prisma.TransactionClient | PrismaService, userId: string, allowedModuleSlugs: string[]) {
+    await updateUserAllowedModules(tx, userId, allowedModuleSlugs);
   }
 }

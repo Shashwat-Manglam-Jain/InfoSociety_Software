@@ -77,7 +77,7 @@ export default function SuperadminAnalyticsPage() {
   async function loadData() {
     const session = getSession();
     if (!session || session.role !== "SUPER_ADMIN") {
-      router.replace("/login");
+      router.replace("/admin");
       return;
     }
     try {

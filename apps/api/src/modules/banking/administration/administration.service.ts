@@ -5,6 +5,7 @@ import { bankingFeatureMap } from "../../shared/banking-feature-map";
 import { getDefaultAllowedModules, sanitizeAllowedModules } from "../shared/module-access";
 import { RequestUser } from "../../../common/auth/request-user.interface";
 import { PrismaService } from "../../../common/database/prisma.service";
+import { getUserAllowedModuleMap, updateUserAllowedModules } from "../../../common/database/user-module-access";
 import { CreateBranchDto } from "./dto/create-branch.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { ListWorkingDaysQueryDto } from "./dto/list-working-days-query.dto";
@@ -1052,30 +1053,11 @@ export class AdministrationService {
   }
 
   private async getAllowedModuleMap(userIds: string[]) {
-    if (!userIds.length) {
-      return new Map<string, string[]>();
-    }
-
-    const rows = await this.prisma.$queryRaw<Array<{ id: string; allowedModuleSlugs: string[] | null }>>(
-      Prisma.sql`
-        SELECT id, "allowedModuleSlugs"
-        FROM "User"
-        WHERE id IN (${Prisma.join(userIds)})
-      `
-    );
-
-    return new Map(rows.map((entry) => [entry.id, entry.allowedModuleSlugs ?? []]));
+    return getUserAllowedModuleMap(this.prisma, userIds);
   }
 
   private async updateAllowedModules(tx: Prisma.TransactionClient | PrismaService, userId: string, allowedModuleSlugs: string[]) {
-    const moduleArray =
-      allowedModuleSlugs.length > 0
-        ? Prisma.sql`ARRAY[${Prisma.join(allowedModuleSlugs.map((entry) => Prisma.sql`${entry}`))}]::TEXT[]`
-        : Prisma.sql`ARRAY[]::TEXT[]`;
-
-    await tx.$executeRaw(
-      Prisma.sql`UPDATE "User" SET "allowedModuleSlugs" = ${moduleArray} WHERE id = ${userId}`
-    );
+    await updateUserAllowedModules(tx, userId, allowedModuleSlugs);
   }
 
   private async createLinkedCustomerProfile(

@@ -1,19 +1,33 @@
 "use client";
 
-import { Box, Button, Card, CardContent, Chip, Container, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, Container, Skeleton, Stack, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { alpha } from "@mui/material/styles";
 import Link from "next/link";
+import type { BillingPlansResponse } from "@/shared/types";
+
+type PricingPlan = BillingPlansResponse["plans"][number] & {
+  highlighted?: boolean;
+};
 
 interface PricingSectionProps {
   t: any;
-  pricingPlans: any[];
+  pricingPlans: PricingPlan[];
+  pricingLoading: boolean;
+  pricingError: string | null;
   handleAction: (msg: string) => void;
   homeCopy: any;
 }
 
-export function PricingSection({ t, pricingPlans, handleAction, homeCopy }: PricingSectionProps) {
+function formatPlanPrice(monthlyPrice: number) {
+  if (monthlyPrice <= 0) {
+    return "₹0";
+  }
+
+  return `₹${monthlyPrice.toLocaleString("en-IN")}/mo`;
+}
+
+export function PricingSection({ t, pricingPlans, pricingLoading, pricingError, handleAction, homeCopy }: PricingSectionProps) {
   return (
     <Container id="plans" maxWidth="lg" sx={{ py: { xs: 6, md: 8 } }}>
       <Typography variant="h4" sx={{ textAlign: "center", mb: 1, fontWeight: 700 }}>
@@ -23,7 +37,32 @@ export function PricingSection({ t, pricingPlans, handleAction, homeCopy }: Pric
         {t("pricing.subtitle")}
       </Typography>
 
+      {pricingError && !pricingLoading && pricingPlans.length === 0 ? (
+        <Alert severity="warning" sx={{ maxWidth: 900, mx: "auto", mb: 4, borderRadius: 3 }}>
+          {pricingError}
+        </Alert>
+      ) : null}
+
       <Grid container spacing={3} maxWidth={900} mx="auto" sx={{ overflow: "visible", position: "relative" }}>
+        {pricingLoading
+          ? [1, 2].map((item) => (
+              <Grid size={{ xs: 12, md: 6 }} key={item} sx={{ overflow: "visible", position: "relative" }}>
+                <Card sx={{ height: "100%", minHeight: 320, borderRadius: 3 }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Skeleton variant="text" width={140} height={38} />
+                    <Skeleton variant="text" width="80%" />
+                    <Skeleton variant="text" width={110} height={48} sx={{ my: 2 }} />
+                    <Stack direction="row" spacing={1} sx={{ mb: 2.5 }}>
+                      <Skeleton variant="rounded" width={110} height={28} />
+                      <Skeleton variant="rounded" width={100} height={28} />
+                    </Stack>
+                    <Skeleton variant="rounded" width="100%" height={42} />
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))
+          : null}
+
         {pricingPlans.map((plan) => (
           <Grid size={{ xs: 12, md: 6 }} key={plan.id} sx={{ overflow: "visible", position: "relative" }}>
             <Card
@@ -61,28 +100,34 @@ export function PricingSection({ t, pricingPlans, handleAction, homeCopy }: Pric
               )}
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-                  {plan.id === "PREMIUM" ? t("pricing.premium.title") : t("pricing.free.title")}
+                  {plan.name}
                 </Typography>
                 <Typography color="text.secondary" variant="body2" sx={{ mb: 1.5 }}>
-                  {t(plan.descriptionKey)}
+                  {plan.description}
                 </Typography>
                 <Typography variant="h4" sx={{ mb: 2, fontWeight: 700 }}>
-                  {plan.price}
+                  {formatPlanPrice(plan.monthlyPrice)}
                 </Typography>
-                <Stack spacing={1} sx={{ mb: 2.5 }}>
-                  {plan.features?.map((feature: string) => (
-                    <Stack key={feature} direction="row" spacing={1}>
-                      <CheckCircleIcon sx={{ fontSize: 18, color: "secondary.main", mt: 0.2 }} />
-                      <Typography variant="body2">{feature}</Typography>
-                    </Stack>
-                  ))}
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.5 }}>
+                  <Chip
+                    label={plan.adsEnabled ? "Ads Enabled" : "Ad-free"}
+                    size="small"
+                    sx={{ fontWeight: 800 }}
+                  />
+                  <Chip
+                    label={plan.monthlyPrice > 0 ? "Paid Plan" : "Starter Plan"}
+                    size="small"
+                    color={plan.highlighted ? "secondary" : "default"}
+                    sx={{ fontWeight: 800 }}
+                  />
+                  <Chip label="Society Access" size="small" sx={{ fontWeight: 800 }} />
                 </Stack>
                 <Button
                   component={Link}
                   href="/register"
                   variant={plan.highlighted ? "contained" : "outlined"}
                   fullWidth
-                  onClick={() => handleAction(homeCopy.pricingSelection(plan.id === "PREMIUM" ? t("pricing.premium.title") : t("pricing.free.title")))}
+                  onClick={() => handleAction(homeCopy.pricingSelection(plan.name))}
                 >
                   {t("pricing.get_started")}
                 </Button>

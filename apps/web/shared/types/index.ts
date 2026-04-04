@@ -133,6 +133,14 @@ export type MonitoringOverview = {
     name: string;
     status: SocietyStatus;
     isActive: boolean;
+    billingEmail?: string | null;
+    billingPhone?: string | null;
+    billingAddress?: string | null;
+    upiId?: string | null;
+    category?: string | null;
+    registrationState?: string | null;
+    registrationNumber?: string | null;
+    registrationAuthority?: string | null;
     activeUsers: number;
     customers: number;
     accounts: number;
