@@ -1,0 +1,273 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
+import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
+import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
+import LockIcon from "@mui/icons-material/Lock";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Container,
+  Grid,
+  IconButton,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material";
+import { getPublicSocieties, getPublicSocietyBranches, login } from "@/shared/api/auth";
+import { getDefaultDashboardPath, setSession } from "@/shared/auth/session";
+import { toast } from "@/shared/ui/toast";
+import type { Society } from "@/shared/types";
+
+type BranchOption = {
+  id: string;
+  code: string;
+  name: string;
+  isHead: boolean;
+};
+
+const HEAD_OFFICE_OPTION: BranchOption = {
+  id: "__HEAD_OFFICE__",
+  code: "HEAD",
+  name: "Main Head Quarter",
+  isHead: true
+};
+
+export default function StaffLoginPage() {
+  const router = useRouter();
+  const params = useParams() as { societyCode?: string | string[] };
+  const normalizedSocietyCode = String(Array.isArray(params.societyCode) ? params.societyCode[0] : params.societyCode ?? "").toUpperCase();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [society, setSociety] = useState<Society | null>(null);
+  const [branchOptions, setBranchOptions] = useState<BranchOption[]>([HEAD_OFFICE_OPTION]);
+  const [selectedBranchId, setSelectedBranchId] = useState(HEAD_OFFICE_OPTION.id);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    router.prefetch("/dashboard/society");
+  }, [router]);
+
+  useEffect(() => {
+    async function fetchSociety() {
+      try {
+        const [societies, branches] = await Promise.all([
+          getPublicSocieties(),
+          getPublicSocietyBranches(normalizedSocietyCode).catch(() => [])
+        ]);
+        const found = societies.find((entry) => entry.code.toUpperCase() === normalizedSocietyCode);
+        if (found) {
+          setSociety(found);
+        }
+        const nextOptions = branches.length > 0 ? [HEAD_OFFICE_OPTION, ...branches] : [HEAD_OFFICE_OPTION];
+        setBranchOptions(nextOptions);
+        setSelectedBranchId(nextOptions[0]?.id ?? HEAD_OFFICE_OPTION.id);
+      } catch (caught) {
+        console.error("Failed to fetch society info", caught);
+      }
+    }
+
+    void fetchSociety();
+  }, [normalizedSocietyCode]);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+
+    if (!username.trim() || !password) {
+      setError("Username and password are required.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await login(username, password, normalizedSocietyCode, "SUPER_USER");
+
+      setSession({
+        accessToken: response.accessToken,
+        role: response.user.role,
+        accountType: "SOCIETY",
+        username: response.user.username,
+        fullName: response.user.fullName,
+        societyCode: response.user.society?.code ?? null,
+        subscriptionPlan: response.user.subscription?.plan ?? null,
+        avatarDataUrl: null,
+        requiresPasswordChange: response.user.requiresPasswordChange,
+        allowedModuleSlugs: response.user.allowedModuleSlugs ?? [],
+        selectedBranchId: selectedBranchId === HEAD_OFFICE_OPTION.id ? null : selectedBranchId,
+        selectedBranchName: branchOptions.find((branch) => branch.id === selectedBranchId)?.name ?? HEAD_OFFICE_OPTION.name,
+        selectedBranchCode: branchOptions.find((branch) => branch.id === selectedBranchId)?.code ?? HEAD_OFFICE_OPTION.code
+      });
+
+      toast.success(`Access granted to ${response.user.fullName}.`);
+      router.replace(
+        getDefaultDashboardPath("SOCIETY", response.user.requiresPasswordChange, response.user.allowedModuleSlugs)
+      );
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Authentication failed.";
+      setError(message);
+      toast.error(message);
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
+      <Card className="surface-vibrant fade-rise" sx={{ overflow: "hidden", borderRadius: 4 }}>
+        <Grid container>
+          <Grid
+            size={{ xs: 12, md: 5 }}
+            sx={{
+              p: { xs: 2.5, md: 4.5 },
+              color: "#fff",
+              position: "relative",
+              overflow: "hidden",
+              zIndex: 1,
+              background: "linear-gradient(145deg, #0f172a 0%, #1e293b 100%)"
+            }}
+          >
+            <Stack spacing={2.5} sx={{ height: "100%" }}>
+              <Chip label="Staff Portal" sx={{ width: "fit-content", bgcolor: "rgba(255,255,255,0.16)", color: "#fff", fontWeight: 800 }} />
+              <Box>
+                <Typography variant="h4" sx={{ color: "#fff", fontWeight: 800, lineHeight: 1.15 }}>
+                  {society?.name ?? "Society"} Staff Login
+                </Typography>
+                <Typography sx={{ color: "rgba(255,255,255,0.88)", mt: 1.2 }}>
+                  Sign in with your staff username, branch scope, and password. The dashboard will reflect the access modules assigned to your account.
+                </Typography>
+              </Box>
+              <Box sx={{ p: 2.5, borderRadius: 3.5, border: "1px solid rgba(255,255,255,0.18)", bgcolor: "rgba(15, 23, 42, 0.28)", backdropFilter: "blur(12px)" }}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Avatar sx={{ bgcolor: "rgba(59, 130, 246, 0.18)", color: "#fff" }}>
+                    <BusinessRoundedIcon fontSize="small" />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", fontWeight: 800, letterSpacing: 0.5 }}>ACCESS BOUND TO</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>{normalizedSocietyCode}</Typography>
+                  </Box>
+                </Stack>
+              </Box>
+              <Box sx={{ mt: "auto" }}>
+                <Image
+                  src="/illustrations/auth-insight.svg"
+                  alt="Secure staff login"
+                  width={600}
+                  height={400}
+                  style={{ width: "100%", height: "auto", display: "block", opacity: 0.9 }}
+                />
+              </Box>
+            </Stack>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 7 }}>
+            <CardContent sx={{ p: { xs: 2.5, md: 5 } }}>
+              <Stack spacing={3.5}>
+                <Box>
+                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
+                    <BadgeRoundedIcon sx={{ color: "#0f172a", fontSize: 32 }} />
+                    <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>Staff Access</Typography>
+                  </Stack>
+                  <Typography color="text.secondary" sx={{ maxWidth: 500 }}>
+                    Choose the working branch for this session and log in with your society-issued staff credentials.
+                  </Typography>
+                </Box>
+
+                <Box
+                  component="form"
+                  onSubmit={onSubmit}
+                  sx={{
+                    p: { xs: 2, md: 3.5 },
+                    borderRadius: 4.5,
+                    border: "1px solid rgba(15, 23, 42, 0.08)",
+                    bgcolor: "rgba(255,255,255,0.45)",
+                    backdropFilter: "blur(12px)"
+                  }}
+                >
+                  <Stack spacing={3.2}>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Staff Username</Typography>
+                      <TextField
+                        placeholder="e.g. branch.manager"
+                        value={username}
+                        onChange={(event) => setUsername(event.target.value)}
+                        fullWidth
+                        InputProps={{
+                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } }
+                        }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Branch</Typography>
+                      <TextField
+                        select
+                        fullWidth
+                        value={selectedBranchId}
+                        onChange={(event) => setSelectedBranchId(event.target.value)}
+                        InputProps={{
+                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } }
+                        }}
+                      >
+                        {branchOptions.map((branch) => (
+                          <MenuItem key={branch.id} value={branch.id}>
+                            {branch.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Box>
+
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Password</Typography>
+                      <TextField
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        fullWidth
+                        InputProps={{
+                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          startAdornment: <LockIcon sx={{ mr: 1, color: "#0f172a", fontSize: 20 }} />,
+                          endAdornment: (
+                            <IconButton onClick={() => setShowPassword((previous) => !previous)} edge="end" size="small">
+                              {showPassword ? <VisibilityOffIcon sx={{ fontSize: 20 }} /> : <VisibilityIcon sx={{ fontSize: 20 }} />}
+                            </IconButton>
+                          )
+                        }}
+                      />
+                    </Box>
+
+                    {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
+
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      size="large"
+                      disabled={loading}
+                      sx={{ height: 54, borderRadius: 3.5, fontWeight: 900, fontSize: "1rem", bgcolor: "#0f172a", "&:hover": { bgcolor: "#111827" } }}
+                    >
+                      {loading ? <CircularProgress size={24} sx={{ color: "inherit" }} /> : "Sign In"}
+                    </Button>
+                  </Stack>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Grid>
+        </Grid>
+      </Card>
+    </Container>
+  );
+}

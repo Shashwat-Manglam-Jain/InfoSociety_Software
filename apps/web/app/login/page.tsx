@@ -90,7 +90,7 @@ export default function LoginPage() {
     const session = getSession();
 
     if (session?.role === "SUPER_USER") {
-      router.replace(getDefaultDashboardPath("SOCIETY", session.requiresPasswordChange));
+      router.replace(getDefaultDashboardPath("SOCIETY", session.requiresPasswordChange, session.allowedModuleSlugs));
       return;
     }
 
@@ -227,7 +227,9 @@ export default function LoginPage() {
       });
 
       toast.success(`Welcome back, ${response.user.fullName}! Redirecting to your society workspace...`);
-      router.replace(getDefaultDashboardPath("SOCIETY", response.user.requiresPasswordChange));
+      router.replace(
+        getDefaultDashboardPath("SOCIETY", response.user.requiresPasswordChange, response.user.allowedModuleSlugs)
+      );
     } catch (caught) {
       const status = (caught as { status?: number })?.status ? `[${(caught as { status: number }).status}] ` : "";
       const message =

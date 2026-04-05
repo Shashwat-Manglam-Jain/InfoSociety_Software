@@ -236,6 +236,27 @@ export class AuthService {
     });
   }
 
+  async listActiveSocietyBranches(societyCode: string) {
+    const society = await this.findActiveSocietyByCode(societyCode);
+
+    return this.prisma.branch.findMany({
+      where: {
+        societyId: society.id,
+        isActive: true
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        isHead: true
+      },
+      orderBy: [
+        { isHead: "desc" },
+        { name: "asc" }
+      ]
+    });
+  }
+
   async registerClient(dto: RegisterClientDto) {
     const identity = this.normalizeIdentity(dto.username, dto.fullName);
     await this.assertUsernameAvailable(identity.username);

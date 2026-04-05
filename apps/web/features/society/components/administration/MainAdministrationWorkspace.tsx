@@ -33,6 +33,8 @@ export type MainAdministrationWorkspaceProps = {
   setUserSearch: (v: string) => void;
   handleToggleUserStatus: (id: string, current: boolean) => void;
   setSelectedUserAccess: (user: any) => void;
+  handleEditUser: (user: any) => void;
+  handleDeleteUser: (user: any) => void;
   transactions: any[];
   transactionSearch: string;
   setTransactionSearch: (v: string) => void;
@@ -93,6 +95,8 @@ export function MainAdministrationWorkspace(props: MainAdministrationWorkspacePr
           handleOpenDrawer={props.handleOpenDrawer} 
           handleToggleUserStatus={props.handleToggleUserStatus} 
           setSelectedUserAccess={props.setSelectedUserAccess} 
+          handleEditUser={props.handleEditUser}
+          handleDeleteUser={props.handleDeleteUser}
         />
       );
 

@@ -17,7 +17,12 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { UserAccessSelector } from "../../user-access-selector";
 import type { UserFormState } from "../../../lib/society-admin-dashboard";
-import { ROLE_META, toAccountType } from "../../../lib/society-admin-dashboard";
+import {
+  isStrongPassword,
+  normalizeAllowedModules,
+  ROLE_META,
+  toAccountType
+} from "../../../lib/society-admin-dashboard";
 import type { Branch, UserRole } from "@/shared/types";
 
 type UserProvisioningDrawerProps = {
@@ -30,6 +35,7 @@ type UserProvisioningDrawerProps = {
   branches: Branch[];
   updateStaffName: (value: string) => void;
   regeneratePassword: () => void;
+  mode: "create" | "edit";
 };
 
 const roleOptions: UserRole[] = ["SUPER_USER", "AGENT", "CLIENT"];
@@ -43,9 +49,16 @@ export function UserProvisioningDrawer({
   loading,
   branches,
   updateStaffName,
-  regeneratePassword
+  regeneratePassword,
+  mode
 }: UserProvisioningDrawerProps) {
   const roleMeta = ROLE_META[form.role];
+  const isEditing = mode === "edit";
+  const passwordProvided = form.password.trim().length > 0;
+  const passwordIsValid = !passwordProvided || isStrongPassword(form.password);
+  const passwordHelperText = isEditing
+    ? "Leave blank to keep the current password. New passwords need 8+ chars with upper, lower, number, and special character."
+    : "Use 8+ chars with upper, lower, number, and special character.";
 
   return (
     <Drawer
@@ -61,10 +74,12 @@ export function UserProvisioningDrawer({
           <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                Add account
+                {isEditing ? "Update account" : "Add account"}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Create a society admin, field agent, or client account with the right modules.
+                {isEditing
+                  ? "Update account identity, branch assignment, login reset, and contact information."
+                  : "Create a society admin, field agent, or client account with the right modules."}
               </Typography>
             </Box>
             <IconButton onClick={onClose}>
@@ -86,9 +101,11 @@ export function UserProvisioningDrawer({
                 onChange={(event) =>
                   setForm({
                     ...form,
-                    role: event.target.value as UserRole
+                    role: event.target.value as UserRole,
+                    allowedModuleSlugs: normalizeAllowedModules(event.target.value as UserRole)
                   })
                 }
+                disabled={isEditing}
               >
                 {roleOptions.map((role) => (
                   <MenuItem key={role} value={role}>
@@ -142,9 +159,11 @@ export function UserProvisioningDrawer({
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Temporary password"
+                label={isEditing ? "Reset password (optional)" : "Temporary password"}
                 value={form.password}
                 onChange={(event) => setForm({ ...form, password: event.target.value })}
+                error={!passwordIsValid}
+                helperText={!passwordIsValid ? passwordHelperText : passwordHelperText}
                 InputProps={{
                   endAdornment: (
                     <IconButton size="small" onClick={regeneratePassword}>
@@ -156,6 +175,37 @@ export function UserProvisioningDrawer({
             </Grid>
           </Grid>
 
+          {form.role !== "SUPER_USER" && (
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Phone"
+                  value={form.phone}
+                  onChange={(event) => setForm({ ...form, phone: event.target.value })}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  value={form.email}
+                  onChange={(event) => setForm({ ...form, email: event.target.value })}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  label="Address"
+                  value={form.address}
+                  onChange={(event) => setForm({ ...form, address: event.target.value })}
+                />
+              </Grid>
+            </Grid>
+          )}
+
           <UserAccessSelector
             accountType={toAccountType(form.role) as "SOCIETY" | "AGENT" | "CLIENT"}
             value={form.allowedModuleSlugs}
@@ -166,11 +216,17 @@ export function UserProvisioningDrawer({
             <Button
               fullWidth
               variant="contained"
-              disabled={loading || !form.fullName.trim() || !form.username.trim() || !form.password.trim()}
+              disabled={
+                loading ||
+                !form.fullName.trim() ||
+                !form.username.trim() ||
+                (!isEditing && !form.password.trim()) ||
+                !passwordIsValid
+              }
               onClick={onSave}
               sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
             >
-              Create {roleMeta.shortLabel.toLowerCase()} account
+              {isEditing ? `Update ${roleMeta.shortLabel.toLowerCase()} account` : `Create ${roleMeta.shortLabel.toLowerCase()} account`}
             </Button>
           </Box>
         </Stack>

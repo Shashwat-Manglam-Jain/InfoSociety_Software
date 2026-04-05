@@ -3,7 +3,11 @@
 import { useMemo } from "react";
 import { Box, Chip, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { getAccessibleModules, sanitizeAllowedModuleSlugs } from "@/features/banking/account-access";
+import {
+  getAccessibleModules,
+  getRequiredModuleSlugs,
+  sanitizeAllowedModuleSlugs
+} from "@/features/banking/account-access";
 import { modules } from "@/features/banking/module-registry";
 import type { AppAccountType } from "@/shared/types";
 
@@ -26,6 +30,7 @@ export function UserAccessSelector({
 }: UserAccessSelectorProps) {
   const selected = useMemo(() => sanitizeAllowedModuleSlugs(accountType, value), [accountType, value]);
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const requiredSet = useMemo(() => new Set(getRequiredModuleSlugs(accountType)), [accountType]);
   const options = useMemo(() => getAccessibleModules(modules, accountType), [accountType]);
 
   function toggle(slug: string) {
@@ -36,6 +41,10 @@ export function UserAccessSelector({
     const next = new Set<string>(selectedSet);
 
     if (next.has(slug)) {
+      if (requiredSet.has(slug)) {
+        return;
+      }
+
       if (next.size === 1) {
         return;
       }
@@ -66,12 +75,13 @@ export function UserAccessSelector({
       <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 2 }}>
         {options.map((module) => {
           const active = selectedSet.has(module.slug);
+          const required = requiredSet.has(module.slug);
 
           return (
             <Chip
               key={module.slug}
-              label={module.name}
-              clickable={!disabled}
+              label={required ? `${module.name} (required)` : module.name}
+              clickable={!disabled && !required}
               onClick={() => toggle(module.slug)}
               variant={active ? "filled" : "outlined"}
               sx={{
@@ -83,7 +93,8 @@ export function UserAccessSelector({
                 "&:hover": {
                   bgcolor: active ? alpha("#2563eb", 0.16) : "#eef2ff"
                 },
-                opacity: disabled ? 0.72 : 1
+                opacity: disabled ? 0.72 : 1,
+                cursor: disabled || required ? "default" : "pointer"
               }}
             />
           );

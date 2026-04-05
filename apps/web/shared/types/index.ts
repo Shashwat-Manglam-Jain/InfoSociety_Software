@@ -109,6 +109,9 @@ export type Session = {
   avatarDataUrl: string | null;
   requiresPasswordChange: boolean;
   allowedModuleSlugs?: string[];
+  selectedBranchId?: string | null;
+  selectedBranchName?: string | null;
+  selectedBranchCode?: string | null;
 };
 
 export type BillingPlansResponse = {

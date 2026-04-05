@@ -1,7 +1,7 @@
 import { UserRole } from "@prisma/client";
 
 export const moduleAccessByRole: Record<UserRole, string[]> = {
-  CLIENT: ["accounts", "deposits", "loans", "transactions", "locker"],
+  CLIENT: ["customers", "accounts", "deposits", "loans", "transactions", "locker"],
   AGENT: [
     "customers",
     "accounts",
@@ -35,15 +35,27 @@ export const moduleAccessByRole: Record<UserRole, string[]> = {
   SUPER_ADMIN: ["monitoring", "users", "reports"]
 };
 
+const requiredModuleAccessByRole: Record<UserRole, string[]> = {
+  CLIENT: ["customers"],
+  AGENT: [],
+  SUPER_USER: [],
+  SUPER_ADMIN: []
+};
+
 export function getDefaultAllowedModules(role: UserRole) {
   return moduleAccessByRole[role] ?? [];
 }
 
+export function getRequiredAllowedModules(role: UserRole) {
+  return requiredModuleAccessByRole[role] ?? [];
+}
+
 export function sanitizeAllowedModules(role: UserRole, requestedModules?: string[] | null) {
   const allowedUniverse = new Set(getDefaultAllowedModules(role));
+  const requiredModules = getRequiredAllowedModules(role).filter((entry) => allowedUniverse.has(entry));
 
   if (!requestedModules?.length) {
-    return Array.from(allowedUniverse);
+    return Array.from(new Set([...allowedUniverse, ...requiredModules]));
   }
 
   const normalized = requestedModules
@@ -52,5 +64,6 @@ export function sanitizeAllowedModules(role: UserRole, requestedModules?: string
     .filter((entry, index, source) => source.indexOf(entry) === index)
     .filter((entry) => allowedUniverse.has(entry));
 
-  return normalized.length ? normalized : Array.from(allowedUniverse);
+  const merged = normalized.length ? normalized : Array.from(allowedUniverse);
+  return Array.from(new Set([...merged, ...requiredModules]));
 }

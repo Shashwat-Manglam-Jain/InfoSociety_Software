@@ -6,6 +6,7 @@ import { PrismaService } from "../../../common/database/prisma.service";
 import { CloseLockerDto } from "./dto/close-locker.dto";
 import { CreateLockerDto } from "./dto/create-locker.dto";
 import { ListLockerQueryDto } from "./dto/list-locker-query.dto";
+import { UpdateLockerDto } from "./dto/update-locker.dto";
 import { VisitLockerDto } from "./dto/visit-locker.dto";
 
 @Injectable()
@@ -89,6 +90,74 @@ export class LockerService {
     });
   }
 
+  async update(currentUser: RequestUser, id: string, dto: UpdateLockerDto) {
+    if (currentUser.role === UserRole.CLIENT) {
+      throw new ForbiddenException("Client users cannot update lockers");
+    }
+
+    const locker = await this.prisma.locker.findUnique({
+      where: { id },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            societyId: true
+          }
+        }
+      }
+    });
+
+    if (!locker) {
+      throw new NotFoundException("Locker not found");
+    }
+
+    this.ensureScope(currentUser, locker.customer.societyId);
+
+    let nextCustomerId = locker.customerId;
+
+    if (dto.customerId && dto.customerId !== locker.customerId) {
+      const customer = await this.prisma.customer.findUnique({
+        where: { id: dto.customerId },
+        select: {
+          id: true,
+          societyId: true
+        }
+      });
+
+      if (!customer) {
+        throw new NotFoundException("Customer not found");
+      }
+
+      this.ensureScope(currentUser, customer.societyId);
+      nextCustomerId = customer.id;
+    }
+
+    return this.prisma.locker.update({
+      where: { id },
+      data: {
+        customerId: nextCustomerId,
+        lockerNumber: dto.lockerNumber?.trim().toUpperCase(),
+        size: dto.size,
+        annualCharge: dto.annualCharge
+      },
+      include: {
+        customer: {
+          select: {
+            customerCode: true,
+            firstName: true,
+            lastName: true,
+            societyId: true
+          }
+        },
+        _count: {
+          select: {
+            visits: true
+          }
+        }
+      }
+    });
+  }
+
   async visit(currentUser: RequestUser, id: string, dto: VisitLockerDto) {
     const locker = await this.prisma.locker.findUnique({
       where: { id },
@@ -156,6 +225,35 @@ export class LockerService {
         }
       }
     });
+  }
+
+  async remove(currentUser: RequestUser, id: string) {
+    if (currentUser.role === UserRole.CLIENT) {
+      throw new ForbiddenException("Client users cannot delete lockers");
+    }
+
+    const locker = await this.prisma.locker.findUnique({
+      where: { id },
+      include: {
+        customer: {
+          select: {
+            societyId: true
+          }
+        }
+      }
+    });
+
+    if (!locker) {
+      throw new NotFoundException("Locker not found");
+    }
+
+    this.ensureScope(currentUser, locker.customer.societyId);
+
+    await this.prisma.locker.delete({
+      where: { id }
+    });
+
+    return { success: true };
   }
 
   async getVisits(currentUser: RequestUser, id: string) {

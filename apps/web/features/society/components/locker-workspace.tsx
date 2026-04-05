@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import MeetingRoomRoundedIcon from "@mui/icons-material/MeetingRoomRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -32,12 +33,14 @@ import { alpha } from "@mui/material/styles";
 import {
   closeLocker,
   createLocker,
+  deleteLocker,
   listLockers,
   listLockerVisits,
   type LockerRecord,
   type LockerSize,
   type LockerStatus,
   type LockerVisitRecord,
+  updateLocker,
   visitLocker
 } from "@/shared/api/locker";
 
@@ -62,6 +65,8 @@ type LockerWorkspaceProps = {
   token: string;
   clients: LockerWorkspaceClient[];
   branches: LockerWorkspaceBranch[];
+  canManageLockers?: boolean;
+  canRecordVisits?: boolean;
 };
 
 type LockerFormState = {
@@ -208,7 +213,13 @@ function SectionHero({
   );
 }
 
-export function LockerWorkspace({ token, clients, branches }: LockerWorkspaceProps) {
+export function LockerWorkspace({
+  token,
+  clients,
+  branches,
+  canManageLockers = true,
+  canRecordVisits = true
+}: LockerWorkspaceProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<LockerRecord[]>([]);
@@ -225,6 +236,12 @@ export function LockerWorkspace({ token, clients, branches }: LockerWorkspacePro
   const [visitRemark, setVisitRemark] = useState("");
   const [closeReason, setCloseReason] = useState("");
   const [form, setForm] = useState<LockerFormState>({
+    customerId: "",
+    lockerNumber: "",
+    size: "MEDIUM",
+    annualCharge: 0
+  });
+  const [detailForm, setDetailForm] = useState<LockerFormState>({
     customerId: "",
     lockerNumber: "",
     size: "MEDIUM",
@@ -328,6 +345,12 @@ export function LockerWorkspace({ token, clients, branches }: LockerWorkspacePro
     setDetailLocker(locker);
     setVisitRemark("");
     setCloseReason("");
+    setDetailForm({
+      customerId: locker.customerId,
+      lockerNumber: locker.lockerNumber,
+      size: locker.size,
+      annualCharge: Number(locker.annualCharge)
+    });
     await loadLockerVisits(locker);
   }
 
@@ -402,6 +425,51 @@ export function LockerWorkspace({ token, clients, branches }: LockerWorkspacePro
     }
   }
 
+  async function handleUpdateLocker() {
+    if (!detailLocker || !detailForm.customerId || !detailForm.lockerNumber.trim() || detailForm.annualCharge < 0) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const updated = await updateLocker(token, detailLocker.id, {
+        customerId: detailForm.customerId,
+        lockerNumber: detailForm.lockerNumber.trim().toUpperCase(),
+        size: detailForm.size,
+        annualCharge: Number(detailForm.annualCharge)
+      });
+
+      setDetailLocker(updated);
+      await loadLockerPage();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to update locker.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDeleteLocker() {
+    if (!detailLocker || !window.confirm(`Delete locker ${detailLocker.lockerNumber}?`)) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await deleteLocker(token, detailLocker.id);
+      setDetailLocker(null);
+      setVisitRows([]);
+      await loadLockerPage();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to delete locker.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <Stack spacing={3}>
       <SectionHero
@@ -450,21 +518,23 @@ export function LockerWorkspace({ token, clients, branches }: LockerWorkspacePro
                 </MenuItem>
               ))}
             </TextField>
-            <Button
-              variant="contained"
-              startIcon={<AddRoundedIcon />}
-              onClick={() => setCreateOpen(true)}
-              disabled={!activeClients.length}
-              sx={{
-                bgcolor: "#fff",
-                color: "#0f172a",
-                borderRadius: 2.5,
-                fontWeight: 900,
-                "&:hover": { bgcolor: "#e2e8f0" }
-              }}
-            >
-              Allocate Locker
-            </Button>
+            {canManageLockers ? (
+              <Button
+                variant="contained"
+                startIcon={<AddRoundedIcon />}
+                onClick={() => setCreateOpen(true)}
+                disabled={!activeClients.length}
+                sx={{
+                  bgcolor: "#fff",
+                  color: "#0f172a",
+                  borderRadius: 2.5,
+                  fontWeight: 900,
+                  "&:hover": { bgcolor: "#e2e8f0" }
+                }}
+              >
+                Allocate Locker
+              </Button>
+            ) : null}
           </>
         }
       />
@@ -481,9 +551,13 @@ export function LockerWorkspace({ token, clients, branches }: LockerWorkspacePro
         <Alert severity="warning" sx={{ borderRadius: 3 }}>
           No active client profiles are available for locker allocation yet.
         </Alert>
-      ) : (
+      ) : canManageLockers ? (
         <Alert severity="info" sx={{ borderRadius: 3 }}>
           Use visit remarks to record what was accessed, deposited, or removed from the locker during each visit.
+        </Alert>
+      ) : (
+        <Alert severity="info" sx={{ borderRadius: 3 }}>
+          This locker desk is in self-service mode. Allocation, reassignment, and closure actions are hidden for this login.
         </Alert>
       )}
 
@@ -602,96 +676,98 @@ export function LockerWorkspace({ token, clients, branches }: LockerWorkspacePro
         />
       </Paper>
 
-      <Drawer
-        anchor="right"
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        PaperProps={{ sx: { width: { xs: "100%", md: 520 }, borderRadius: "24px 0 0 24px" } }}
-      >
-        <Box sx={{ p: 3, borderBottom: "1px solid rgba(15, 23, 42, 0.08)", position: "relative" }}>
-          <IconButton onClick={() => setCreateOpen(false)} sx={{ position: "absolute", right: 16, top: 16 }}>
-            <CloseRoundedIcon />
-          </IconButton>
-          <Typography variant="h5" sx={{ fontWeight: 900 }}>
-            Allocate Locker
-          </Typography>
-        </Box>
-        <Box sx={{ p: 3 }}>
-          <Stack spacing={2}>
-            <TextField
-              select
-              fullWidth
-              label="Client"
-              value={form.customerId}
-              onChange={(event) => setForm((prev) => ({ ...prev, customerId: event.target.value }))}
-            >
-              {activeClients.map((client) => {
-                const branch = client.branchId ? branchMap.get(client.branchId) : null;
-                return (
-                  <MenuItem key={client.customerId} value={client.customerId}>
-                    {client.fullName} ({client.customerCode}){branch ? ` - ${branch.name}` : ""}
-                  </MenuItem>
-                );
-              })}
-            </TextField>
-            <TextField
-              fullWidth
-              label="Locker Number"
-              value={form.lockerNumber}
-              onChange={(event) => setForm((prev) => ({ ...prev, lockerNumber: event.target.value.toUpperCase() }))}
-            />
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Size"
-                  value={form.size}
-                  onChange={(event) => setForm((prev) => ({ ...prev, size: event.target.value as LockerSize }))}
-                >
-                  {lockerSizeOptions.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      {option}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  type="number"
-                  fullWidth
-                  label="Annual Charge"
-                  value={form.annualCharge}
-                  onChange={(event) => setForm((prev) => ({ ...prev, annualCharge: Number(event.target.value) }))}
-                />
-              </Grid>
-            </Grid>
-
-            {selectedClient ? (
-              <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: "#f8fafc", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1 }}>
-                  Allocation Preview
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Client: {selectedClient.fullName} ({selectedClient.customerCode})
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Branch: {selectedClient.branchId ? branchMap.get(selectedClient.branchId)?.name ?? "-" : "-"}
-                </Typography>
-              </Paper>
-            ) : null}
-
-            <Button
-              variant="contained"
-              onClick={() => void handleCreateLocker()}
-              disabled={!form.customerId || !form.lockerNumber.trim() || submitting}
-              sx={{ py: 1.7, borderRadius: 2.5, fontWeight: 900 }}
-            >
+      {canManageLockers ? (
+        <Drawer
+          anchor="right"
+          open={createOpen}
+          onClose={() => setCreateOpen(false)}
+          PaperProps={{ sx: { width: { xs: "100%", md: 520 }, borderRadius: "24px 0 0 24px" } }}
+        >
+          <Box sx={{ p: 3, borderBottom: "1px solid rgba(15, 23, 42, 0.08)", position: "relative" }}>
+            <IconButton onClick={() => setCreateOpen(false)} sx={{ position: "absolute", right: 16, top: 16 }}>
+              <CloseRoundedIcon />
+            </IconButton>
+            <Typography variant="h5" sx={{ fontWeight: 900 }}>
               Allocate Locker
-            </Button>
-          </Stack>
-        </Box>
-      </Drawer>
+            </Typography>
+          </Box>
+          <Box sx={{ p: 3 }}>
+            <Stack spacing={2}>
+              <TextField
+                select
+                fullWidth
+                label="Client"
+                value={form.customerId}
+                onChange={(event) => setForm((prev) => ({ ...prev, customerId: event.target.value }))}
+              >
+                {activeClients.map((client) => {
+                  const branch = client.branchId ? branchMap.get(client.branchId) : null;
+                  return (
+                    <MenuItem key={client.customerId} value={client.customerId}>
+                      {client.fullName} ({client.customerCode}){branch ? ` - ${branch.name}` : ""}
+                    </MenuItem>
+                  );
+                })}
+              </TextField>
+              <TextField
+                fullWidth
+                label="Locker Number"
+                value={form.lockerNumber}
+                onChange={(event) => setForm((prev) => ({ ...prev, lockerNumber: event.target.value.toUpperCase() }))}
+              />
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Size"
+                    value={form.size}
+                    onChange={(event) => setForm((prev) => ({ ...prev, size: event.target.value as LockerSize }))}
+                  >
+                    {lockerSizeOptions.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    type="number"
+                    fullWidth
+                    label="Annual Charge"
+                    value={form.annualCharge}
+                    onChange={(event) => setForm((prev) => ({ ...prev, annualCharge: Number(event.target.value) }))}
+                  />
+                </Grid>
+              </Grid>
+
+              {selectedClient ? (
+                <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: "#f8fafc", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1 }}>
+                    Allocation Preview
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Client: {selectedClient.fullName} ({selectedClient.customerCode})
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Branch: {selectedClient.branchId ? branchMap.get(selectedClient.branchId)?.name ?? "-" : "-"}
+                  </Typography>
+                </Paper>
+              ) : null}
+
+              <Button
+                variant="contained"
+                onClick={() => void handleCreateLocker()}
+                disabled={!form.customerId || !form.lockerNumber.trim() || submitting}
+                sx={{ py: 1.7, borderRadius: 2.5, fontWeight: 900 }}
+              >
+                Allocate Locker
+              </Button>
+            </Stack>
+          </Box>
+        </Drawer>
+      ) : null}
 
       <Drawer
         anchor="right"
@@ -742,29 +818,118 @@ export function LockerWorkspace({ token, clients, branches }: LockerWorkspacePro
               <Stack spacing={2.5} sx={{ mt: 3 }}>
                 <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
                   <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
-                    Visit Log
+                    Locker Details
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Capture what was deposited, collected, or inspected in the locker during each visit.
-                  </Typography>
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-                    <TextField
-                      fullWidth
-                      label="Visit Remark"
-                      value={visitRemark}
-                      onChange={(event) => setVisitRemark(event.target.value)}
-                      placeholder="Example: gold packet verified, document envelope collected"
-                    />
-                    <Button
-                      variant="contained"
-                      onClick={() => void handleVisitLocker()}
-                      disabled={detailLocker.status !== "ACTIVE" || submitting}
-                      sx={{ minWidth: { md: 170 }, borderRadius: 2.5, fontWeight: 900 }}
-                    >
-                      Record Visit
-                    </Button>
-                  </Stack>
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <TextField
+                        select
+                        fullWidth
+                        label="Allotted Client"
+                        value={detailForm.customerId}
+                        disabled={!canManageLockers}
+                        onChange={(event) => setDetailForm((previous) => ({ ...previous, customerId: event.target.value }))}
+                      >
+                        {activeClients.map((client) => (
+                          <MenuItem key={client.customerId} value={client.customerId}>
+                            {client.fullName} ({client.customerCode})
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <TextField
+                        fullWidth
+                        label="Locker Number"
+                        value={detailForm.lockerNumber}
+                        disabled={!canManageLockers}
+                        onChange={(event) =>
+                          setDetailForm((previous) => ({ ...previous, lockerNumber: event.target.value.toUpperCase() }))
+                        }
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <TextField
+                        select
+                        fullWidth
+                        label="Size"
+                        value={detailForm.size}
+                        disabled={!canManageLockers}
+                        onChange={(event) =>
+                          setDetailForm((previous) => ({ ...previous, size: event.target.value as LockerSize }))
+                        }
+                      >
+                        {lockerSizeOptions.map((option) => (
+                          <MenuItem key={option} value={option}>
+                            {option}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <TextField
+                        type="number"
+                        fullWidth
+                        label="Annual Charge"
+                        value={detailForm.annualCharge}
+                        disabled={!canManageLockers}
+                        onChange={(event) =>
+                          setDetailForm((previous) => ({ ...previous, annualCharge: Number(event.target.value) }))
+                        }
+                      />
+                    </Grid>
+                  </Grid>
+                  {canManageLockers ? (
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ mt: 2 }}>
+                      <Button
+                        variant="contained"
+                        onClick={() => void handleUpdateLocker()}
+                        disabled={submitting}
+                        sx={{ borderRadius: 2.5, fontWeight: 900 }}
+                      >
+                        Save Locker
+                      </Button>
+                      <Button
+                        color="error"
+                        variant="outlined"
+                        startIcon={<DeleteRoundedIcon />}
+                        onClick={() => void handleDeleteLocker()}
+                        disabled={submitting}
+                        sx={{ borderRadius: 2.5, fontWeight: 900 }}
+                      >
+                        Delete Locker
+                      </Button>
+                    </Stack>
+                  ) : null}
                 </Paper>
+
+                {canRecordVisits ? (
+                  <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                    <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
+                      Visit Log
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Capture what was deposited, collected, or inspected in the locker during each visit.
+                    </Typography>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                      <TextField
+                        fullWidth
+                        label="Visit Remark"
+                        value={visitRemark}
+                        onChange={(event) => setVisitRemark(event.target.value)}
+                        placeholder="Example: gold packet verified, document envelope collected"
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={() => void handleVisitLocker()}
+                        disabled={detailLocker.status !== "ACTIVE" || submitting}
+                        sx={{ minWidth: { md: 170 }, borderRadius: 2.5, fontWeight: 900 }}
+                      >
+                        Record Visit
+                      </Button>
+                    </Stack>
+                  </Paper>
+                ) : null}
 
                 <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
                   <Table>
@@ -795,7 +960,7 @@ export function LockerWorkspace({ token, clients, branches }: LockerWorkspacePro
                   </Table>
                 </TableContainer>
 
-                {detailLocker.status !== "CLOSED" ? (
+                {canManageLockers && detailLocker.status !== "CLOSED" ? (
                   <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
                     <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
                       Close Locker

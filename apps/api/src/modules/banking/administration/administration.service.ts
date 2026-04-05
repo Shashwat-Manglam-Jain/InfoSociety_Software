@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, SubscriptionPlan, SubscriptionStatus, TransactionType, UserRole } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { bankingFeatureMap } from "../../shared/banking-feature-map";
@@ -11,6 +11,7 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { ListWorkingDaysQueryDto } from "./dto/list-working-days-query.dto";
 import { MapAgentClientDto } from "./dto/map-agent-client.dto";
 import { RecomputeAccountDto } from "./dto/recompute-account.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 import { WorkingDayDto } from "./dto/working-day.dto";
 
@@ -122,13 +123,14 @@ export class AdministrationService {
   async createUser(currentUser: RequestUser, dto: CreateUserDto & { branchId?: string }) {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
+    const normalizedUsername = this.normalizeUsername(dto.username);
 
     if (currentUser.role === UserRole.AGENT && dto.role !== UserRole.CLIENT) {
       throw new ForbiddenException("Agents can provision client identities only");
     }
 
     const existing = await this.prisma.user.findUnique({
-      where: { username: dto.username.toLowerCase() }
+      where: { username: normalizedUsername }
     });
 
     if (existing) {
@@ -160,9 +162,12 @@ export class AdministrationService {
 
     const passwordHash = await hash(dto.password, 10);
     const allowedModuleSlugs = sanitizeAllowedModules(dto.role, dto.allowedModuleSlugs);
-    const [firstName, ...restName] = dto.fullName.trim().split(/\s+/);
-    const lastName = restName.join(" ") || undefined;
+    const normalizedFullName = this.normalizeFullName(dto.fullName);
+    const { firstName, lastName } = this.splitFullName(normalizedFullName);
     const needsCustomerProfile = dto.role === UserRole.CLIENT || dto.role === UserRole.AGENT;
+    const normalizedPhone = this.normalizeOptionalText(dto.phone);
+    const normalizedEmail = this.normalizeOptionalText(dto.email);
+    const normalizedAddress = this.normalizeOptionalText(dto.address);
 
     return this.prisma.$transaction(async (tx) => {
       let customerId: string | undefined;
@@ -173,14 +178,17 @@ export class AdministrationService {
           societyCode: society.code,
           role: dto.role,
           firstName,
-          lastName
+          lastName,
+          phone: normalizedPhone ?? undefined,
+          email: normalizedEmail ?? undefined,
+          address: normalizedAddress ?? undefined
         });
       }
 
       const user = await tx.user.create({
         data: {
-          username: dto.username.toLowerCase(),
-          fullName: dto.fullName.trim(),
+          username: normalizedUsername,
+          fullName: normalizedFullName,
           passwordHash,
           role: dto.role,
           isActive: dto.isActive ?? true,
@@ -597,7 +605,17 @@ export class AdministrationService {
       where: currentUser.role === UserRole.SUPER_ADMIN ? {} : { societyId: currentUser.societyId ?? "" },
       select: {
         id: true, username: true, fullName: true, role: true, isActive: true, branchId: true,
-        customerProfile: { select: { id: true, customerCode: true } },
+        customerProfile: {
+          select: {
+            id: true,
+            customerCode: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            email: true,
+            address: true
+          }
+        },
         society: { select: { code: true, name: true } },
         createdAt: true
       },
@@ -609,6 +627,168 @@ export class AdministrationService {
       ...entry,
       allowedModuleSlugs: accessMap.get(entry.id) ?? getDefaultAllowedModules(entry.role)
     }));
+  }
+
+  async updateUser(currentUser: RequestUser, id: string, dto: UpdateUserDto) {
+    this.ensureOperator(currentUser);
+
+    const target = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+        branchId: true,
+        societyId: true,
+        customerId: true
+      }
+    });
+
+    if (!target) {
+      throw new NotFoundException("User not found");
+    }
+
+    this.assertCanManageUser(currentUser, target);
+
+    const normalizedUsername =
+      dto.username === undefined ? undefined : this.normalizeUsername(dto.username);
+    const normalizedFullName =
+      dto.fullName === undefined ? undefined : this.normalizeFullName(dto.fullName);
+    const normalizedBranchId =
+      dto.branchId === undefined ? undefined : this.normalizeOptionalText(dto.branchId);
+    const normalizedPhone =
+      dto.phone === undefined ? undefined : this.normalizeOptionalText(dto.phone);
+    const normalizedEmail =
+      dto.email === undefined ? undefined : this.normalizeOptionalText(dto.email);
+    const normalizedAddress =
+      dto.address === undefined ? undefined : this.normalizeOptionalText(dto.address);
+
+    if (normalizedUsername !== undefined && !normalizedUsername) {
+      throw new BadRequestException("Username cannot be empty");
+    }
+
+    if (normalizedFullName !== undefined && !normalizedFullName) {
+      throw new BadRequestException("Full name cannot be empty");
+    }
+
+    if (normalizedUsername && normalizedUsername !== target.username.toLowerCase()) {
+      const existing = await this.prisma.user.findUnique({
+        where: { username: normalizedUsername },
+        select: { id: true }
+      });
+
+      if (existing && existing.id !== id) {
+        throw new ConflictException("Username already taken");
+      }
+    }
+
+    if (normalizedBranchId) {
+      const societyId = target.societyId ?? this.resolveOperatingSocietyId(currentUser);
+      const branch = await this.prisma.branch.findFirst({
+        where: {
+          id: normalizedBranchId,
+          societyId
+        },
+        select: { id: true }
+      });
+
+      if (!branch) {
+        throw new NotFoundException("Selected branch does not belong to your society");
+      }
+    }
+
+    const hasPasswordUpdate = Boolean(dto.password?.trim());
+    const nextPasswordHash = hasPasswordUpdate ? await hash(dto.password!.trim(), 10) : undefined;
+    const allowedModuleSlugs =
+      dto.allowedModuleSlugs === undefined ? undefined : sanitizeAllowedModules(target.role, dto.allowedModuleSlugs);
+    const requiresCustomerProfile = target.role === UserRole.CLIENT || target.role === UserRole.AGENT;
+
+    return this.prisma.$transaction(async (tx) => {
+      let nextCustomerId = target.customerId;
+
+      if (requiresCustomerProfile && !nextCustomerId) {
+        const societyId = target.societyId ?? this.resolveOperatingSocietyId(currentUser);
+        const society = await tx.society.findUnique({
+          where: { id: societyId },
+          select: { id: true, code: true }
+        });
+
+        if (!society) {
+          throw new NotFoundException("Society not found");
+        }
+
+        const identityName = normalizedFullName ?? target.fullName;
+        const { firstName, lastName } = this.splitFullName(identityName);
+
+        nextCustomerId = await this.createLinkedCustomerProfile(tx, {
+          societyId: society.id,
+          societyCode: society.code,
+          role: target.role,
+          firstName,
+          lastName,
+          phone: normalizedPhone ?? undefined,
+          email: normalizedEmail ?? undefined,
+          address: normalizedAddress ?? undefined
+        });
+      } else if (requiresCustomerProfile && nextCustomerId) {
+        const identityName = normalizedFullName ?? target.fullName;
+        const { firstName, lastName } = this.splitFullName(identityName);
+
+        await tx.customer.update({
+          where: { id: nextCustomerId },
+          data: {
+            ...(normalizedFullName !== undefined ? { firstName, lastName: lastName ?? null } : {}),
+            ...(normalizedPhone !== undefined ? { phone: normalizedPhone } : {}),
+            ...(normalizedEmail !== undefined ? { email: normalizedEmail } : {}),
+            ...(normalizedAddress !== undefined ? { address: normalizedAddress } : {})
+          }
+        });
+      }
+
+      const updated = await tx.user.update({
+        where: { id },
+        data: {
+          ...(normalizedUsername !== undefined ? { username: normalizedUsername } : {}),
+          ...(normalizedFullName !== undefined ? { fullName: normalizedFullName } : {}),
+          ...(nextPasswordHash ? { passwordHash: nextPasswordHash, requiresPasswordChange: true } : {}),
+          ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+          ...(normalizedBranchId !== undefined ? { branchId: normalizedBranchId } : {}),
+          ...(nextCustomerId && nextCustomerId !== target.customerId ? { customerId: nextCustomerId } : {})
+        },
+        select: {
+          id: true,
+          username: true,
+          fullName: true,
+          role: true,
+          isActive: true,
+          branchId: true,
+          customerProfile: {
+            select: {
+              id: true,
+              customerCode: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              email: true,
+              address: true
+            }
+          },
+          society: { select: { code: true, name: true } },
+          createdAt: true
+        }
+      });
+
+      if (allowedModuleSlugs) {
+        await this.updateAllowedModules(tx, id, allowedModuleSlugs);
+      }
+
+      return {
+        ...updated,
+        allowedModuleSlugs: allowedModuleSlugs ?? (await this.getAllowedModuleMap([id])).get(id) ?? getDefaultAllowedModules(updated.role)
+      };
+    });
   }
 
   async updateUserStatus(currentUser: RequestUser, id: string, dto: UpdateUserStatusDto) {
@@ -639,6 +819,104 @@ export class AdministrationService {
 
     const updated = await this.prisma.user.findUnique({ where: { id }, select: { id: true, username: true, fullName: true, role: true, isActive: true } });
     return { ...updated, allowedModuleSlugs };
+  }
+
+  async deleteUser(currentUser: RequestUser, id: string) {
+    this.ensureOperator(currentUser);
+
+    if (currentUser.sub === id) {
+      throw new ForbiddenException("You cannot remove your own account");
+    }
+
+    const target = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        role: true,
+        societyId: true,
+        customerId: true,
+        _count: {
+          select: {
+            audits: true,
+            cashBookEntries: true,
+            paymentRequestsCreated: true,
+            paymentTransactionsInitiated: true,
+            reports: true,
+            transactions: true,
+            openedDays: true,
+            closedDays: true
+          }
+        }
+      }
+    });
+
+    if (!target) {
+      throw new NotFoundException("User not found");
+    }
+
+    this.assertCanManageUser(currentUser, target);
+
+    if (target.role === UserRole.SUPER_USER || target.role === UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException("This account type cannot be removed from user access");
+    }
+
+    if (this.hasRelatedActivity(target._count)) {
+      throw new ConflictException("This account already has operational activity and cannot be removed");
+    }
+
+    if (target.customerId) {
+      const linkedCustomer = await this.prisma.customer.findUnique({
+        where: { id: target.customerId },
+        select: {
+          id: true,
+          minors: { select: { id: true } },
+          _count: {
+            select: {
+              accounts: true,
+              agentClients: true,
+              pigmyClients: true,
+              benefits: true,
+              demandDrafts: true,
+              instruments: true,
+              kycDocuments: true,
+              loans: true,
+              guarantor1Loans: true,
+              guarantor2Loans: true,
+              guarantor3Loans: true,
+              lockers: true,
+              paymentRequests: true,
+              paymentTransactions: true
+            }
+          }
+        }
+      });
+
+      if (linkedCustomer) {
+        const linkedCustomerHasActivity =
+          Boolean(linkedCustomer.minors) ||
+          this.hasRelatedActivity(linkedCustomer._count);
+
+        if (linkedCustomerHasActivity) {
+          throw new ConflictException("This account is already linked to banking records and cannot be removed");
+        }
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.subscription.deleteMany({ where: { userId: id } });
+      await tx.user.delete({ where: { id } });
+
+      if (target.customerId) {
+        await tx.agentClient.deleteMany({
+          where: {
+            OR: [{ agentId: target.customerId }, { customerId: target.customerId }]
+          }
+        });
+        await tx.customer.delete({ where: { id: target.customerId } });
+      }
+    });
+
+    return { id, deleted: true };
   }
 
   async recomputeAccountBalance(currentUser: RequestUser, accountId: string, dto: RecomputeAccountDto) {
@@ -718,6 +996,27 @@ export class AdministrationService {
     if (currentUser.role === UserRole.CLIENT) throw new ForbiddenException("Client users cannot access administration controls");
   }
 
+  private assertCanManageUser(
+    currentUser: RequestUser,
+    target: {
+      id: string;
+      role: UserRole;
+      societyId: string | null;
+    }
+  ) {
+    if (currentUser.role !== UserRole.SUPER_ADMIN && target.societyId !== currentUser.societyId) {
+      throw new ForbiddenException("User belongs to another society");
+    }
+
+    if (target.role === UserRole.SUPER_ADMIN && currentUser.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException("Only platform administrators can modify superadmin users");
+    }
+
+    if (currentUser.role === UserRole.AGENT && target.role !== UserRole.CLIENT) {
+      throw new ForbiddenException("Agents can manage client accounts only");
+    }
+  }
+
   private resolveOperatingSocietyId(currentUser: RequestUser) {
     if (!currentUser.societyId) throw new ForbiddenException("Operator is not mapped to a society");
     return currentUser.societyId;
@@ -745,6 +1044,9 @@ export class AdministrationService {
       role: UserRole;
       firstName: string;
       lastName?: string;
+      phone?: string;
+      email?: string;
+      address?: string;
     }
   ) {
     const prefix = input.role === UserRole.AGENT ? "A" : "C";
@@ -752,10 +1054,51 @@ export class AdministrationService {
     const customerCode = `${input.societyCode}-${prefix}${String(count + 1).padStart(5, "0")}`;
 
     const customer = await tx.customer.create({
-      data: { customerCode, societyId: input.societyId, firstName: input.firstName, lastName: input.lastName },
+      data: {
+        customerCode,
+        societyId: input.societyId,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        phone: input.phone,
+        email: input.email,
+        address: input.address
+      },
       select: { id: true }
     });
 
     return customer.id;
+  }
+
+  private normalizeOptionalText(value?: string | null) {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    if (value === null) {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+
+  private normalizeUsername(value: string) {
+    return value.trim().toLowerCase().replace(/^@+/, "").replace(/\s+/g, "");
+  }
+
+  private normalizeFullName(value: string) {
+    return value.trim().replace(/\s+/g, " ");
+  }
+
+  private splitFullName(fullName: string) {
+    const [firstName, ...restName] = fullName.trim().split(/\s+/);
+    return {
+      firstName,
+      lastName: restName.join(" ") || undefined
+    };
+  }
+
+  private hasRelatedActivity(counts: Record<string, number>) {
+    return Object.values(counts).some((value) => value > 0);
   }
 }

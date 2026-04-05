@@ -1,364 +1,1638 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { 
-  Box, 
-  CircularProgress, 
-  Stack, 
-  Typography 
-} from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
-
-import { ClientRegistry } from "./operations/ClientRegistry";
-import { PlanCatalogue } from "./operations/PlanCatalogue";
-import { AccountRegistry } from "./operations/AccountRegistry";
-import { ShareRegister } from "./operations/ShareRegister";
-import { GuarantorRegistry } from "./operations/GuarantorRegistry";
-
-import { MemberDrawer } from "./operations/drawers/MemberDrawer";
-import { MemberDetailDrawer } from "./operations/drawers/MemberDetailDrawer";
-import { AccountDrawer } from "./operations/drawers/AccountDrawer";
-import { PlanDrawer } from "./operations/drawers/PlanDrawer";
-import { ShareholdingDrawer } from "./operations/drawers/ShareholdingDrawer";
-
-import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
+import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
 import {
-  createEmptyAccount,
-  createEmptyMember,
-  createEmptyPlan,
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Drawer,
+  IconButton,
+  MenuItem,
+  Paper,
+  Stack,
+  Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  TextField,
+  Typography
+} from "@mui/material";
+import Grid from "@mui/material/Grid";
+import { useTheme } from "@mui/material/styles";
+import { ClientRegistry } from "./operations/ClientRegistry";
+import { MetricCard } from "./operations/MetricCard";
+import { SectionHero } from "./operations/SectionHero";
+import { ShareRegister } from "./operations/ShareRegister";
+import { TableEmpty } from "./operations/shared/TableEmpty";
+import { ShareholdingDrawer } from "./operations/drawers/ShareholdingDrawer";
+import {
+  createAccount,
+  listAccounts,
+  type AccountRecord as BankingAccountRecord
+} from "@/shared/api/accounts";
+import {
+  createDepositScheme,
+  listDepositSchemes,
+  openDepositAccount,
+  type DepositSchemeRecord
+} from "@/shared/api/deposits";
+import { listHeads, type HeadRecord } from "@/shared/api/heads";
+import { listLoans, type LoanRecord, updateLoanGuarantors } from "@/shared/api/loans";
+import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
+import { toast } from "@/shared/ui/toast";
+import type { ManagedUserRow, OperationsClientRow } from "../lib/society-admin-dashboard";
+import {
   createEmptyShareholding,
-  getNextAccountNumber,
-  getNextApplicationNumber,
-  getNextClientNumber,
-  getNextPlanCode,
-  normalizeAgents,
-  normalizeBranches,
-  planCategoryOptions,
-  type AccountRecord,
-  type AgentOption,
-  type BranchOption,
   type MemberRecord,
-  type PlanCategory,
-  type PlanRecord,
   type ShareholdingRecord
 } from "../lib/society-operations-data";
 
 type SocietyOperationsWorkspaceProps = {
   view: string;
-  branches: any[];
-  agents: any[];
+  token: string;
+  branches: Array<{ id: string; name: string; code?: string | null }>;
+  managedUsers: ManagedUserRow[];
+  clientMembers?: OperationsClientRow[];
+  branchFilterId?: string | null;
+  openCreateClientDrawer?: () => void;
+  canCreatePlans?: boolean;
+  canOpenAccounts?: boolean;
 };
+
+type DepositSchemeFormState = {
+  code: string;
+  name: string;
+  recurring: boolean;
+  minMonths: number;
+  maxMonths: number;
+  interestRate: number;
+};
+
+type DepositAccountFormState = {
+  customerId: string;
+  schemeId: string;
+  openingBalance: number;
+  openDate: string;
+  isPassbookEnabled: boolean;
+};
+
+type SocietyClientProfile = {
+  userId: string;
+  customerId: string;
+  customerCode: string;
+  fullName: string;
+  username: string;
+  branchId: string;
+  branchName: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
+type GuarantorRow = {
+  id: string;
+  loanId: string;
+  branchId: string;
+  slotKey: "guarantor1Id" | "guarantor2Id" | "guarantor3Id";
+  guarantorName: string;
+  guarantorCode: string;
+  borrowerName: string;
+  borrowerCode: string;
+  branchName: string;
+  accountNumber: string;
+  responsibility: string;
+  status: string;
+};
+
+type GuarantorFormState = {
+  loanId: string;
+  guarantor1Id: string;
+  guarantor2Id: string;
+  guarantor3Id: string;
+  remarks: string;
+};
+
+type ClientApprovalRow = {
+  id: string;
+  branchId: string;
+  clientName: string;
+  customerCode: string;
+  username: string;
+  branchName: string;
+  approvalSource: string;
+  createdAt: string;
+  status: string;
+};
+
+function formatCurrency(value: number | string) {
+  const numericValue = typeof value === "string" ? Number(value) : value;
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0
+  }).format(Number.isFinite(numericValue) ? numericValue : 0);
+}
+
+function formatDate(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleDateString("en-IN");
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function createEmptySchemeForm(): DepositSchemeFormState {
+  return {
+    code: "",
+    name: "",
+    recurring: false,
+    minMonths: 12,
+    maxMonths: 12,
+    interestRate: 7
+  };
+}
+
+function createEmptyDepositAccountForm(): DepositAccountFormState {
+  return {
+    customerId: "",
+    schemeId: "",
+    openingBalance: 0,
+    openDate: today(),
+    isPassbookEnabled: true
+  };
+}
+
+function createEmptyGuarantorForm(loan?: LoanRecord): GuarantorFormState {
+  return {
+    loanId: loan?.id ?? "",
+    guarantor1Id: loan?.guarantor1?.id ?? "",
+    guarantor2Id: loan?.guarantor2?.id ?? "",
+    guarantor3Id: loan?.guarantor3?.id ?? "",
+    remarks: loan?.remarks ?? ""
+  };
+}
+
+function formatPersonName(firstName?: string | null, lastName?: string | null) {
+  return [firstName, lastName].filter(Boolean).join(" ").trim() || "-";
+}
+
+function getAccountTypeLabel(type: BankingAccountRecord["type"]) {
+  return type
+    .split("_")
+    .map((entry) => entry.charAt(0) + entry.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function getSchemeTypeLabel(scheme: DepositSchemeRecord) {
+  return scheme.recurring ? "Recurring Deposit" : "Fixed Deposit";
+}
+
+function buildClientProfiles(managedUsers: ManagedUserRow[]) {
+  return managedUsers
+    .filter((user) => user.role === "CLIENT" && user.customerProfile?.id)
+    .map((user) => ({
+      userId: user.id,
+      customerId: user.customerProfile!.id,
+      customerCode: user.customerProfile!.customerCode,
+      fullName: user.fullName,
+      username: user.username,
+      branchId: user.branchId ?? "",
+      branchName: user.branch?.name ?? "Head office",
+      isActive: user.isActive,
+      createdAt: user.createdAt ?? ""
+    }));
+}
+
+function buildShareMembers(clientProfiles: SocietyClientProfile[]): MemberRecord[] {
+  return clientProfiles.map((client) => ({
+    id: client.customerId,
+    branchId: client.branchId,
+    branch: client.branchName,
+    clientNo: client.customerCode,
+    applicationNo: client.customerCode,
+    annualIncomeRange: "",
+    name: client.fullName,
+    fatherName: "",
+    motherName: "",
+    occupation: "Client",
+    memberSourceType: "Digital",
+    memberSourceName: "User Access",
+    mobileNo: "",
+    email: "",
+    dob: "",
+    gender: "",
+    membershipStatus: client.isActive ? "Active" : "Inactive",
+    joinedOn: client.createdAt,
+    membershipFeeCollected: false,
+    nomineeName: "",
+    nomineeRelation: "",
+    nomineeAddress: "",
+    nomineeAadhaarNo: "",
+    nomineeVoterId: "",
+    nomineePanId: "",
+    nomineeMobileNo: "",
+    nomineeRationNo: "",
+    correspondingAddress: "",
+    correspondenceLatitude: "",
+    correspondenceLongitude: "",
+    permanentAddress: "",
+    permanentCity: "",
+    permanentState: "",
+    permanentPincode: "",
+    bankAccounts: [],
+    documents: [],
+    loanAccounts: [],
+    guarantorLoans: [],
+    coApplicants: [],
+    loginDetails: {
+      username: client.username,
+      role: "CLIENT",
+      status: client.isActive ? "Active" : "Inactive",
+      lastLogin: "-",
+      passwordUpdatedAt: client.createdAt || today()
+    },
+    kyc: {
+      pan: { number: "", verified: false, verifiedOn: "", remark: "", documentLabel: "" },
+      aadhaar: { number: "", verified: false, verifiedOn: "", remark: "", documentLabel: "" },
+      dl: { number: "", verified: false, verifiedOn: "", remark: "", documentLabel: "" },
+      verificationLogs: []
+    },
+    notes: ""
+  }));
+}
+
+function resolveHeadForScheme(scheme: DepositSchemeRecord | undefined, heads: HeadRecord[]) {
+  if (!scheme || !heads.length) {
+    return null;
+  }
+
+  const expectedTokens = scheme.recurring
+    ? ["RECURRING_DEPOSIT", "RECURRING", "RD"]
+    : ["FIXED_DEPOSIT", "FIXED", "FD"];
+
+  const normalizedHeads = heads.map((head) => ({
+    head,
+    haystack: [head.relatedType, head.name, head.code].join(" ").toUpperCase()
+  }));
+
+  const match = normalizedHeads.find((entry) => expectedTokens.some((token) => entry.haystack.includes(token)));
+  return match?.head ?? heads[0];
+}
+
+function buildGuarantorRows(loans: LoanRecord[], clientProfiles: SocietyClientProfile[]): GuarantorRow[] {
+  const branchByCustomerId = new Map(
+    clientProfiles.map((client) => [client.customerId, { branchId: client.branchId, branchName: client.branchName }])
+  );
+
+  return loans.flatMap((loan) => {
+    const borrowerName = formatPersonName(loan.customer.firstName, loan.customer.lastName);
+    const borrowerBranch = branchByCustomerId.get(loan.customer.id);
+    const branchId = borrowerBranch?.branchId ?? "";
+    const branchName = borrowerBranch?.branchName ?? "Head office";
+    const guarantors = [
+      { label: "Primary guarantor", party: loan.guarantor1, slotKey: "guarantor1Id" as const },
+      { label: "Secondary guarantor", party: loan.guarantor2, slotKey: "guarantor2Id" as const },
+      { label: "Third guarantor", party: loan.guarantor3, slotKey: "guarantor3Id" as const }
+    ].filter((entry) => Boolean(entry.party));
+
+    return guarantors.map((entry, index) => ({
+      id: `${loan.id}-${index + 1}`,
+      loanId: loan.id,
+      branchId,
+      slotKey: entry.slotKey,
+      guarantorName: formatPersonName(entry.party?.firstName, entry.party?.lastName),
+      guarantorCode: entry.party?.customerCode ?? "-",
+      borrowerName,
+      borrowerCode: loan.customer.customerCode,
+      branchName,
+      accountNumber: loan.account.accountNumber,
+      responsibility: `${entry.label} for ${formatCurrency(loan.applicationAmount)}`,
+      status: loan.status
+    }));
+  });
+}
+
+function buildClientApprovalRows(clientProfiles: SocietyClientProfile[]): ClientApprovalRow[] {
+  return clientProfiles.map((client) => ({
+    id: client.userId,
+    branchId: client.branchId,
+    clientName: client.fullName,
+    customerCode: client.customerCode,
+    username: client.username,
+    branchName: client.branchName,
+    approvalSource: "Society admin via User Access",
+    createdAt: client.createdAt,
+    status: client.isActive ? "Approved" : "Inactive"
+  }));
+}
 
 export function SocietyOperationsWorkspace({
   view,
+  token,
   branches,
-  agents
+  managedUsers,
+  clientMembers = [],
+  branchFilterId = null,
+  openCreateClientDrawer,
+  canCreatePlans = true,
+  canOpenAccounts = true
 }: SocietyOperationsWorkspaceProps) {
-  // --- DESIGN SYSTEM & THEME ---
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
 
-  // --- DATA NORMALIZATION ---
-  const branchOptions = useMemo<BranchOption[]>(() => normalizeBranches(branches), [branches]);
-  const agentOptions = useMemo<AgentOption[]>(() => normalizeAgents(agents), [agents]);
+  const clientProfiles = useMemo(() => buildClientProfiles(managedUsers), [managedUsers]);
+  const shareMembers = useMemo(() => buildShareMembers(clientProfiles), [clientProfiles]);
 
-  // --- CORE STATE ---
-  const [members, setMembers] = useState<MemberRecord[]>([]);
-  const [shareholdings, setShareholdings] = useState<ShareholdingRecord[]>([]);
-  const [plans, setPlans] = useState<PlanRecord[]>([]);
-  const [accounts, setAccounts] = useState<AccountRecord[]>([]);
-
-  // --- UI STATE (PAGINATION/SEARCH) ---
   const [memberSearch, setMemberSearch] = useState("");
   const [memberPage, setMemberPage] = useState(0);
   const [memberRowsPerPage, setMemberRowsPerPage] = useState(10);
-
+  const [shareholdings, setShareholdings] = useState<ShareholdingRecord[]>([]);
   const [shareSearch, setShareSearch] = useState("");
   const [sharePage, setSharePage] = useState(0);
   const [shareRowsPerPage, setShareRowsPerPage] = useState(10);
-
-  const [planSearch, setPlanSearch] = useState("");
-  const [planPage, setPlanPage] = useState(0);
-  const [planRowsPerPage, setPlanRowsPerPage] = useState(10);
-  const [planTab, setPlanTab] = useState<PlanCategory>("fd");
-
-  const [accountSearch, setAccountSearch] = useState("");
-  const [accountPage, setAccountPage] = useState(0);
-  const [accountRowsPerPage, setAccountRowsPerPage] = useState(10);
-
-  const [guarantorSearch, setGuarantorSearch] = useState("");
-  const [guarantorPage, setGuarantorPage] = useState(0);
-  const [guarantorRowsPerPage, setGuarantorRowsPerPage] = useState(10);
-
-  const [coapplicantSearch, setCoapplicantSearch] = useState("");
-  const [coapplicantPage, setCoapplicantPage] = useState(0);
-  const [coapplicantRowsPerPage, setCoapplicantRowsPerPage] = useState(10);
-
   const [shareholdingTypeTab, setShareholdingTypeTab] = useState("shareholder");
-
-  // --- DRAWER STATE ---
-  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
-  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
-  const [memberForm, setMemberForm] = useState<MemberRecord>(createEmptyMember(branchOptions, agentOptions));
-
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-
-  const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
-  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
-  const [accountForm, setAccountForm] = useState<AccountRecord>(createEmptyAccount(members, plans, branchOptions));
-
-  const [planDrawerOpen, setPlanDrawerOpen] = useState(false);
-  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
-  const [planForm, setPlanForm] = useState<PlanRecord>(createEmptyPlan("fd"));
-
   const [shareDrawerOpen, setShareDrawerOpen] = useState(false);
   const [editingShareId, setEditingShareId] = useState<string | null>(null);
   const [shareForm, setShareForm] = useState<ShareholdingRecord>(createEmptyShareholding());
 
-  // --- HELPERS ---
-  function formatCurrency(value: number) {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0
-    }).format(value || 0);
+  const [schemeRows, setSchemeRows] = useState<DepositSchemeRecord[]>([]);
+  const [schemeLoading, setSchemeLoading] = useState(false);
+  const [schemeError, setSchemeError] = useState<string | null>(null);
+  const [schemeSearch, setSchemeSearch] = useState("");
+  const [schemeDrawerOpen, setSchemeDrawerOpen] = useState(false);
+  const [schemeSubmitting, setSchemeSubmitting] = useState(false);
+  const [schemeForm, setSchemeForm] = useState<DepositSchemeFormState>(createEmptySchemeForm());
+
+  const [accountRows, setAccountRows] = useState<BankingAccountRecord[]>([]);
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const [accountSearch, setAccountSearch] = useState("");
+  const [accountPage, setAccountPage] = useState(0);
+  const [accountRowsPerPage, setAccountRowsPerPage] = useState(10);
+  const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
+  const [accountSubmitting, setAccountSubmitting] = useState(false);
+  const [accountForm, setAccountForm] = useState<DepositAccountFormState>(createEmptyDepositAccountForm());
+  const [headRows, setHeadRows] = useState<HeadRecord[]>([]);
+
+  const [guarantorRows, setGuarantorRows] = useState<GuarantorRow[]>([]);
+  const [loanRows, setLoanRows] = useState<LoanRecord[]>([]);
+  const [guarantorLoading, setGuarantorLoading] = useState(false);
+  const [guarantorError, setGuarantorError] = useState<string | null>(null);
+  const [guarantorSearch, setGuarantorSearch] = useState("");
+  const [guarantorPage, setGuarantorPage] = useState(0);
+  const [guarantorRowsPerPage, setGuarantorRowsPerPage] = useState(10);
+  const [guarantorDrawerOpen, setGuarantorDrawerOpen] = useState(false);
+  const [guarantorSubmitting, setGuarantorSubmitting] = useState(false);
+  const [guarantorForm, setGuarantorForm] = useState<GuarantorFormState>(createEmptyGuarantorForm());
+
+  const [approvalSearch, setApprovalSearch] = useState("");
+  const [approvalPage, setApprovalPage] = useState(0);
+  const [approvalRowsPerPage, setApprovalRowsPerPage] = useState(10);
+
+  const approvalRows = useMemo(() => buildClientApprovalRows(clientProfiles), [clientProfiles]);
+
+  const selectedScheme = useMemo(
+    () => schemeRows.find((scheme) => scheme.id === accountForm.schemeId) ?? null,
+    [accountForm.schemeId, schemeRows]
+  );
+  const selectedClient = useMemo(
+    () => clientProfiles.find((client) => client.customerId === accountForm.customerId) ?? null,
+    [accountForm.customerId, clientProfiles]
+  );
+  const branchScopedCustomerIds = useMemo(() => new Set(clientProfiles.map((client) => client.customerId)), [clientProfiles]);
+  const selectedGuarantorLoan = useMemo(
+    () => loanRows.find((loan) => loan.id === guarantorForm.loanId) ?? null,
+    [guarantorForm.loanId, loanRows]
+  );
+
+  async function loadSchemes() {
+    setSchemeLoading(true);
+    setSchemeError(null);
+
+    try {
+      const rows = await listDepositSchemes(token);
+      setSchemeRows(rows);
+    } catch (caught) {
+      setSchemeError(caught instanceof Error ? caught.message : "Unable to load product plans.");
+    } finally {
+      setSchemeLoading(false);
+    }
   }
 
-  function formatDate(value: string) {
-    if (!value) return "-";
-    const parsed = new Date(value);
-    return isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString("en-IN");
+  async function loadAccounts() {
+    setAccountLoading(true);
+    setAccountError(null);
+
+    try {
+      const [accountsResponse, headsResponse] = await Promise.all([
+        listAccounts(token, { page: 1, limit: 100 }),
+        listHeads(token)
+      ]);
+      setAccountRows(accountsResponse.rows);
+      setHeadRows(headsResponse);
+    } catch (caught) {
+      setAccountError(caught instanceof Error ? caught.message : "Unable to load account registry.");
+    } finally {
+      setAccountLoading(false);
+    }
   }
 
-  // --- HANDLERS ---
-  const openNewMember = () => {
-    setEditingMemberId(null);
-    setMemberForm({
-      ...createEmptyMember(branchOptions, agentOptions),
-      clientNo: getNextClientNumber(members),
-      applicationNo: getNextApplicationNumber(members)
-    });
-    setMemberDrawerOpen(true);
-  };
+  async function loadGuarantors() {
+    setGuarantorLoading(true);
+    setGuarantorError(null);
 
-  const handleSaveMember = () => {
-    const memberId = editingMemberId ?? `member-${Math.random().toString(36).slice(2, 9)}`;
-    const prepared: MemberRecord = { ...memberForm, id: memberId };
-    setMembers((prev) => 
-      editingMemberId ? prev.map(m => m.id === editingMemberId ? prepared : m) : [prepared, ...prev]
-    );
-    setMemberDrawerOpen(false);
-  };
+    try {
+      const response = await listLoans(token, { page: 1, limit: 100 });
+      setLoanRows(response.rows);
+      setGuarantorRows(buildGuarantorRows(response.rows, clientProfiles));
+    } catch (caught) {
+      setGuarantorError(caught instanceof Error ? caught.message : "Unable to load guarantor relationships.");
+    } finally {
+      setGuarantorLoading(false);
+    }
+  }
 
-  const openNewAccount = () => {
-    setEditingAccountId(null);
-    setAccountForm(createEmptyAccount(members, plans, branchOptions));
-    setAccountDrawerOpen(true);
-  };
+  useEffect(() => {
+    if (view === "plan_catalogue") {
+      void loadSchemes();
+    }
+  }, [token, view]);
 
-  const handleSaveAccount = () => {
-    const accId = editingAccountId ?? `acc-${Math.random().toString(36).slice(2, 9)}`;
-    const prepared: AccountRecord = { ...accountForm, id: accId };
-    setAccounts((prev) =>
-      editingAccountId ? prev.map(a => a.id === editingAccountId ? prepared : a) : [prepared, ...prev]
-    );
-    setAccountDrawerOpen(false);
-  };
+  useEffect(() => {
+    if (view === "account_registry") {
+      void Promise.all([loadSchemes(), loadAccounts()]);
+    }
+  }, [token, view]);
 
-  const openNewPlan = () => {
-    setEditingPlanId(null);
-    setPlanForm(createEmptyPlan("fd"));
-    setPlanDrawerOpen(true);
-  };
+  useEffect(() => {
+    if (view === "membership_guarantors") {
+      void loadGuarantors();
+    }
+  }, [clientProfiles, token, view]);
 
-  const handleSavePlan = () => {
-    const pId = editingPlanId ?? `plan-${Math.random().toString(36).slice(2, 9)}`;
-    const prepared: PlanRecord = { ...planForm, id: pId };
-    setPlans((prev) =>
-      editingPlanId ? prev.map(p => p.id === editingPlanId ? prepared : p) : [prepared, ...prev]
-    );
-    setPlanDrawerOpen(false);
-  };
-
-  const openNewShare = () => {
-    setEditingShareId(null);
-    setShareForm(createEmptyShareholding());
-    setShareDrawerOpen(true);
-  };
-
-  const handleSaveShare = () => {
-    const sId = editingShareId ?? `share-${Math.random().toString(36).slice(2, 9)}`;
-    const prepared: ShareholdingRecord = { ...shareForm, id: sId };
-    setShareholdings((prev) =>
-      editingShareId ? prev.map(s => s.id === editingShareId ? prepared : s) : [prepared, ...prev]
+  function handleSaveShare() {
+    const shareId = editingShareId ?? `share-${Math.random().toString(36).slice(2, 9)}`;
+    const prepared: ShareholdingRecord = { ...shareForm, id: shareId };
+    setShareholdings((previous) =>
+      editingShareId ? previous.map((entry) => (entry.id === editingShareId ? prepared : entry)) : [prepared, ...previous]
     );
     setShareDrawerOpen(false);
-  };
+    setEditingShareId(null);
+    setShareForm(createEmptyShareholding());
+  }
 
-  // --- RENDER ORCHESTRATION ---
-  const activeMember = members.find(m => m.id === selectedMemberId) ?? null;
+  function handleDeleteShareholding(id: string) {
+    setShareholdings((previous) => previous.filter((entry) => entry.id !== id));
+    if (editingShareId === id) {
+      setEditingShareId(null);
+      setShareDrawerOpen(false);
+      setShareForm(createEmptyShareholding());
+    }
+  }
+
+  function openGuarantorDrawer(loan?: LoanRecord) {
+    setGuarantorForm(createEmptyGuarantorForm(loan));
+    setGuarantorDrawerOpen(true);
+  }
+
+  async function handleSaveGuarantorAssignments() {
+    if (!guarantorForm.loanId) {
+      toast.error("Select a loan account first.");
+      return;
+    }
+
+    const selectedIds = [guarantorForm.guarantor1Id, guarantorForm.guarantor2Id, guarantorForm.guarantor3Id].filter(Boolean);
+    if (selectedIds.length === 0) {
+      toast.error("Assign at least one guarantor.");
+      return;
+    }
+
+    if (new Set(selectedIds).size !== selectedIds.length) {
+      toast.error("Each guarantor must be unique.");
+      return;
+    }
+
+    setGuarantorSubmitting(true);
+
+    try {
+      await updateLoanGuarantors(token, guarantorForm.loanId, {
+        guarantor1Id: guarantorForm.guarantor1Id || null,
+        guarantor2Id: guarantorForm.guarantor2Id || null,
+        guarantor3Id: guarantorForm.guarantor3Id || null,
+        remarks: guarantorForm.remarks.trim() || null
+      });
+
+      setGuarantorDrawerOpen(false);
+      setGuarantorForm(createEmptyGuarantorForm());
+      await loadGuarantors();
+      toast.success("Guarantor assignments updated.");
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Unable to update guarantor assignments.");
+    } finally {
+      setGuarantorSubmitting(false);
+    }
+  }
+
+  async function handleDeleteGuarantorRow(row: GuarantorRow) {
+    const loan = loanRows.find((entry) => entry.id === row.loanId);
+    if (!loan) {
+      toast.error("The linked loan record could not be found.");
+      return;
+    }
+
+    setGuarantorSubmitting(true);
+
+    try {
+      await updateLoanGuarantors(token, row.loanId, {
+        guarantor1Id: row.slotKey === "guarantor1Id" ? null : loan.guarantor1?.id ?? null,
+        guarantor2Id: row.slotKey === "guarantor2Id" ? null : loan.guarantor2?.id ?? null,
+        guarantor3Id: row.slotKey === "guarantor3Id" ? null : loan.guarantor3?.id ?? null,
+        remarks: loan.remarks ?? null
+      });
+
+      await loadGuarantors();
+      toast.success("Guarantor entry removed.");
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Unable to remove the guarantor entry.");
+    } finally {
+      setGuarantorSubmitting(false);
+    }
+  }
+
+  async function handleCreateScheme() {
+    if (!schemeForm.code.trim() || !schemeForm.name.trim()) {
+      return;
+    }
+
+    setSchemeSubmitting(true);
+    try {
+      await createDepositScheme(token, {
+        code: schemeForm.code.trim().toUpperCase(),
+        name: schemeForm.name.trim(),
+        minMonths: schemeForm.minMonths,
+        maxMonths: schemeForm.maxMonths,
+        interestRate: Number(schemeForm.interestRate),
+        recurring: schemeForm.recurring
+      });
+      setSchemeDrawerOpen(false);
+      setSchemeForm(createEmptySchemeForm());
+      await loadSchemes();
+      toast.success("Plan created.");
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Unable to create plan.");
+    } finally {
+      setSchemeSubmitting(false);
+    }
+  }
+
+  async function handleCreateDepositAccount() {
+    if (!selectedClient || !selectedScheme) {
+      return;
+    }
+
+    const head = resolveHeadForScheme(selectedScheme, headRows);
+    if (!head) {
+      toast.error("No matching account head is configured for the selected plan.");
+      return;
+    }
+
+    setAccountSubmitting(true);
+
+    try {
+      const accountType = selectedScheme.recurring ? "RECURRING_DEPOSIT" : "FIXED_DEPOSIT";
+      const created = await createAccount(token, {
+        customerId: selectedClient.customerId,
+        type: accountType,
+        openingBalance: Number(accountForm.openingBalance),
+        interestRate: Number(selectedScheme.interestRate),
+        branchId: selectedClient.branchId || undefined,
+        branchCode: branches.find((branch) => branch.id === selectedClient.branchId)?.code ?? undefined,
+        headId: head.id,
+        isPassbookEnabled: accountForm.isPassbookEnabled
+      });
+
+      await openDepositAccount(token, {
+        accountId: created.id,
+        schemeId: selectedScheme.id,
+        principalAmount: Number(accountForm.openingBalance),
+        durationMonths: selectedScheme.minMonths,
+        startDate: accountForm.openDate
+      });
+
+      setAccountDrawerOpen(false);
+      setAccountForm(createEmptyDepositAccountForm());
+      await loadAccounts();
+      toast.success("Deposit account created.");
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Unable to open the account.");
+    } finally {
+      setAccountSubmitting(false);
+    }
+  }
+
+  const filteredSchemes = useMemo(() => {
+    const query = schemeSearch.trim().toLowerCase();
+    if (!query) {
+      return schemeRows;
+    }
+
+    return schemeRows.filter((scheme) =>
+      [scheme.code, scheme.name, getSchemeTypeLabel(scheme)].some((value) => value.toLowerCase().includes(query))
+    );
+  }, [schemeRows, schemeSearch]);
+
+  const filteredAccounts = useMemo(() => {
+    const query = accountSearch.trim().toLowerCase();
+    const branchScopedAccounts = branchFilterId
+      ? accountRows.filter((account) => (account.branchId ?? "") === branchFilterId)
+      : accountRows;
+
+    if (!query) {
+      return branchScopedAccounts;
+    }
+
+    return branchScopedAccounts.filter((account) =>
+      [
+        account.accountNumber,
+        account.customer?.customerCode ?? "",
+        formatPersonName(account.customer?.firstName, account.customer?.lastName),
+        getAccountTypeLabel(account.type)
+      ].some((value) => value.toLowerCase().includes(query))
+    );
+  }, [accountRows, accountSearch, branchFilterId]);
+
+  const filteredGuarantors = useMemo(() => {
+    const query = guarantorSearch.trim().toLowerCase();
+    const branchScopedGuarantors = branchFilterId
+      ? guarantorRows.filter((row) => row.branchId === branchFilterId)
+      : guarantorRows;
+
+    if (!query) {
+      return branchScopedGuarantors;
+    }
+
+    return branchScopedGuarantors.filter((row) =>
+      [row.guarantorName, row.guarantorCode, row.borrowerName, row.accountNumber, row.responsibility]
+        .some((value) => value.toLowerCase().includes(query))
+    );
+  }, [branchFilterId, guarantorRows, guarantorSearch]);
+
+  const filteredApprovals = useMemo(() => {
+    const query = approvalSearch.trim().toLowerCase();
+    const branchScopedApprovals = branchFilterId
+      ? approvalRows.filter((row) => row.branchId === branchFilterId)
+      : approvalRows;
+
+    if (!query) {
+      return branchScopedApprovals;
+    }
+
+    return branchScopedApprovals.filter((row) =>
+      [row.clientName, row.customerCode, row.username, row.approvalSource].some((value) =>
+        value.toLowerCase().includes(query)
+      )
+    );
+  }, [approvalRows, approvalSearch, branchFilterId]);
+
+  const visibleShareholdings = useMemo(
+    () =>
+      shareholdings.filter((entry) =>
+        clientProfiles.some((client) => client.customerId === entry.memberId)
+      ),
+    [clientProfiles, shareholdings]
+  );
+
+  const branchScopedLoanRows = useMemo(
+    () =>
+      branchFilterId
+        ? loanRows.filter((loan) => branchScopedCustomerIds.has(loan.customer.id))
+        : loanRows,
+    [branchFilterId, branchScopedCustomerIds, loanRows]
+  );
+
+  const planMetrics = useMemo(() => {
+    const fixedDeposits = schemeRows.filter((scheme) => !scheme.recurring).length;
+    const recurringDeposits = schemeRows.filter((scheme) => scheme.recurring).length;
+    const averageInterest =
+      schemeRows.length > 0
+        ? schemeRows.reduce((sum, scheme) => sum + Number(scheme.interestRate), 0) / schemeRows.length
+        : 0;
+
+    return [
+      { label: "Plans", value: String(schemeRows.length), caption: "Deposit plans available for account opening." },
+      { label: "FD Plans", value: String(fixedDeposits), caption: "Fixed deposit options." },
+      { label: "RD Plans", value: String(recurringDeposits), caption: "Recurring deposit options." },
+      { label: "Avg Interest", value: `${averageInterest.toFixed(2)}%`, caption: "Average advertised plan rate." }
+    ];
+  }, [schemeRows]);
+
+  const accountMetrics = useMemo(() => {
+    const totalBalance = filteredAccounts.reduce((sum, account) => sum + Number(account.currentBalance || 0), 0);
+    const activeAccounts = filteredAccounts.filter((account) => account.status === "ACTIVE").length;
+    const depositAccounts = filteredAccounts.filter((account) =>
+      account.type === "FIXED_DEPOSIT" || account.type === "RECURRING_DEPOSIT"
+    ).length;
+
+    return [
+      { label: "Accounts", value: String(filteredAccounts.length), caption: "Visible account registry rows." },
+      { label: "Active", value: String(activeAccounts), caption: "Currently active accounts." },
+      { label: "Deposits", value: String(depositAccounts), caption: "FD and RD accounts opened under plans." },
+      { label: "Balance", value: formatCurrency(totalBalance), caption: "Outstanding balance across visible accounts." }
+    ];
+  }, [filteredAccounts]);
+
+  const canCreateDepositAccounts = canOpenAccounts && clientProfiles.length > 0 && schemeRows.length > 0 && headRows.length > 0;
+
+  if (view === "membership_clients") {
+    return (
+      <Box sx={{ p: { xs: 2, sm: 4 }, minHeight: "100vh", bgcolor: isDark ? "background.default" : "#f8fafc" }}>
+        <ClientRegistry
+          members={clientMembers}
+          memberSearch={memberSearch}
+          setMemberSearch={setMemberSearch}
+          memberPage={memberPage}
+          setMemberPage={setMemberPage}
+          memberRowsPerPage={memberRowsPerPage}
+          setMemberRowsPerPage={setMemberRowsPerPage}
+          canCreateMembers={Boolean(openCreateClientDrawer)}
+          openCreateMemberDrawer={openCreateClientDrawer ?? (() => undefined)}
+          openMemberDetail={() => undefined}
+          formatDate={formatDate}
+          memberDetailEnabled={false}
+        />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: { xs: 2, sm: 4 }, minHeight: "100vh", bgcolor: isDark ? "background.default" : "#f8fafc" }}>
-      {view === "membership_clients" && (
-        <ClientRegistry 
-          members={members} 
-          memberSearch={memberSearch} 
-          setMemberSearch={setMemberSearch} 
-          memberPage={memberPage} 
-          setMemberPage={setMemberPage} 
-          memberRowsPerPage={memberRowsPerPage} 
-          setMemberRowsPerPage={setMemberRowsPerPage} 
-          canCreateMembers={branchOptions.length > 0} 
-          openCreateMemberDrawer={openNewMember} 
-          openMemberDetail={(id) => setSelectedMemberId(id)} 
-          formatDate={formatDate} 
-        />
-      )}
+      {view === "plan_catalogue" ? (
+        <Stack spacing={3}>
+          <SectionHero
+            icon={<ArticleRoundedIcon />}
+            eyebrow="Plans"
+            title="Deposit Plan Catalogue"
+            description="Create the deposit plans first, then use them while opening deposit accounts for society clients."
+            colorScheme="emerald"
+            actions={
+              <>
+                <TextField
+                  size="small"
+                  value={schemeSearch}
+                  onChange={(event) => setSchemeSearch(event.target.value)}
+                  placeholder="Search plans..."
+                  sx={{
+                    minWidth: { xs: "100%", sm: 260 },
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 3,
+                      bgcolor: surfaces.input,
+                      color: "#fff",
+                      border: `1px solid ${surfaces.inputBorder}`
+                    }
+                  }}
+                  InputProps={{
+                    startAdornment: <SearchRoundedIcon sx={{ mr: 1, fontSize: 18, color: "rgba(255,255,255,0.65)" }} />
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  startIcon={<AddRoundedIcon />}
+                  onClick={() => setSchemeDrawerOpen(true)}
+                  disabled={!canCreatePlans}
+                  sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 3, fontWeight: 900, "&:hover": { bgcolor: "#f8fafc" } }}
+                >
+                  Create Plan
+                </Button>
+              </>
+            }
+          />
 
-      {view === "plan_catalogue" && (
-        <PlanCatalogue 
-          plans={plans} 
-          planSearch={planSearch} 
-          setPlanSearch={setPlanSearch} 
-          planTab={planTab}
-          setPlanTab={setPlanTab}
-          planCategoryOptions={planCategoryOptions}
-          openCreatePlanDrawer={openNewPlan} 
-          openPlanDrawer={(p: PlanRecord) => { setEditingPlanId(p.id); setPlanForm(p); setPlanDrawerOpen(true); }}
-          formatCurrency={formatCurrency}
-        />
-      )}
+          <Grid container spacing={2}>
+            {planMetrics.map((metric) => (
+              <Grid key={metric.label} size={{ xs: 12, sm: 6, xl: 3 }}>
+                <MetricCard {...metric} />
+              </Grid>
+            ))}
+          </Grid>
 
-      {view === "account_registry" && (
-        <AccountRegistry 
-          accounts={accounts} 
-          accountSearch={accountSearch} 
-          setAccountSearch={setAccountSearch} 
-          accountPage={accountPage} 
-          setAccountPage={setAccountPage} 
-          accountRowsPerPage={accountRowsPerPage} 
-          setAccountRowsPerPage={setAccountRowsPerPage} 
-          canCreateAccounts={members.length > 0 && plans.length > 0} 
-          openAccountDrawer={openNewAccount} 
-          openAccountDetail={(id: string) => {}} 
-          formatCurrency={formatCurrency} 
-          formatDate={formatDate} 
-          members={members}
-          plans={plans}
-        />
-      )}
+          {schemeError ? <Alert severity="error" sx={{ borderRadius: 3 }}>{schemeError}</Alert> : null}
+          {!canCreatePlans ? (
+            <Alert severity="info" sx={{ borderRadius: 3 }}>
+              This workspace is available in view mode for your account. Plan creation is reserved for staff with deposit setup access.
+            </Alert>
+          ) : null}
 
-      {view === "share_register" && (
-        <ShareRegister 
-          shareholdings={shareholdings} 
-          shareholdingSearch={shareSearch} 
-          setShareholdingSearch={setShareSearch} 
-          shareholdingPage={sharePage} 
-          setShareholdingPage={setSharePage} 
-          shareholdingRowsPerPage={shareRowsPerPage} 
-          setShareholdingRowsPerPage={setShareRowsPerPage} 
+          <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+            <TableContainer>
+              <Table sx={{ minWidth: 860, tableLayout: "fixed" }}>
+                <TableHead sx={{ bgcolor: surfaces.tableHead }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Plan Code</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "28%" }}>Plan Name</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Type</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Tenure</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 900, width: "18%" }}>Interest</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {!schemeLoading && filteredSchemes.length === 0 ? (
+                    <TableEmpty colSpan={5} label="No plans matched the current search." />
+                  ) : schemeLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
+                        <CircularProgress size={28} />
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredSchemes.map((scheme) => (
+                      <TableRow key={scheme.id} hover>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 800 }}>{scheme.code}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>{scheme.name}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip size="small" label={getSchemeTypeLabel(scheme)} sx={{ fontWeight: 800 }} />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" color="text.secondary">
+                            {scheme.minMonths === scheme.maxMonths
+                              ? `${scheme.minMonths} months`
+                              : `${scheme.minMonths} - ${scheme.maxMonths} months`}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                            {Number(scheme.interestRate).toFixed(2)}%
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </Stack>
+      ) : null}
+
+      {view === "account_registry" ? (
+        <Stack spacing={3}>
+          <SectionHero
+            icon={<PaymentsRoundedIcon />}
+            eyebrow="Accounts"
+            title="Deposit Account Registry"
+            description="Accounts can be opened only after a plan exists. This workspace uses live deposit plans, client profiles, and banking heads."
+            colorScheme="violet"
+            actions={
+              <>
+                <TextField
+                  size="small"
+                  value={accountSearch}
+                  onChange={(event) => {
+                    setAccountPage(0);
+                    setAccountSearch(event.target.value);
+                  }}
+                  placeholder="Search accounts..."
+                  sx={{
+                    minWidth: { xs: "100%", sm: 260 },
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 3,
+                      bgcolor: surfaces.input,
+                      color: "#fff",
+                      border: `1px solid ${surfaces.inputBorder}`
+                    }
+                  }}
+                  InputProps={{
+                    startAdornment: <SearchRoundedIcon sx={{ mr: 1, fontSize: 18, color: "rgba(255,255,255,0.65)" }} />
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  startIcon={<AddRoundedIcon />}
+                  onClick={() => setAccountDrawerOpen(true)}
+                  disabled={!canCreateDepositAccounts}
+                  sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 3, fontWeight: 900, "&:hover": { bgcolor: "#f8fafc" } }}
+                >
+                  Open Account
+                </Button>
+              </>
+            }
+          />
+
+          <Grid container spacing={2}>
+            {accountMetrics.map((metric) => (
+              <Grid key={metric.label} size={{ xs: 12, sm: 6, xl: 3 }}>
+                <MetricCard {...metric} />
+              </Grid>
+            ))}
+          </Grid>
+
+          {!schemeRows.length ? (
+            <Alert severity="warning" sx={{ borderRadius: 3 }}>
+              Create at least one deposit plan first. Once a plan exists, the Open Account action becomes available.
+            </Alert>
+          ) : null}
+          {!canOpenAccounts ? (
+            <Alert severity="info" sx={{ borderRadius: 3 }}>
+              Your access for this screen is read-only. Account opening is available only to staff or agents with account setup privileges.
+            </Alert>
+          ) : null}
+          {!headRows.length ? (
+            <Alert severity="warning" sx={{ borderRadius: 3 }}>
+              No banking heads are configured yet, so account numbers cannot be generated for new deposit accounts.
+            </Alert>
+          ) : null}
+          {!clientProfiles.length ? (
+            <Alert severity="info" sx={{ borderRadius: 3 }}>
+              No client portal accounts are available yet. Create a client from User Access first.
+            </Alert>
+          ) : null}
+          {accountError ? <Alert severity="error" sx={{ borderRadius: 3 }}>{accountError}</Alert> : null}
+
+          <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+            <TableContainer>
+              <Table sx={{ minWidth: 980, tableLayout: "fixed" }}>
+                <TableHead sx={{ bgcolor: surfaces.tableHead }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Account No</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "24%" }}>Client</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Type</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "16%" }}>Maturity</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "12%" }}>Status</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 900, width: "12%" }}>Balance</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {!accountLoading && filteredAccounts.length === 0 ? (
+                    <TableEmpty colSpan={6} label="No accounts matched the current search." />
+                  ) : accountLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
+                        <CircularProgress size={28} />
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredAccounts
+                      .slice(accountPage * accountRowsPerPage, accountPage * accountRowsPerPage + accountRowsPerPage)
+                      .map((account) => (
+                        <TableRow key={account.id} hover>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 800 }}>{account.accountNumber}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                              {formatPersonName(account.customer?.firstName, account.customer?.lastName)}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {account.customer?.customerCode ?? "-"}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip size="small" label={getAccountTypeLabel(account.type)} sx={{ fontWeight: 800 }} />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">
+                              {formatDate(account.depositAccount?.maturityDate)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              size="small"
+                              label={account.status}
+                              color={account.status === "ACTIVE" ? "success" : "default"}
+                              variant={account.status === "ACTIVE" ? "filled" : "outlined"}
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                              {formatCurrency(account.currentBalance)}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={filteredAccounts.length}
+              page={accountPage}
+              onPageChange={(_, nextPage) => setAccountPage(nextPage)}
+              rowsPerPage={accountRowsPerPage}
+              onRowsPerPageChange={(event) => {
+                setAccountRowsPerPage(parseInt(event.target.value, 10));
+                setAccountPage(0);
+              }}
+            />
+          </Paper>
+        </Stack>
+      ) : null}
+
+      {view === "share_register" ? (
+        <ShareRegister
+          shareholdings={visibleShareholdings}
+          shareholdingSearch={shareSearch}
+          setShareholdingSearch={setShareSearch}
+          shareholdingPage={sharePage}
+          setShareholdingPage={setSharePage}
+          shareholdingRowsPerPage={shareRowsPerPage}
+          setShareholdingRowsPerPage={setShareRowsPerPage}
           shareholdingTypeTab={shareholdingTypeTab}
           setShareholdingTypeTab={setShareholdingTypeTab}
-          canCreateShareholdings={members.length > 0}
-          openShareholdingDrawer={(s?: ShareholdingRecord) => { 
-            if (s) {
-              setEditingShareId(s.id); 
-              setShareForm(s); 
-              setShareDrawerOpen(true); 
+          canCreateShareholdings={shareMembers.length > 0}
+          openShareholdingDrawer={(share?: ShareholdingRecord) => {
+            if (share) {
+              setEditingShareId(share.id);
+              setShareForm(share);
             } else {
-              openNewShare();
+              setEditingShareId(null);
+              setShareForm(createEmptyShareholding());
             }
+            setShareDrawerOpen(true);
           }}
-          handleDeleteShareholding={(id: string) => {}}
-          formatCurrency={formatCurrency} 
+          handleDeleteShareholding={handleDeleteShareholding}
+          formatCurrency={formatCurrency}
         />
-      )}
+      ) : null}
 
-      {(view === "guarantor_registry" || view === "membership_guarantors") && (
-        <GuarantorRegistry 
-          type="guarantor"
-          rows={[]} 
-          search={guarantorSearch}
-          setSearch={setGuarantorSearch}
-          page={guarantorPage}
-          setPage={setGuarantorPage}
-          rowsPerPage={guarantorRowsPerPage}
-          setRowsPerPage={setGuarantorRowsPerPage}
-        />
-      )}
+      {view === "membership_guarantors" ? (
+        <Stack spacing={3}>
+          <SectionHero
+            icon={<ShieldRoundedIcon />}
+            eyebrow="Guarantors"
+            title="Loan Responsibility Desk"
+            description="See exactly which guarantor is taking responsibility for each loan account created in the society."
+            colorScheme="sky"
+            actions={
+              <>
+                <TextField
+                  size="small"
+                  value={guarantorSearch}
+                  onChange={(event) => {
+                    setGuarantorPage(0);
+                    setGuarantorSearch(event.target.value);
+                  }}
+                  placeholder="Search guarantors..."
+                  sx={{
+                    minWidth: { xs: "100%", sm: 260 },
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 3,
+                      bgcolor: surfaces.input,
+                      color: "#fff",
+                      border: `1px solid ${surfaces.inputBorder}`
+                    }
+                  }}
+                  InputProps={{
+                    startAdornment: <SearchRoundedIcon sx={{ mr: 1, fontSize: 18, color: "rgba(255,255,255,0.65)" }} />
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  startIcon={<AddRoundedIcon />}
+                  onClick={() => openGuarantorDrawer()}
+                  disabled={branchScopedLoanRows.length === 0}
+                  sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 3, fontWeight: 900, "&:hover": { bgcolor: "#f8fafc" } }}
+                >
+                  Assign Guarantor
+                </Button>
+              </>
+            }
+          />
 
-      {view === "membership_coapplicants" && (
-        <GuarantorRegistry 
-          type="coapplicant"
-          rows={[]} 
-          search={coapplicantSearch}
-          setSearch={setCoapplicantSearch}
-          page={coapplicantPage}
-          setPage={setCoapplicantPage}
-          rowsPerPage={coapplicantRowsPerPage}
-          setRowsPerPage={setCoapplicantRowsPerPage}
-        />
-      )}
+          {guarantorError ? <Alert severity="error" sx={{ borderRadius: 3 }}>{guarantorError}</Alert> : null}
 
-      {/* --- DRAWERS --- */}
-      <MemberDrawer 
-        open={memberDrawerOpen} 
-        onClose={() => setMemberDrawerOpen(false)} 
-        memberForm={memberForm} 
-        setMemberForm={setMemberForm} 
-        editingMemberId={editingMemberId} 
-        branchOptions={branchOptions} 
-        agentOptions={agentOptions} 
-        onSave={handleSaveMember} 
-      />
+          <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+            <TableContainer>
+              <Table sx={{ minWidth: 1040, tableLayout: "fixed" }}>
+                <TableHead sx={{ bgcolor: surfaces.tableHead }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 900, width: "21%" }}>Guarantor</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "19%" }}>Borrower</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>Branch</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "15%" }}>Loan Account</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "17%" }}>Responsibility</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "8%" }}>Status</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 900, width: "6%" }}>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {!guarantorLoading && filteredGuarantors.length === 0 ? (
+                    <TableEmpty colSpan={7} label="No guarantor relationships were found." />
+                  ) : guarantorLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                        <CircularProgress size={28} />
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredGuarantors
+                      .slice(guarantorPage * guarantorRowsPerPage, guarantorPage * guarantorRowsPerPage + guarantorRowsPerPage)
+                      .map((row) => (
+                        <TableRow key={row.id} hover>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 800 }}>{row.guarantorName}</Typography>
+                            <Typography variant="caption" color="text.secondary">{row.guarantorCode}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.borrowerName}</Typography>
+                            <Typography variant="caption" color="text.secondary">{row.borrowerCode}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">{row.branchName}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.accountNumber}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">{row.responsibility}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip size="small" label={row.status} color={row.status === "DISBURSED" ? "success" : "default"} />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                              <IconButton size="small" onClick={() => openGuarantorDrawer(loanRows.find((loan) => loan.id === row.loanId))}>
+                                <EditRoundedIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                disabled={guarantorSubmitting}
+                                onClick={() => void handleDeleteGuarantorRow(row)}
+                              >
+                                <DeleteRoundedIcon fontSize="small" />
+                              </IconButton>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={filteredGuarantors.length}
+              page={guarantorPage}
+              onPageChange={(_, nextPage) => setGuarantorPage(nextPage)}
+              rowsPerPage={guarantorRowsPerPage}
+              onRowsPerPageChange={(event) => {
+                setGuarantorRowsPerPage(parseInt(event.target.value, 10));
+                setGuarantorPage(0);
+              }}
+            />
+          </Paper>
+        </Stack>
+      ) : null}
 
-      <MemberDetailDrawer 
-        open={Boolean(selectedMemberId)} 
-        onClose={() => setSelectedMemberId(null)} 
-        member={activeMember} 
-        accounts={accounts} 
-        shareholdings={shareholdings} 
-        formatCurrency={formatCurrency} 
-        formatDate={formatDate} 
-        onEditMember={(m) => { setEditingMemberId(m.id); setMemberForm(m); setMemberDrawerOpen(true); }}
-        onAddShareholding={openNewShare}
-        onEditShareholding={(s) => { setEditingShareId(s.id); setShareForm(s); setShareDrawerOpen(true); }}
-        onAddDocument={() => {}} 
-        onEditDocument={() => {}} 
-      />
+      {view === "membership_coapplicants" ? (
+        <Stack spacing={3}>
+          <SectionHero
+            icon={<VerifiedUserRoundedIcon />}
+            eyebrow="Approvals"
+            title="Client Access Approval Desk"
+            description="This view shows the client records that were created from User Access and their society-admin approval trail for portal login."
+            colorScheme="violet"
+            actions={
+              <TextField
+                size="small"
+                value={approvalSearch}
+                onChange={(event) => {
+                  setApprovalPage(0);
+                  setApprovalSearch(event.target.value);
+                }}
+                placeholder="Search approvals..."
+                sx={{
+                  minWidth: { xs: "100%", sm: 260 },
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 3,
+                    bgcolor: surfaces.input,
+                    color: "#fff",
+                    border: `1px solid ${surfaces.inputBorder}`
+                  }
+                }}
+                InputProps={{
+                  startAdornment: <SearchRoundedIcon sx={{ mr: 1, fontSize: 18, color: "rgba(255,255,255,0.65)" }} />
+                }}
+              />
+            }
+          />
 
-      <AccountDrawer 
-        open={accountDrawerOpen} 
-        onClose={() => setAccountDrawerOpen(false)} 
-        accountForm={accountForm} 
-        setAccountForm={setAccountForm} 
-        editingAccountId={editingAccountId} 
-        members={members} 
-        plans={plans} 
-        onSave={handleSaveAccount} 
-        allAccounts={accounts} 
-      />
+          <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+            <TableContainer>
+              <Table sx={{ minWidth: 1040, tableLayout: "fixed" }}>
+                <TableHead sx={{ bgcolor: surfaces.tableHead }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 900, width: "24%" }}>Client</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>Customer Code</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "16%" }}>Login Username</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Approved By</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>Created On</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredApprovals.length === 0 ? (
+                    <TableEmpty colSpan={6} label="No client approval records matched the current search." />
+                  ) : (
+                    filteredApprovals
+                      .slice(approvalPage * approvalRowsPerPage, approvalPage * approvalRowsPerPage + approvalRowsPerPage)
+                      .map((row) => (
+                        <TableRow key={row.id} hover>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 800 }}>{row.clientName}</Typography>
+                            <Typography variant="caption" color="text.secondary">{row.branchName}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.customerCode}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">@{row.username}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">{row.approvalSource}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color="text.secondary">{formatDate(row.createdAt)}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip size="small" label={row.status} color={row.status === "Approved" ? "success" : "default"} />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              component="div"
+              count={filteredApprovals.length}
+              page={approvalPage}
+              onPageChange={(_, nextPage) => setApprovalPage(nextPage)}
+              rowsPerPage={approvalRowsPerPage}
+              onRowsPerPageChange={(event) => {
+                setApprovalRowsPerPage(parseInt(event.target.value, 10));
+                setApprovalPage(0);
+              }}
+            />
+          </Paper>
+        </Stack>
+      ) : null}
 
-      <PlanDrawer 
-        open={planDrawerOpen} 
-        onClose={() => setPlanDrawerOpen(false)} 
-        planForm={planForm} 
-        setPlanForm={setPlanForm} 
-        editingPlanId={editingPlanId} 
-        onSave={handleSavePlan} 
-        allPlans={plans} 
-      />
+      <Drawer
+        anchor="right"
+        open={schemeDrawerOpen}
+        onClose={() => setSchemeDrawerOpen(false)}
+        PaperProps={{ sx: { width: { xs: "100%", md: 480 } } }}
+      >
+        <Box sx={{ display: "flex", minHeight: "100%", flexDirection: "column" }}>
+          <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid rgba(15, 23, 42, 0.08)", position: "relative" }}>
+            <IconButton onClick={() => setSchemeDrawerOpen(false)} sx={{ position: "absolute", right: 16, top: 16 }}>
+              <CloseRoundedIcon />
+            </IconButton>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              Create Deposit Plan
+            </Typography>
+          </Box>
+          <Stack spacing={2} sx={{ px: 3, py: 3 }}>
+            <TextField
+              fullWidth
+              label="Plan Code"
+              value={schemeForm.code}
+              onChange={(event) => setSchemeForm((previous) => ({ ...previous, code: event.target.value.toUpperCase() }))}
+            />
+            <TextField
+              fullWidth
+              label="Plan Name"
+              value={schemeForm.name}
+              onChange={(event) => setSchemeForm((previous) => ({ ...previous, name: event.target.value }))}
+            />
+            <TextField
+              select
+              fullWidth
+              label="Plan Type"
+              value={schemeForm.recurring ? "RD" : "FD"}
+              onChange={(event) => setSchemeForm((previous) => ({ ...previous, recurring: event.target.value === "RD" }))}
+            >
+              <MenuItem value="FD">Fixed Deposit</MenuItem>
+              <MenuItem value="RD">Recurring Deposit</MenuItem>
+            </TextField>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  type="number"
+                  fullWidth
+                  label="Min Months"
+                  value={schemeForm.minMonths}
+                  onChange={(event) => setSchemeForm((previous) => ({ ...previous, minMonths: Number(event.target.value) }))}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  type="number"
+                  fullWidth
+                  label="Max Months"
+                  value={schemeForm.maxMonths}
+                  onChange={(event) => setSchemeForm((previous) => ({ ...previous, maxMonths: Number(event.target.value) }))}
+                />
+              </Grid>
+            </Grid>
+            <TextField
+              type="number"
+              fullWidth
+              label="Interest Rate"
+              value={schemeForm.interestRate}
+              onChange={(event) => setSchemeForm((previous) => ({ ...previous, interestRate: Number(event.target.value) }))}
+            />
+            <Button
+              variant="contained"
+              onClick={() => void handleCreateScheme()}
+              disabled={schemeSubmitting || !schemeForm.code.trim() || !schemeForm.name.trim()}
+              sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
+            >
+              Create Plan
+            </Button>
+          </Stack>
+        </Box>
+      </Drawer>
 
-      <ShareholdingDrawer 
-        open={shareDrawerOpen} 
-        onClose={() => setShareDrawerOpen(false)} 
-        shareForm={shareForm} 
-        setShareForm={setShareForm} 
-        editingShareId={editingShareId} 
-        members={members} 
-        onSave={handleSaveShare} 
+      <Drawer
+        anchor="right"
+        open={accountDrawerOpen}
+        onClose={() => setAccountDrawerOpen(false)}
+        PaperProps={{ sx: { width: { xs: "100%", md: 520 } } }}
+      >
+        <Box sx={{ display: "flex", minHeight: "100%", flexDirection: "column" }}>
+          <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid rgba(15, 23, 42, 0.08)", position: "relative" }}>
+            <IconButton onClick={() => setAccountDrawerOpen(false)} sx={{ position: "absolute", right: 16, top: 16 }}>
+              <CloseRoundedIcon />
+            </IconButton>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              Open Deposit Account
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              A plan is required before an account can be opened.
+            </Typography>
+          </Box>
+
+          <Stack spacing={2} sx={{ px: 3, py: 3 }}>
+            <TextField
+              select
+              fullWidth
+              label="Client"
+              value={accountForm.customerId}
+              onChange={(event) => setAccountForm((previous) => ({ ...previous, customerId: event.target.value }))}
+            >
+              {clientProfiles.map((client) => (
+                <MenuItem key={client.customerId} value={client.customerId}>
+                  {client.fullName} ({client.customerCode})
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              fullWidth
+              label="Plan"
+              value={accountForm.schemeId}
+              onChange={(event) => setAccountForm((previous) => ({ ...previous, schemeId: event.target.value }))}
+            >
+              {schemeRows.map((scheme) => (
+                <MenuItem key={scheme.id} value={scheme.id}>
+                  {scheme.name} ({scheme.code})
+                </MenuItem>
+              ))}
+            </TextField>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  type="number"
+                  fullWidth
+                  label="Deposit Amount"
+                  value={accountForm.openingBalance}
+                  onChange={(event) =>
+                    setAccountForm((previous) => ({ ...previous, openingBalance: Number(event.target.value) }))
+                  }
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  type="date"
+                  fullWidth
+                  label="Opening Date"
+                  value={accountForm.openDate}
+                  onChange={(event) => setAccountForm((previous) => ({ ...previous, openDate: event.target.value }))}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+            </Grid>
+            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)", bgcolor: "#f8fafc" }}>
+              <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                    Passbook Enabled
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Turn this off for accounts that should remain statement-only.
+                  </Typography>
+                </Box>
+                <Switch
+                  checked={accountForm.isPassbookEnabled}
+                  onChange={(event) =>
+                    setAccountForm((previous) => ({ ...previous, isPassbookEnabled: event.target.checked }))
+                  }
+                />
+              </Stack>
+            </Paper>
+
+            {selectedClient && selectedScheme ? (
+              <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)", bgcolor: "#f8fafc" }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+                  Opening Preview
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Client: {selectedClient.fullName} ({selectedClient.customerCode})
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Plan: {selectedScheme.name} ({getSchemeTypeLabel(selectedScheme)})
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Branch: {selectedClient.branchName}
+                </Typography>
+              </Paper>
+            ) : null}
+
+            <Button
+              variant="contained"
+              onClick={() => void handleCreateDepositAccount()}
+              disabled={
+                accountSubmitting ||
+                !accountForm.customerId ||
+                !accountForm.schemeId ||
+                Number(accountForm.openingBalance) <= 0
+              }
+              sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
+            >
+              Open Account
+            </Button>
+          </Stack>
+        </Box>
+      </Drawer>
+
+      <Drawer
+        anchor="right"
+        open={guarantorDrawerOpen}
+        onClose={() => setGuarantorDrawerOpen(false)}
+        PaperProps={{ sx: { width: { xs: "100%", md: 520 } } }}
+      >
+        <Box sx={{ display: "flex", minHeight: "100%", flexDirection: "column" }}>
+          <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid rgba(15, 23, 42, 0.08)", position: "relative" }}>
+            <IconButton onClick={() => setGuarantorDrawerOpen(false)} sx={{ position: "absolute", right: 16, top: 16 }}>
+              <CloseRoundedIcon />
+            </IconButton>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              Manage Guarantors
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Create, update, or remove guarantor responsibility against a selected loan account.
+            </Typography>
+          </Box>
+
+          <Stack spacing={2} sx={{ px: 3, py: 3 }}>
+            <TextField
+              select
+              fullWidth
+              label="Loan Account"
+              value={guarantorForm.loanId}
+              onChange={(event) => {
+                const loan = branchScopedLoanRows.find((entry) => entry.id === event.target.value);
+                setGuarantorForm(createEmptyGuarantorForm(loan));
+              }}
+            >
+              {branchScopedLoanRows.map((loan) => (
+                <MenuItem key={loan.id} value={loan.id}>
+                  {loan.account.accountNumber} · {formatPersonName(loan.customer.firstName, loan.customer.lastName)}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              select
+              fullWidth
+              label="Primary Guarantor"
+              value={guarantorForm.guarantor1Id}
+              onChange={(event) => setGuarantorForm((previous) => ({ ...previous, guarantor1Id: event.target.value }))}
+            >
+              <MenuItem value="">None</MenuItem>
+              {clientProfiles.map((client) => (
+                <MenuItem key={client.customerId} value={client.customerId}>
+                  {client.fullName} ({client.customerCode})
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              select
+              fullWidth
+              label="Secondary Guarantor"
+              value={guarantorForm.guarantor2Id}
+              onChange={(event) => setGuarantorForm((previous) => ({ ...previous, guarantor2Id: event.target.value }))}
+            >
+              <MenuItem value="">None</MenuItem>
+              {clientProfiles.map((client) => (
+                <MenuItem key={client.customerId} value={client.customerId}>
+                  {client.fullName} ({client.customerCode})
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              select
+              fullWidth
+              label="Third Guarantor"
+              value={guarantorForm.guarantor3Id}
+              onChange={(event) => setGuarantorForm((previous) => ({ ...previous, guarantor3Id: event.target.value }))}
+            >
+              <MenuItem value="">None</MenuItem>
+              {clientProfiles.map((client) => (
+                <MenuItem key={client.customerId} value={client.customerId}>
+                  {client.fullName} ({client.customerCode})
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              label="Responsibility Notes"
+              value={guarantorForm.remarks}
+              onChange={(event) => setGuarantorForm((previous) => ({ ...previous, remarks: event.target.value }))}
+            />
+
+            {selectedGuarantorLoan ? (
+              <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)", bgcolor: "#f8fafc" }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+                  Loan Preview
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Borrower: {formatPersonName(selectedGuarantorLoan.customer.firstName, selectedGuarantorLoan.customer.lastName)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Account: {selectedGuarantorLoan.account.accountNumber}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Amount: {formatCurrency(selectedGuarantorLoan.applicationAmount)}
+                </Typography>
+              </Paper>
+            ) : null}
+
+            <Button
+              variant="contained"
+              onClick={() => void handleSaveGuarantorAssignments()}
+              disabled={guarantorSubmitting || !guarantorForm.loanId}
+              sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
+            >
+              Save Guarantors
+            </Button>
+          </Stack>
+        </Box>
+      </Drawer>
+
+      <ShareholdingDrawer
+        open={shareDrawerOpen}
+        onClose={() => setShareDrawerOpen(false)}
+        shareForm={shareForm}
+        setShareForm={setShareForm}
+        editingShareId={editingShareId}
+        members={shareMembers}
+        onSave={handleSaveShare}
       />
     </Box>
   );

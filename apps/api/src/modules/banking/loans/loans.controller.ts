@@ -10,6 +10,7 @@ import { DisburseLoanDto } from "./dto/disburse-loan.dto";
 import { ListLoansQueryDto } from "./dto/list-loans-query.dto";
 import { RecoverLoanDto } from "./dto/recover-loan.dto";
 import { SanctionLoanDto } from "./dto/sanction-loan.dto";
+import { UpdateLoanGuarantorsDto } from "./dto/update-loan-guarantors.dto";
 import { UpdateOverdueDto } from "./dto/update-overdue.dto";
 
 @ApiTags("loans")
@@ -66,5 +67,15 @@ export class LoansController {
     @Body() dto: UpdateOverdueDto
   ) {
     return this.service.updateOverdue(req.user, id, dto);
+  }
+
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT)
+  @Patch(":id/guarantors")
+  updateGuarantors(
+    @Req() req: Request & { user: RequestUser },
+    @Param("id") id: string,
+    @Body() dto: UpdateLoanGuarantorsDto
+  ) {
+    return this.service.updateGuarantors(req.user, id, dto);
   }
 }

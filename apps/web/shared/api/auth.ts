@@ -88,6 +88,12 @@ export async function getPublicSocieties(): Promise<Society[]> {
   });
 }
 
+export async function getPublicSocietyBranches(societyCode: string) {
+  return requestJson<Array<{ id: string; code: string; name: string; isHead: boolean }>>({
+    path: `/auth/societies/${encodeURIComponent(societyCode.trim().toUpperCase())}/branches`
+  });
+}
+
 export async function getMe(token: string): Promise<AuthUser> {
   return requestJson<AuthUser>({
     token,
