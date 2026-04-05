@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Box, CircularProgress } from "@mui/material";
-import { getSession } from "@/shared/auth/session";
+import { getDefaultDashboardPath, getSession } from "@/shared/auth/session";
 
 export default function DashboardRootRedirect() {
   const router = useRouter();
@@ -18,16 +18,20 @@ export default function DashboardRootRedirect() {
     // Role-based routing from Dashboard Root view
     switch (session.role) {
       case "CLIENT":
-        router.replace("/dashboard/client");
+        router.replace(getDefaultDashboardPath(session.accountType, session.requiresPasswordChange, session.allowedModuleSlugs));
         break;
       case "AGENT":
-        router.replace("/dashboard/agent");
+        router.replace(getDefaultDashboardPath(session.accountType, session.requiresPasswordChange, session.allowedModuleSlugs));
         break;
       case "SUPER_ADMIN":
         router.replace("/dashboard/superadmin");
         break;
       case "SUPER_USER":
-        window.location.href = "/dashboard/society?view=membership_clients";
+        window.location.href = getDefaultDashboardPath(
+          session.accountType,
+          session.requiresPasswordChange,
+          session.allowedModuleSlugs
+        );
         break;
       default:
         router.replace("/login");

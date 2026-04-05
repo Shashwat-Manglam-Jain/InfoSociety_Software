@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Post, Req } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { UserRole } from "@prisma/client";
 import { Request } from "express";
@@ -46,6 +46,12 @@ export class AuthController {
   @Get("societies")
   listSocieties() {
     return this.authService.listActiveSocieties();
+  }
+
+  @Public()
+  @Get("societies/:societyCode/branches")
+  listSocietyBranches(@Param("societyCode") societyCode: string) {
+    return this.authService.listActiveSocietyBranches(societyCode);
   }
 
   @ApiBearerAuth()

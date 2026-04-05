@@ -36,7 +36,7 @@ type ModuleWorkspaceProps = {
   name: string;
   summary: string;
   dashboardHref: string;
-  accessibleModules: Array<{ slug: string; name: string; summary: string }>;
+  accessibleModules: Array<{ slug: string; name: string; summary: string; href?: string }>;
   viewerName: string;
 };
 
@@ -637,7 +637,7 @@ export function ModuleWorkspace({
                         <Button
                           key={module.slug}
                           component={Link}
-                          href={`/modules/${module.slug}`}
+                          href={module.href ?? dashboardHref}
                           endIcon={<ChevronRightRoundedIcon />}
                           fullWidth
                           sx={{

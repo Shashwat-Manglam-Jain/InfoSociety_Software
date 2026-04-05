@@ -34,6 +34,14 @@
         "nxtPsocietyCode": "nxtPsocietyCode"
       },
       "namedRegex": "^/(?<nxtPsocietyCode>[^/]+?)/clientlogin(?:/)?$"
+    },
+    {
+      "page": "/[societyCode]/stafflogin",
+      "regex": "^/([^/]+?)/stafflogin(?:/)?$",
+      "routeKeys": {
+        "nxtPsocietyCode": "nxtPsocietyCode"
+      },
+      "namedRegex": "^/(?<nxtPsocietyCode>[^/]+?)/stafflogin(?:/)?$"
     }
   ],
   "staticRoutes": [

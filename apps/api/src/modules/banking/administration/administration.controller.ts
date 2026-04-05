@@ -11,6 +11,7 @@ import { ListWorkingDaysQueryDto } from "./dto/list-working-days-query.dto";
 import { MapAgentClientDto } from "./dto/map-agent-client.dto";
 import { RecomputeAccountDto } from "./dto/recompute-account.dto";
 import { UpdateUserAccessDto } from "./dto/update-user-access.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 import { WorkingDayDto } from "./dto/working-day.dto";
 
@@ -157,6 +158,16 @@ export class AdministrationController {
   }
 
   @Roles(UserRole.SUPER_USER, UserRole.AGENT)
+  @Patch("users/:id")
+  updateUser(
+    @Req() req: Request & { user: RequestUser },
+    @Param("id") id: string,
+    @Body() dto: UpdateUserDto
+  ) {
+    return this.service.updateUser(req.user, id, dto);
+  }
+
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT)
   @Patch("users/:id/access")
   updateUserAccess(
     @Req() req: Request & { user: RequestUser },
@@ -164,6 +175,12 @@ export class AdministrationController {
     @Body() dto: UpdateUserAccessDto
   ) {
     return this.service.updateUserAccess(req.user, id, dto);
+  }
+
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT)
+  @Post("users/:id/delete")
+  deleteUser(@Req() req: Request & { user: RequestUser }, @Param("id") id: string) {
+    return this.service.deleteUser(req.user, id);
   }
 
   @Roles(UserRole.SUPER_USER, UserRole.AGENT)

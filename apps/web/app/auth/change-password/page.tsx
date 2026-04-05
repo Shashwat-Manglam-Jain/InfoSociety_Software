@@ -41,7 +41,7 @@ export default function ChangePasswordPage() {
     if (!s) {
       router.replace("/login");
     } else if (!s.requiresPasswordChange) {
-      router.replace(getDefaultDashboardPath(s.accountType));
+      router.replace(getDefaultDashboardPath(s.accountType, s.requiresPasswordChange, s.allowedModuleSlugs));
     } else {
       setSessionState(s);
     }
@@ -72,7 +72,7 @@ export default function ChangePasswordPage() {
       setSession(updatedSession);
       
       toast.success("Security credentials updated. Dashboard access authorized.");
-      router.replace(getDefaultDashboardPath(session.accountType));
+      router.replace(getDefaultDashboardPath(session.accountType, false, session.allowedModuleSlugs));
     } catch (caught: any) {
       const msg = caught.message || "Failed to update security credentials.";
       setError(msg);

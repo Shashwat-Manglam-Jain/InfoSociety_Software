@@ -44,6 +44,8 @@ export type CreateLockerPayload = {
   annualCharge: number;
 };
 
+export type UpdateLockerPayload = Partial<CreateLockerPayload>;
+
 function buildLockerQuery(params: {
   q?: string;
   status?: LockerStatus | "";
@@ -88,6 +90,10 @@ export async function createLocker(token: string, payload: CreateLockerPayload) 
   return apiRequest<LockerRecord>(token, "POST", "/locker", payload);
 }
 
+export async function updateLocker(token: string, lockerId: string, payload: UpdateLockerPayload) {
+  return apiRequest<LockerRecord>(token, "PATCH", `/locker/${lockerId}`, payload);
+}
+
 export async function closeLocker(token: string, lockerId: string, reason?: string) {
   return apiRequest<LockerRecord>(token, "POST", `/locker/${lockerId}/close`, reason ? { reason } : {});
 }
@@ -98,4 +104,8 @@ export async function visitLocker(token: string, lockerId: string, remarks?: str
 
 export async function listLockerVisits(token: string, lockerId: string) {
   return apiRequest<LockerVisitRecord[]>(token, "GET", `/locker/${lockerId}/visits`);
+}
+
+export async function deleteLocker(token: string, lockerId: string) {
+  return apiRequest<{ success: boolean }>(token, "DELETE", `/locker/${lockerId}`);
 }

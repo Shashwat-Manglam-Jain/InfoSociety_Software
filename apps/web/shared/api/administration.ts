@@ -26,6 +26,21 @@ export type AdministrationUserPayload = {
   isActive?: boolean;
   branchId?: string;
   allowedModuleSlugs?: string[];
+  phone?: string;
+  email?: string;
+  address?: string;
+};
+
+export type AdministrationUserUpdatePayload = {
+  username?: string;
+  fullName?: string;
+  password?: string;
+  isActive?: boolean;
+  branchId?: string;
+  allowedModuleSlugs?: string[];
+  phone?: string;
+  email?: string;
+  address?: string;
 };
 
 export type AdministrationUserRecord = {
@@ -41,6 +56,11 @@ export type AdministrationUserRecord = {
   customerProfile?: {
     id: string;
     customerCode: string;
+    firstName: string;
+    lastName?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
   } | null;
   society?: {
     code: string;
@@ -167,6 +187,14 @@ export async function updateSociety(token: string, payload: any) {
 
 export async function createStaffUser(token: string, payload: AdministrationUserPayload) {
   return apiRequest(token, "POST", "/administration/users", payload);
+}
+
+export async function updateStaffUser(token: string, id: string, payload: AdministrationUserUpdatePayload) {
+  return apiRequest(token, "PATCH", `/administration/users/${id}`, payload);
+}
+
+export async function deleteStaffUser(token: string, id: string) {
+  return apiRequest(token, "POST", `/administration/users/${id}/delete`);
 }
 
 export async function mapAgentClient(token: string, payload: { agentId: string; customerId: string }) {

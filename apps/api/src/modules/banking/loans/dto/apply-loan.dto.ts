@@ -19,4 +19,20 @@ export class ApplyLoanDto {
   @IsOptional()
   @IsDateString()
   expiryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  guarantor1Id?: string;
+
+  @IsOptional()
+  @IsString()
+  guarantor2Id?: string;
+
+  @IsOptional()
+  @IsString()
+  guarantor3Id?: string;
+
+  @IsOptional()
+  @IsString()
+  remarks?: string;
 }

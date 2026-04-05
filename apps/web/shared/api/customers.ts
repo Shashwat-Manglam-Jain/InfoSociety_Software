@@ -8,7 +8,24 @@ export type CustomerListRecord = {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  kycVerified?: boolean;
+  createdAt?: string;
+  openingDate?: string;
+  isDisabled?: boolean;
+  _count?: {
+    accounts: number;
+  };
   society?: { code: string; name: string } | null;
+};
+
+export type CustomerCreatePayload = {
+  societyCode?: string;
+  firstName: string;
+  lastName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  kycVerified?: boolean;
 };
 
 export type CustomerUpdatePayload = {
@@ -20,14 +37,21 @@ export type CustomerUpdatePayload = {
   kycVerified?: boolean;
 };
 
-export async function listCustomers(token: string, q?: string) {
-  const params = new URLSearchParams({
-    page: "1",
-    limit: "50"
-  });
+export async function listCustomers(
+  token: string,
+  params: {
+    q?: string;
+    page?: number;
+    limit?: number;
+  } = {}
+) {
+  const searchParams = new URLSearchParams();
 
-  if (q?.trim()) {
-    params.set("q", q.trim());
+  searchParams.set("page", String(params.page ?? 1));
+  searchParams.set("limit", String(params.limit ?? 100));
+
+  if (params.q?.trim()) {
+    searchParams.set("q", params.q.trim());
   }
 
   return apiRequest<{
@@ -35,7 +59,11 @@ export async function listCustomers(token: string, q?: string) {
     limit: number;
     total: number;
     rows: CustomerListRecord[];
-  }>(token, "GET", `/customers?${params.toString()}`);
+  }>(token, "GET", `/customers?${searchParams.toString()}`);
+}
+
+export async function createCustomer(token: string, payload: CustomerCreatePayload) {
+  return apiRequest<CustomerListRecord>(token, "POST", "/customers", payload);
 }
 
 export async function updateCustomer(token: string, id: string, payload: CustomerUpdatePayload) {

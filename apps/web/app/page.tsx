@@ -35,7 +35,7 @@ export default function HomePage() {
   useEffect(() => {
     const session = getSession();
     if (session) {
-      router.replace(getDefaultDashboardPath(session.accountType));
+      router.replace(getDefaultDashboardPath(session.accountType, session.requiresPasswordChange, session.allowedModuleSlugs));
     }
   }, [router]);
 

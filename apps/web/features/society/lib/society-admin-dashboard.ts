@@ -45,6 +45,9 @@ export type UserFormState = {
   password: string;
   allowedModuleSlugs: string[];
   isActive: boolean;
+  phone: string;
+  email: string;
+  address: string;
 };
 
 export type ManagedUserRow = AdministrationUserRecord & {
@@ -66,6 +69,19 @@ export type SocietyAgentRow = {
   monthlyCollection: number;
 };
 
+export type OperationsClientRow = {
+  id: string;
+  memberName: string;
+  memberId: string;
+  occupation: string;
+  branchName: string;
+  mobileNo: string;
+  email: string;
+  city: string;
+  state: string;
+  registrationDate: string;
+};
+
 export type TreasuryTransactionRow = {
   id: string;
   date: string;
@@ -75,6 +91,7 @@ export type TreasuryTransactionRow = {
   amount: number;
   accountNumber: string;
   customerName: string;
+  branchId: string | null;
   branchName: string;
   branchCode: string;
   enteredBy: string;
@@ -137,7 +154,13 @@ export function buildUsername(fullName: string) {
 }
 
 export function createTemporaryPassword() {
-  return Math.random().toString(36).slice(-10);
+  const seed = Math.random().toString(36).slice(-6);
+  return `Info@${seed}7A`;
+}
+
+export function isStrongPassword(password: string) {
+  const value = password.trim();
+  return value.length >= 8 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z\d]/.test(value);
 }
 
 export function createEmptyBranchForm(): BranchFormState {
@@ -193,12 +216,30 @@ export function createEmptyUserForm(role: UserRole = "SUPER_USER"): UserFormStat
     username: "",
     password: createTemporaryPassword(),
     allowedModuleSlugs: sanitizeAllowedModuleSlugs(resolveAccountTypeByRole(role)),
-    isActive: true
+    isActive: true,
+    phone: "",
+    email: "",
+    address: ""
   };
 }
 
 export function createUserForm(role: UserRole = "SUPER_USER") {
   return createEmptyUserForm(role);
+}
+
+export function createUserFormFromManagedUser(user: ManagedUserRow): UserFormState {
+  return {
+    fullName: user.fullName,
+    role: user.role,
+    branchId: user.branchId ?? "",
+    username: user.username,
+    password: "",
+    allowedModuleSlugs: normalizeAllowedModules(user.role, user.allowedModuleSlugs),
+    isActive: user.isActive,
+    phone: user.customerProfile?.phone ?? "",
+    email: user.customerProfile?.email ?? "",
+    address: user.customerProfile?.address ?? ""
+  };
 }
 
 export function getRoleMeta(role: UserRole) {
@@ -299,6 +340,7 @@ export function buildTreasuryRows(
       amount: Number(transaction.amount),
       accountNumber: transaction.account.accountNumber,
       customerName: customerName || transaction.account.customer?.customerCode || "-",
+      branchId: transaction.account.branchId ?? null,
       branchName: branch?.name ?? transaction.account.branchCode ?? "Head Office",
       branchCode: branch?.code ?? transaction.account.branchCode ?? "-",
       enteredBy: transaction.createdBy.fullName || transaction.createdBy.username
@@ -312,10 +354,73 @@ export function buildLockerClients(customers: CustomerListRecord[]) {
     fullName:
       [customer.firstName, customer.lastName].filter(Boolean).join(" ").trim() ||
       customer.customerCode,
+    branchId: null,
     customerProfile: {
       id: customer.id,
       customerCode: customer.customerCode
     },
     isActive: true
   }));
+}
+
+export function buildManagedUsersFromCustomers(
+  customers: CustomerListRecord[],
+  branches: Branch[],
+  fallbackBranchId?: string | null
+): ManagedUserRow[] {
+  const branchMap = new Map(branches.map((branch) => [branch.id, branch]));
+
+  return customers.map((customer) => {
+    const branch = fallbackBranchId ? branchMap.get(fallbackBranchId) ?? null : null;
+    const fullName = [customer.firstName, customer.lastName].filter(Boolean).join(" ").trim() || customer.customerCode;
+
+    return {
+      id: customer.id,
+      username: customer.customerCode.toLowerCase(),
+      fullName,
+      role: "CLIENT",
+      isActive: !customer.isDisabled,
+      branchId: branch?.id ?? null,
+      allowedModuleSlugs: normalizeAllowedModules("CLIENT"),
+      customerId: customer.id,
+      requiresPasswordChange: false,
+      customerProfile: {
+        id: customer.id,
+        customerCode: customer.customerCode,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        phone: customer.phone,
+        email: customer.email,
+        address: customer.address
+      },
+      society: customer.society ?? null,
+      createdAt: customer.createdAt,
+      branch,
+      roleMeta: getRoleMeta("CLIENT")
+    };
+  });
+}
+
+export function buildOperationsClientRows(users: ManagedUserRow[]): OperationsClientRow[] {
+  return users
+    .filter((user) => user.role === "CLIENT")
+    .map((user) => {
+      const addressParts = (user.customerProfile?.address ?? "")
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+
+      return {
+        id: user.id,
+        memberName: user.fullName,
+        memberId: user.customerProfile?.customerCode ?? user.username,
+        occupation: "Portal-enabled client",
+        branchName: user.branch?.name ?? "Head office",
+        mobileNo: user.customerProfile?.phone ?? "-",
+        email: user.customerProfile?.email ?? "No Email",
+        city: addressParts.length > 1 ? addressParts[addressParts.length - 2] : "-",
+        state: addressParts.length > 0 ? addressParts[addressParts.length - 1] : "-",
+        registrationDate: user.createdAt ?? ""
+      };
+    });
 }

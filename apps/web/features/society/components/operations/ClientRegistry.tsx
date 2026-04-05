@@ -25,7 +25,6 @@ import { alpha, useTheme } from "@mui/material/styles";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { SectionHero } from "./SectionHero";
 import { MetricCard } from "./MetricCard";
@@ -43,6 +42,7 @@ export type ClientRegistryProps = {
   openCreateMemberDrawer: () => void;
   openMemberDetail: (id: string | null) => void;
   formatDate: (d: string) => string;
+  memberDetailEnabled?: boolean;
 };
 
 export function ClientRegistry({
@@ -56,11 +56,28 @@ export function ClientRegistry({
   canCreateMembers,
   openCreateMemberDrawer,
   openMemberDetail,
-  formatDate
+  formatDate,
+  memberDetailEnabled = true
 }: ClientRegistryProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
+  const filteredMembers = members.filter((member) => {
+    const query = memberSearch.trim().toLowerCase();
+    if (!query) {
+      return true;
+    }
+
+    return [
+      member.memberName,
+      member.memberId,
+      member.mobileNo,
+      member.email,
+      member.branchName
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
 
   const metrics = [
     { label: "Total Members", value: String(members.length), caption: "Onboarded institutional clients." },
@@ -155,23 +172,25 @@ export function ClientRegistry({
               </TableRow>
             </TableHead>
             <TableBody>
-              {members.length === 0 ? (
+              {filteredMembers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 12 }}>
                     <Typography variant="body2" color="text.secondary">No members provisioned yet.</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                members.slice(memberPage * memberRowsPerPage, memberPage * memberRowsPerPage + memberRowsPerPage).map((member) => (
+                filteredMembers
+                  .slice(memberPage * memberRowsPerPage, memberPage * memberRowsPerPage + memberRowsPerPage)
+                  .map((member) => (
                   <TableRow 
                     key={member.id} 
                     hover 
                     sx={{ 
-                      cursor: "pointer",
+                      cursor: memberDetailEnabled ? "pointer" : "default",
                       transition: "background-color 0.2s ease",
                       "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.02) }
                     }} 
-                    onClick={() => openMemberDetail(member.id)}
+                    onClick={memberDetailEnabled ? () => openMemberDetail(member.id) : undefined}
                   >
                     <TableCell sx={{ py: 2 }}>
                       <Stack direction="row" spacing={2} alignItems="center">
@@ -200,20 +219,22 @@ export function ClientRegistry({
                       <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{formatDate(member.registrationDate)}</Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <Tooltip title="View Profile">
-                          <IconButton 
-                            size="small" 
-                            onClick={(e) => { e.stopPropagation(); openMemberDetail(member.id); }}
-                            sx={{
-                              color: "text.secondary",
-                              "&:hover": { color: "primary.main", bgcolor: alpha(theme.palette.primary.main, 0.08) }
-                            }}
-                          >
-                            <VisibilityRoundedIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
+                      {memberDetailEnabled ? (
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Tooltip title="View Profile">
+                            <IconButton 
+                              size="small" 
+                              onClick={(e) => { e.stopPropagation(); openMemberDetail(member.id); }}
+                              sx={{
+                                color: "text.secondary",
+                                "&:hover": { color: "primary.main", bgcolor: alpha(theme.palette.primary.main, 0.08) }
+                              }}
+                            >
+                              <VisibilityRoundedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))
@@ -223,7 +244,7 @@ export function ClientRegistry({
         </TableContainer>
         <TablePagination
           component="div"
-          count={members.length}
+          count={filteredMembers.length}
           page={memberPage}
           onPageChange={(_, p) => setMemberPage(p)}
           rowsPerPage={memberRowsPerPage}
@@ -233,4 +254,3 @@ export function ClientRegistry({
     </Stack>
   );
 }
-

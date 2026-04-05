@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Chip,
+  IconButton,
   Paper,
   Stack,
   Switch,
@@ -21,6 +22,8 @@ import {
   MenuItem
 } from "@mui/material";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
 import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -37,6 +40,8 @@ export type TeamOperationsProps = {
   handleOpenDrawer: (type: "staff" | "agent" | "client") => void;
   handleToggleUserStatus: (id: string, current: boolean) => void;
   setSelectedUserAccess: (user: ManagedUserRow) => void;
+  handleEditUser: (user: ManagedUserRow) => void;
+  handleDeleteUser: (user: ManagedUserRow) => void;
 };
 
 export function TeamOperations({
@@ -45,7 +50,9 @@ export function TeamOperations({
   setUserSearch,
   handleOpenDrawer,
   handleToggleUserStatus,
-  setSelectedUserAccess
+  setSelectedUserAccess,
+  handleEditUser,
+  handleDeleteUser
 }: TeamOperationsProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -54,10 +61,6 @@ export function TeamOperations({
   const [accountTypeFilter, setAccountTypeFilter] = useState("all");
 
   const filteredUsers = managedUsers.filter((user) => {
-    if (user.role === "SUPER_USER") {
-      return false; // Remove admin account showing
-    }
-
     if (accountTypeFilter !== "all" && user.role !== accountTypeFilter) {
       return false;
     }
@@ -135,6 +138,7 @@ export function TeamOperations({
               }}
             >
               <MenuItem value="all">All Accounts</MenuItem>
+              <MenuItem value="SUPER_USER">Staff</MenuItem>
               <MenuItem value="CLIENT">Client</MenuItem>
               <MenuItem value="AGENT">Agent</MenuItem>
             </TextField>
@@ -172,7 +176,7 @@ export function TeamOperations({
                 <TableCell sx={{ fontWeight: 800, width: "18%" }}>Branch</TableCell>
                 <TableCell sx={{ fontWeight: 800, width: "18%" }}>Modules</TableCell>
                 <TableCell sx={{ fontWeight: 800, width: "10%" }}>Status</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800, width: "8%" }}>
+                <TableCell align="right" sx={{ fontWeight: 800, width: "12%" }}>
                   Actions
                 </TableCell>
               </TableRow>
@@ -242,16 +246,30 @@ export function TeamOperations({
                       </Stack>
                     </TableCell>
                     <TableCell align="right">
-                      <Tooltip title="Manage access">
-                        <Button
-                          size="small"
-                          startIcon={<ManageAccountsRoundedIcon fontSize="small" />}
-                          onClick={() => setSelectedUserAccess(user)}
-                          sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700 }}
-                        >
-                          Access
-                        </Button>
-                      </Tooltip>
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <Tooltip title="Edit account">
+                          <Button
+                            size="small"
+                            startIcon={<EditRoundedIcon fontSize="small" />}
+                            onClick={() => handleEditUser(user)}
+                            sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700, minWidth: 0 }}
+                          >
+                            Edit
+                          </Button>
+                        </Tooltip>
+                        <Tooltip title="Manage access">
+                          <IconButton size="small" onClick={() => setSelectedUserAccess(user)}>
+                            <ManageAccountsRoundedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {user.role !== "SUPER_USER" && (
+                          <Tooltip title="Remove account">
+                            <IconButton size="small" color="error" onClick={() => handleDeleteUser(user)}>
+                              <DeleteRoundedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))

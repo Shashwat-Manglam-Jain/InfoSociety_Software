@@ -17,6 +17,7 @@ import {
   alpha 
 } from "@mui/material";
 import DomainRoundedIcon from "@mui/icons-material/DomainRounded";
+import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -159,7 +160,7 @@ export function SocietiesSection() {
                           LOGIN TO WORKSPACE
                         </Typography>
                         <Grid container spacing={1.5}>
-                          <Grid item xs={6}>
+                          <Grid item xs={12} sm={4}>
                             <Button 
                               fullWidth
                               component={Link}
@@ -177,7 +178,25 @@ export function SocietiesSection() {
                               Agent
                             </Button>
                           </Grid>
-                          <Grid item xs={6}>
+                          <Grid item xs={12} sm={4}>
+                            <Button 
+                              fullWidth
+                              component={Link}
+                              href={`/${society.code}/stafflogin`}
+                              variant="contained"
+                              size="small"
+                              startIcon={<BadgeRoundedIcon sx={{ fontSize: 16 }} />}
+                              sx={{ 
+                                bgcolor: "#0f172a", 
+                                "&:hover": { bgcolor: "#111827" },
+                                fontWeight: 800,
+                                borderRadius: 2
+                              }}
+                            >
+                              Staff
+                            </Button>
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
                             <Button 
                               fullWidth
                               component={Link}

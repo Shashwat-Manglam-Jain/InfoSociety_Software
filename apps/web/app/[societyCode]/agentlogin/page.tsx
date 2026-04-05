@@ -24,12 +24,27 @@ import {
   TextField,
   Typography,
   Avatar,
-  Grid
+  Grid,
+  MenuItem
 } from "@mui/material";
-import { login, getPublicSocieties } from "@/shared/api/auth";
+import { getPublicSocieties, getPublicSocietyBranches, login } from "@/shared/api/auth";
 import { getDefaultDashboardPath, setSession } from "@/shared/auth/session";
 import { toast } from "@/shared/ui/toast";
 import type { Society } from "@/shared/types";
+
+type BranchOption = {
+  id: string;
+  code: string;
+  name: string;
+  isHead: boolean;
+};
+
+const HEAD_OFFICE_OPTION: BranchOption = {
+  id: "__HEAD_OFFICE__",
+  code: "HEAD",
+  name: "Main Head Quarter",
+  isHead: true
+};
 
 export default function AgentLoginPage() {
   const router = useRouter();
@@ -40,6 +55,8 @@ export default function AgentLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [society, setSociety] = useState<Society | null>(null);
+  const [branchOptions, setBranchOptions] = useState<BranchOption[]>([HEAD_OFFICE_OPTION]);
+  const [selectedBranchId, setSelectedBranchId] = useState(HEAD_OFFICE_OPTION.id);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,9 +66,15 @@ export default function AgentLoginPage() {
   useEffect(() => {
     async function fetchSociety() {
       try {
-        const societies = await getPublicSocieties();
+        const [societies, branches] = await Promise.all([
+          getPublicSocieties(),
+          getPublicSocietyBranches(normalizedSocietyCode).catch(() => [])
+        ]);
         const found = societies.find((s) => s.code.toUpperCase() === normalizedSocietyCode);
         if (found) setSociety(found);
+        const nextOptions = branches.length > 0 ? [HEAD_OFFICE_OPTION, ...branches] : [HEAD_OFFICE_OPTION];
+        setBranchOptions(nextOptions);
+        setSelectedBranchId(nextOptions[0]?.id ?? HEAD_OFFICE_OPTION.id);
       } catch (e) {
         console.error("Failed to fetch society info", e);
       }
@@ -86,11 +109,16 @@ export default function AgentLoginPage() {
         subscriptionPlan: response.user.subscription?.plan ?? null,
         avatarDataUrl: null,
         requiresPasswordChange: response.user.requiresPasswordChange,
-        allowedModuleSlugs: response.user.allowedModuleSlugs ?? []
+        allowedModuleSlugs: response.user.allowedModuleSlugs ?? [],
+        selectedBranchId: selectedBranchId === HEAD_OFFICE_OPTION.id ? null : selectedBranchId,
+        selectedBranchName: branchOptions.find((branch) => branch.id === selectedBranchId)?.name ?? HEAD_OFFICE_OPTION.name,
+        selectedBranchCode: branchOptions.find((branch) => branch.id === selectedBranchId)?.code ?? HEAD_OFFICE_OPTION.code
       });
 
       toast.success(`Welcome back, ${response.user.fullName}!`);
-      router.replace(getDefaultDashboardPath(accountType, response.user.requiresPasswordChange));
+      router.replace(
+        getDefaultDashboardPath(accountType, response.user.requiresPasswordChange, response.user.allowedModuleSlugs)
+      );
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Authentication failed.";
       setError(message);
@@ -210,6 +238,25 @@ export default function AgentLoginPage() {
                           startAdornment: <EmailIcon sx={{ mr: 1, color: "#065f46", fontSize: 20 }} />
                         }}
                       />
+                    </Box>
+
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>Branch</Typography>
+                      <TextField
+                        select
+                        value={selectedBranchId}
+                        onChange={(event) => setSelectedBranchId(event.target.value)}
+                        fullWidth
+                        InputProps={{
+                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } }
+                        }}
+                      >
+                        {branchOptions.map((branch) => (
+                          <MenuItem key={branch.id} value={branch.id}>
+                            {branch.name}
+                          </MenuItem>
+                        ))}
+                      </TextField>
                     </Box>
 
                     <Box>

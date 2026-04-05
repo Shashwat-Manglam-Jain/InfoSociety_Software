@@ -76,7 +76,12 @@ export function SiteNavbar() {
 
   const authActions = useMemo(() => {
     if (session) {
-      return [{ href: getDefaultDashboardPath(session.accountType), labelKey: "nav.dashboard" as const }];
+      return [
+        {
+          href: getDefaultDashboardPath(session.accountType, session.requiresPasswordChange, session.allowedModuleSlugs),
+          labelKey: "nav.dashboard" as const
+        }
+      ];
     }
 
     return [{ href: "/login", labelKey: "nav.login" as const }];

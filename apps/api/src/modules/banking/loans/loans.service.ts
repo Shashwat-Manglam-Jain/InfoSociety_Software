@@ -8,6 +8,7 @@ import { DisburseLoanDto } from "./dto/disburse-loan.dto";
 import { ListLoansQueryDto } from "./dto/list-loans-query.dto";
 import { RecoverLoanDto } from "./dto/recover-loan.dto";
 import { SanctionLoanDto } from "./dto/sanction-loan.dto";
+import { UpdateLoanGuarantorsDto } from "./dto/update-loan-guarantors.dto";
 import { UpdateOverdueDto } from "./dto/update-overdue.dto";
 
 @Injectable()
@@ -41,6 +42,30 @@ export class LoansService {
             }
           },
           customer: {
+            select: {
+              id: true,
+              customerCode: true,
+              firstName: true,
+              lastName: true
+            }
+          },
+          guarantor1: {
+            select: {
+              id: true,
+              customerCode: true,
+              firstName: true,
+              lastName: true
+            }
+          },
+          guarantor2: {
+            select: {
+              id: true,
+              customerCode: true,
+              firstName: true,
+              lastName: true
+            }
+          },
+          guarantor3: {
             select: {
               id: true,
               customerCode: true,
@@ -86,6 +111,40 @@ export class LoansService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      const guarantorIds = [dto.guarantor1Id, dto.guarantor2Id, dto.guarantor3Id]
+        .map((entry) => entry?.trim())
+        .filter((entry): entry is string => Boolean(entry));
+
+      if (new Set(guarantorIds).size !== guarantorIds.length) {
+        throw new BadRequestException("Guarantor accounts must be unique");
+      }
+
+      if (guarantorIds.includes(customer.id)) {
+        throw new BadRequestException("Borrower cannot be assigned as guarantor");
+      }
+
+      if (guarantorIds.length) {
+        const guarantors = await tx.customer.findMany({
+          where: {
+            id: {
+              in: guarantorIds
+            }
+          },
+          select: {
+            id: true,
+            societyId: true
+          }
+        });
+
+        if (guarantors.length !== guarantorIds.length) {
+          throw new NotFoundException("One or more guarantor customers were not found");
+        }
+
+        if (guarantors.some((entry) => entry.societyId !== customer.societyId)) {
+          throw new BadRequestException("Guarantors must belong to the same society");
+        }
+      }
+
       let accountId = dto.accountId;
 
       if (accountId) {
@@ -143,13 +202,41 @@ export class LoansService {
           applicationAmount: dto.applicationAmount,
           interestRate: dto.interestRate,
           expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : null,
-          status: LoanStatus.APPLIED
+          status: LoanStatus.APPLIED,
+          guarantor1Id: dto.guarantor1Id?.trim() || null,
+          guarantor2Id: dto.guarantor2Id?.trim() || null,
+          guarantor3Id: dto.guarantor3Id?.trim() || null,
+          remarks: dto.remarks?.trim() || null
         },
         include: {
           account: {
             select: {
               id: true,
               accountNumber: true
+            }
+          },
+          guarantor1: {
+            select: {
+              id: true,
+              customerCode: true,
+              firstName: true,
+              lastName: true
+            }
+          },
+          guarantor2: {
+            select: {
+              id: true,
+              customerCode: true,
+              firstName: true,
+              lastName: true
+            }
+          },
+          guarantor3: {
+            select: {
+              id: true,
+              customerCode: true,
+              firstName: true,
+              lastName: true
             }
           }
         }
@@ -331,6 +418,123 @@ export class LoansService {
     });
   }
 
+  async updateGuarantors(currentUser: RequestUser, id: string, dto: UpdateLoanGuarantorsDto) {
+    if (currentUser.role === UserRole.CLIENT) {
+      throw new ForbiddenException("Client users cannot update guarantor assignments");
+    }
+
+    const loan = await this.prisma.loanAccount.findUnique({
+      where: { id },
+      include: {
+        account: {
+          select: {
+            id: true,
+            accountNumber: true,
+            societyId: true,
+            currentBalance: true
+          }
+        },
+        customer: {
+          select: {
+            id: true,
+            societyId: true,
+            customerCode: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        guarantor1: {
+          select: {
+            id: true,
+            customerCode: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        guarantor2: {
+          select: {
+            id: true,
+            customerCode: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        guarantor3: {
+          select: {
+            id: true,
+            customerCode: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
+
+    if (!loan) {
+      throw new NotFoundException("Loan account not found");
+    }
+
+    this.ensureScope(currentUser, loan.account.societyId, loan.customerId);
+
+    const guarantor1Id = this.normalizeOptionalId(dto.guarantor1Id);
+    const guarantor2Id = this.normalizeOptionalId(dto.guarantor2Id);
+    const guarantor3Id = this.normalizeOptionalId(dto.guarantor3Id);
+    const guarantorIds = [guarantor1Id, guarantor2Id, guarantor3Id].filter((entry): entry is string => Boolean(entry));
+
+    await this.validateGuarantorAssignments(this.prisma, loan.customer.id, loan.customer.societyId, guarantorIds);
+
+    return this.prisma.loanAccount.update({
+      where: { id },
+      data: {
+        guarantor1Id,
+        guarantor2Id,
+        guarantor3Id,
+        remarks: dto.remarks === undefined ? loan.remarks : dto.remarks?.trim() || null
+      },
+      include: {
+        account: {
+          select: {
+            id: true,
+            accountNumber: true,
+            currentBalance: true
+          }
+        },
+        customer: {
+          select: {
+            id: true,
+            customerCode: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        guarantor1: {
+          select: {
+            id: true,
+            customerCode: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        guarantor2: {
+          select: {
+            id: true,
+            customerCode: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        guarantor3: {
+          select: {
+            id: true,
+            customerCode: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    });
+  }
+
   private async getScopedWhere(currentUser: RequestUser, query: ListLoansQueryDto): Promise<Prisma.LoanAccountWhereInput> {
     const where: Prisma.LoanAccountWhereInput = {};
 
@@ -371,6 +575,50 @@ export class LoansService {
 
     if (currentUser.role === UserRole.CLIENT && currentUser.customerId !== customerId) {
       throw new ForbiddenException("Client can access only own loan profile");
+    }
+  }
+
+  private normalizeOptionalId(value?: string | null) {
+    const normalized = value?.trim();
+    return normalized ? normalized : null;
+  }
+
+  private async validateGuarantorAssignments(
+    tx: Prisma.TransactionClient | PrismaService,
+    borrowerCustomerId: string,
+    societyId: string,
+    guarantorIds: string[]
+  ) {
+    if (new Set(guarantorIds).size !== guarantorIds.length) {
+      throw new BadRequestException("Guarantor accounts must be unique");
+    }
+
+    if (guarantorIds.includes(borrowerCustomerId)) {
+      throw new BadRequestException("Borrower cannot be assigned as guarantor");
+    }
+
+    if (!guarantorIds.length) {
+      return;
+    }
+
+    const guarantors = await tx.customer.findMany({
+      where: {
+        id: {
+          in: guarantorIds
+        }
+      },
+      select: {
+        id: true,
+        societyId: true
+      }
+    });
+
+    if (guarantors.length !== guarantorIds.length) {
+      throw new NotFoundException("One or more guarantor customers were not found");
+    }
+
+    if (guarantors.some((entry) => entry.societyId !== societyId)) {
+      throw new BadRequestException("Guarantors must belong to the same society");
     }
   }
 

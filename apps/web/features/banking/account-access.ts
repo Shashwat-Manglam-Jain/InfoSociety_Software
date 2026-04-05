@@ -3,7 +3,7 @@ import type { AppAccountType, UserRole } from "@/shared/types";
 
 const moduleAccessByAccountType: Record<AppAccountType, string[]> = {
   // Self-service members: only their own banking operations, no master data
-  CLIENT: ["accounts", "deposits", "loans", "transactions", "locker"],
+  CLIENT: ["customers", "accounts", "deposits", "loans", "transactions", "locker"],
   AGENT: [
     "customers",
     "accounts",
@@ -37,6 +37,13 @@ const moduleAccessByAccountType: Record<AppAccountType, string[]> = {
   PLATFORM: ["monitoring", "users", "reports"]
 };
 
+const requiredModuleSlugsByAccountType: Record<AppAccountType, string[]> = {
+  CLIENT: ["customers"],
+  AGENT: [],
+  SOCIETY: [],
+  PLATFORM: []
+};
+
 export function resolveAccountTypeByRole(role: UserRole): AppAccountType {
   if (role === "SUPER_ADMIN") {
     return "PLATFORM";
@@ -53,14 +60,19 @@ export function getAllowedModuleSlugs(accountType: AppAccountType) {
   return moduleAccessByAccountType[accountType];
 }
 
+export function getRequiredModuleSlugs(accountType: AppAccountType) {
+  return requiredModuleSlugsByAccountType[accountType] ?? [];
+}
+
 export function sanitizeAllowedModuleSlugs(
   accountType: AppAccountType,
   requestedModuleSlugs?: string[] | null
 ) {
   const allowedUniverse = new Set(getAllowedModuleSlugs(accountType));
+  const requiredModuleSlugs = getRequiredModuleSlugs(accountType).filter((entry) => allowedUniverse.has(entry));
 
   if (!requestedModuleSlugs?.length) {
-    return Array.from(allowedUniverse);
+    return Array.from(new Set([...allowedUniverse, ...requiredModuleSlugs]));
   }
 
   const normalized = requestedModuleSlugs
@@ -69,7 +81,8 @@ export function sanitizeAllowedModuleSlugs(
     .filter((entry, index, source) => source.indexOf(entry) === index)
     .filter((entry) => allowedUniverse.has(entry));
 
-  return normalized.length ? normalized : Array.from(allowedUniverse);
+  const merged = normalized.length ? normalized : Array.from(allowedUniverse);
+  return Array.from(new Set([...merged, ...requiredModuleSlugs]));
 }
 
 export function getAccessibleModules(
