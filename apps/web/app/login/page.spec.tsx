@@ -25,6 +25,15 @@ jest.mock("@/shared/auth/session", () => ({
   setSession: jest.fn()
 }));
 
+jest.mock("@/shared/i18n/language-provider", () => ({
+  useLanguage: () => ({
+    locale: "en",
+    localeOptions: [],
+    setLocale: jest.fn(),
+    t: jest.fn()
+  })
+}));
+
 jest.mock("@/shared/ui/toast", () => ({
   toast: {
     success: jest.fn(),
@@ -76,7 +85,7 @@ describe("LoginPage", () => {
     fireEvent.change(societySearchInput, { target: { value: "Head Office" } });
     await waitFor(() => expect(screen.getByDisplayValue("SOC-HO")).toBeInTheDocument());
     fireEvent.change(screen.getByPlaceholderText("e.g. adm_skyline"), { target: { value: "adm_skyline" } });
-    fireEvent.change(screen.getByPlaceholderText("••••••••"), { target: { value: "Agent@123" } });
+    fireEvent.change(screen.getByPlaceholderText("********"), { target: { value: "Agent@123" } });
     fireEvent.submit(screen.getByRole("button", { name: "Open Society Workspace" }).closest("form")!);
 
     await waitFor(() => expect(login).toHaveBeenCalledWith("adm_skyline", "Agent@123", "SOC-HO", "SUPER_USER"));
