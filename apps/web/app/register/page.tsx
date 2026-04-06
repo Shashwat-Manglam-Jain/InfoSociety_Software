@@ -5,27 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
-import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import LockIcon from "@mui/icons-material/Lock";
 import PersonIcon from "@mui/icons-material/Person";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Container,
-  IconButton,
-  InputAdornment,
-  Stack,
-  TextField,
-  Typography
-} from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, Container, IconButton, Stack, TextField, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { getBillingPlans, getPublicSocieties, registerSociety } from "@/shared/api/client";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getRegisterPageCopy } from "@/shared/i18n/register-copy";
 import { toast } from "@/shared/ui/toast";
 
 function generateSocietyCode(societyName: string) {
@@ -56,20 +44,23 @@ function generateSocietyUsername(fullName: string) {
   return slug;
 }
 
-function formatPlanPrice(monthlyPrice: number | null) {
+function formatPlanPrice(monthlyPrice: number | null, locale: string, copy: ReturnType<typeof getRegisterPageCopy>) {
   if (monthlyPrice == null) {
-    return "Loading...";
+    return copy.loadingPrice;
   }
 
   if (monthlyPrice <= 0) {
-    return "₹0";
+    return copy.freePrice;
   }
 
-  return `₹${monthlyPrice.toLocaleString("en-IN")}/month`;
+  const localeTag = locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+  return `₹${monthlyPrice.toLocaleString(localeTag)}${copy.perMonthSuffix}`;
 }
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { locale } = useLanguage();
+  const copy = getRegisterPageCopy(locale);
   const [societyName, setSocietyName] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
@@ -103,7 +94,7 @@ export default function RegisterPage() {
           return;
         }
 
-        setPlatformSnapshotError(caught instanceof Error ? caught.message : "Unable to load live platform details.");
+        setPlatformSnapshotError(caught instanceof Error ? caught.message : copy.apiLoadError);
       }
     }
 
@@ -112,23 +103,23 @@ export default function RegisterPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [copy.apiLoadError]);
 
   function validateForm() {
     const nextErrors: Record<string, string> = {};
 
     if (!societyName.trim()) {
-      nextErrors.societyName = "Society name is required";
+      nextErrors.societyName = copy.validations.societyNameRequired;
     }
 
     if (!fullName.trim()) {
-      nextErrors.fullName = "Administrator name is required";
+      nextErrors.fullName = copy.validations.fullNameRequired;
     }
 
     if (!password) {
-      nextErrors.password = "Password is required";
+      nextErrors.password = copy.validations.passwordRequired;
     } else if (password.length < 8) {
-      nextErrors.password = "Password must be at least 8 characters";
+      nextErrors.password = copy.validations.passwordLength;
     }
 
     setFormErrors(nextErrors);
@@ -144,7 +135,7 @@ export default function RegisterPage() {
     }
 
     if (!generatedCode || !generatedUsername) {
-      setError("Please enter both the society name and administrator name to generate the login details.");
+      setError(copy.validations.missingGeneratedDetails);
       return;
     }
 
@@ -159,12 +150,10 @@ export default function RegisterPage() {
         societyName: societyName.trim()
       });
 
-      toast.success(
-        `Enrollment submitted. Society code ${generatedCode} and username @${generatedUsername} will be used after approval.`
-      );
+      toast.success(copy.submitSuccess.replace("{{code}}", generatedCode).replace("{{username}}", generatedUsername));
       router.push("/login?from=register");
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Unable to submit enrollment";
+      const message = caught instanceof Error ? caught.message : copy.submitError;
       setError(message);
       toast.error(message);
       setLoading(false);
@@ -173,7 +162,7 @@ export default function RegisterPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
-      <Card className="surface-vibrant fade-rise" sx={{ overflow: "hidden", borderRadius: 4 }}>
+      <Card className="surface-vibrant fade-rise" sx={{ overflow: "hidden", borderRadius: 2 }}>
         <Grid container>
           <Grid
             size={{ xs: 12, md: 5 }}
@@ -197,27 +186,27 @@ export default function RegisterPage() {
             }}
           >
             <Stack spacing={2.2} sx={{ height: "100%" }}>
-              <Chip label="Society Enrollment" sx={{ width: "fit-content", bgcolor: "rgba(255,255,255,0.16)", color: "#fff" }} />
+              <Chip label={copy.leftPanel.chip} sx={{ width: "fit-content", bgcolor: "rgba(255,255,255,0.16)", color: "#fff" }} />
 
               <Box>
                 <Typography variant="h4" sx={{ color: "#fff", fontWeight: 800, lineHeight: 1.1 }}>
-                  Register Your Society
+                  {copy.leftPanel.title}
                 </Typography>
                 <Typography sx={{ mt: 1.1, color: "rgba(255,255,255,0.88)" }}>
-                  This form is only for creating the main society workspace account. Agents and clients are created later from inside the approved society dashboard.
+                  {copy.leftPanel.description}
                 </Typography>
               </Box>
 
               <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
-                <Chip label="Society Only" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
-                <Chip label="Approval Required" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
-                <Chip label="Admin Username From Name" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                <Chip label={copy.leftPanel.tags[0]} size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                <Chip label={copy.leftPanel.tags[1]} size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                <Chip label={copy.leftPanel.tags[2]} size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
               </Stack>
 
               <Box
                 sx={{
                   p: 2,
-                  borderRadius: 3,
+                  borderRadius: 2,
                   border: "1px solid rgba(255,255,255,0.16)",
                   bgcolor: "rgba(7, 16, 34, 0.2)",
                   backdropFilter: "blur(8px)"
@@ -225,16 +214,16 @@ export default function RegisterPage() {
               >
                 <Stack spacing={1.3}>
                   <Typography variant="overline" sx={{ color: "rgba(255,255,255,0.72)", fontWeight: 800, letterSpacing: 1 }}>
-                    What Happens Next
+                    {copy.leftPanel.nextTitle}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
-                    1. Submit the society name, main administrator, and password.
+                    {copy.leftPanel.nextSteps[0]}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
-                    2. Platform superadmin reviews and approves the society.
+                    {copy.leftPanel.nextSteps[1]}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
-                    3. After approval, you log in at <strong>/login</strong> and create your internal users there.
+                    {copy.leftPanel.nextSteps[2]}
                   </Typography>
                 </Stack>
               </Box>
@@ -242,7 +231,7 @@ export default function RegisterPage() {
               <Box sx={{ mt: "auto" }}>
                 <Image
                   src="/illustrations/insights-panel.svg"
-                  alt="Illustration of onboarding and account setup"
+                  alt={copy.leftPanel.imageAlt}
                   width={760}
                   height={500}
                   style={{ width: "100%", height: "auto", display: "block" }}
@@ -256,36 +245,40 @@ export default function RegisterPage() {
               <Stack spacing={2.6}>
                 <Box>
                   <Typography variant="h4" className="section-title" sx={{ fontSize: { xs: "1.75rem", md: "2.05rem" } }}>
-                    Society Enrollment Form
+                    {copy.formPanel.title}
                   </Typography>
                   <Typography color="text.secondary" sx={{ mt: 0.8, maxWidth: 640 }}>
-                    Only the core details are required here. The registration page now also pulls the current platform snapshot from the API so you can see the live network before you enroll.
+                    {copy.formPanel.description}
                   </Typography>
                 </Box>
 
                 <Box
                   sx={{
                     p: 2.4,
-                    borderRadius: 4,
+                    borderRadius: 1,
                     border: "1px solid rgba(15, 23, 42, 0.08)",
                     bgcolor: "rgba(255,255,255,0.6)"
                   }}
                 >
                   <Stack spacing={1.4}>
                     <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 1.5 }}>
-                      Live Platform Snapshot
+                      {copy.formPanel.snapshotTitle}
                     </Typography>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 3, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
-                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>Approved Societies</Typography>
+                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+                          {copy.formPanel.approvedSocieties}
+                        </Typography>
                         <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: "#0f172a" }}>
-                          {approvedSocietyCount == null ? "Loading..." : approvedSocietyCount.toLocaleString("en-IN")}
+                          {approvedSocietyCount == null ? copy.loadingPrice : approvedSocietyCount.toLocaleString(locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN")}
                         </Typography>
                       </Box>
-                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 3, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
-                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>Premium Plan</Typography>
+                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+                          {copy.formPanel.premiumPlan}
+                        </Typography>
                         <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: "#0f172a" }}>
-                          {formatPlanPrice(premiumMonthlyPrice)}
+                          {formatPlanPrice(premiumMonthlyPrice, locale, copy)}
                         </Typography>
                       </Box>
                     </Stack>
@@ -295,7 +288,7 @@ export default function RegisterPage() {
                       </Typography>
                     ) : (
                       <Typography variant="body2" color="text.secondary">
-                        These values are loaded live from the API, so the registration page stays aligned with the current platform setup.
+                        {copy.formPanel.snapshotLiveNote}
                       </Typography>
                     )}
                   </Stack>
@@ -304,31 +297,35 @@ export default function RegisterPage() {
                 <Box
                   sx={{
                     p: 2.4,
-                    borderRadius: 4,
+                    borderRadius: 1,
                     border: "1px solid rgba(15, 23, 42, 0.08)",
                     bgcolor: "rgba(255,255,255,0.6)"
                   }}
                 >
                   <Stack spacing={1.4}>
                     <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 1.5 }}>
-                      Generated Login Details
+                      {copy.formPanel.generatedTitle}
                     </Typography>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 3, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
-                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>Society Code</Typography>
+                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+                          {copy.formPanel.societyCode}
+                        </Typography>
                         <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: "#0f172a", fontFamily: "monospace" }}>
-                          {generatedCode || "Waiting for society name"}
+                          {generatedCode || copy.formPanel.waitingSociety}
                         </Typography>
                       </Box>
-                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 3, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
-                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>Admin Username</Typography>
+                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+                          {copy.formPanel.adminUsername}
+                        </Typography>
                         <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: "#0f172a", fontFamily: "monospace" }}>
-                          {generatedUsername ? `@${generatedUsername}` : "Waiting for administrator name"}
+                          {generatedUsername ? `@${generatedUsername}` : copy.formPanel.waitingAdmin}
                         </Typography>
                       </Box>
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
-                      The society code comes from the society name, and the first admin username comes from the administrator name you enter here.
+                      {copy.formPanel.generatedNote}
                     </Typography>
                   </Stack>
                 </Box>
@@ -338,7 +335,7 @@ export default function RegisterPage() {
                   onSubmit={onSubmit}
                   sx={{
                     p: { xs: 2, md: 3.2 },
-                    borderRadius: 4,
+                    borderRadius: 1,
                     border: "1px solid rgba(15, 23, 42, 0.08)",
                     bgcolor: "rgba(255,255,255,0.45)",
                     backdropFilter: "blur(12px)"
@@ -346,15 +343,15 @@ export default function RegisterPage() {
                 >
                   <Stack spacing={3}>
                     <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 1.5 }}>
-                      Required Details
+                      {copy.formPanel.requiredTitle}
                     </Typography>
 
                     <Box>
                       <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
-                        Society Name
+                        {copy.formPanel.societyNameLabel}
                       </Typography>
                       <TextField
-                        placeholder="e.g. Skyline Cooperative Credit Society"
+                        placeholder={copy.formPanel.societyNamePlaceholder}
                         value={societyName}
                         onChange={(event) => {
                           setSocietyName(event.target.value);
@@ -364,7 +361,7 @@ export default function RegisterPage() {
                         }}
                         fullWidth
                         error={Boolean(formErrors.societyName)}
-                        helperText={formErrors.societyName || "This name is used to generate the society code."}
+                        helperText={formErrors.societyName || copy.formPanel.societyNameHelper}
                         InputProps={{
                           sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
                           startAdornment: <ApartmentRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
@@ -374,10 +371,10 @@ export default function RegisterPage() {
 
                     <Box>
                       <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
-                        Main Administrator Name
+                        {copy.formPanel.adminNameLabel}
                       </Typography>
                       <TextField
-                        placeholder="Full name"
+                        placeholder={copy.formPanel.adminNamePlaceholder}
                         value={fullName}
                         onChange={(event) => {
                           setFullName(event.target.value);
@@ -387,7 +384,7 @@ export default function RegisterPage() {
                         }}
                         fullWidth
                         error={Boolean(formErrors.fullName)}
-                        helperText={formErrors.fullName || "This name is used to generate the first admin username."}
+                        helperText={formErrors.fullName || copy.formPanel.adminNameHelper}
                         InputProps={{
                           sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
                           startAdornment: <PersonIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
@@ -397,11 +394,11 @@ export default function RegisterPage() {
 
                     <Box>
                       <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
-                        Password
+                        {copy.formPanel.passwordLabel}
                       </Typography>
                       <TextField
                         type={showPassword ? "text" : "password"}
-                        placeholder="Create a secure password"
+                        placeholder={copy.formPanel.passwordPlaceholder}
                         value={password}
                         onChange={(event) => {
                           setPassword(event.target.value);
@@ -411,7 +408,7 @@ export default function RegisterPage() {
                         }}
                         fullWidth
                         error={Boolean(formErrors.password)}
-                        helperText={formErrors.password || "Use at least 8 characters for the initial society admin password."}
+                        helperText={formErrors.password || copy.formPanel.passwordHelper}
                         InputProps={{
                           sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
                           startAdornment: <LockIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />,
@@ -427,17 +424,17 @@ export default function RegisterPage() {
                     {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
 
                     <Button type="submit" variant="contained" size="large" disabled={loading} sx={{ height: 54, borderRadius: 3, fontWeight: 900 }}>
-                      {loading ? "Submitting..." : "Submit Society Enrollment"}
+                      {loading ? copy.formPanel.submitting : copy.formPanel.submit}
                     </Button>
                   </Stack>
                 </Box>
 
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
                   <Typography variant="body2" color="text.secondary">
-                    Already approved? <Link href="/login">Go to society login</Link>
+                    {copy.formPanel.alreadyApproved} <Link href="/login">{copy.formPanel.goToLogin}</Link>
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Platform superadmin? <Link href="/admin">Use the admin terminal</Link>
+                    {copy.formPanel.platformAdmin} <Link href="/admin">{copy.formPanel.useAdmin}</Link>
                   </Typography>
                 </Stack>
               </Stack>
