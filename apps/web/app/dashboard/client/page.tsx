@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,6 +22,7 @@ import {
   Chip,
   Container,
   Grid,
+  Paper,
   Skeleton,
   Stack,
   Typography
@@ -111,7 +113,7 @@ function buildLockerClients(profile: ClientProfile, branchId?: string | null) {
   ];
 }
 
-export default function ClientDashboardPage() {
+function ClientDashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLanguage();
@@ -471,5 +473,13 @@ export default function ClientDashboardPage() {
         )}
       </Box>
     </DashboardShell>
+  );
+}
+
+export default function ClientDashboardPage() {
+  return (
+    <Suspense fallback={<Skeleton variant="rectangular" height="100vh" />}>
+      <ClientDashboardPageContent />
+    </Suspense>
   );
 }

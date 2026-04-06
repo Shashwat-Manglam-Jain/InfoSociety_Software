@@ -110,7 +110,7 @@ export default function SuperadminSettings() {
         </Box>
 
         <Grid container spacing={4}>
-          <Grid item xs={12} md={8}>
+          <Grid size={{ xs: 12, md: 8 }}>
             <Paper elevation={0} sx={{ p: { xs: 3, md: 5 }, borderRadius: 5, border: "1px solid rgba(148,163,184,0.2)", bgcolor: "#fff" }}>
               <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 4 }}>
                 <WebRoundedIcon sx={{ color: "#3b82f6", fontSize: 24 }} />
@@ -179,7 +179,7 @@ export default function SuperadminSettings() {
             </Paper>
           </Grid>
           
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
              <Paper elevation={0} sx={{ p: 4, borderRadius: 5, border: "1px solid rgba(148,163,184,0.15)", bgcolor: "#f8fafc" }}>
                <Typography variant="h6" sx={{ fontWeight: 900, mb: 2, color: "#0f172a" }}>Real-time Syncing</Typography>
                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 700, mb: 3 }}>

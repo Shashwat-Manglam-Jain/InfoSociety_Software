@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
@@ -207,12 +208,17 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
 
   return (
     <Box>
-      <SectionHero title="Demand Drafts" description="Manage demand draft issuance, tracking, and status updates." />
+      <SectionHero 
+        icon={<DescriptionRoundedIcon sx={{ fontSize: 40 }} />}
+        eyebrow="Instrument Management"
+        title="Demand Drafts" 
+        description="Manage demand draft issuance, tracking, and status updates." 
+      />
       
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -271,7 +277,7 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
             <CircularProgress />
           </Box>
         ) : rows.length === 0 ? (
-          <TableEmpty message="No demand drafts found" />
+          <TableEmpty colSpan={6} label="No demand drafts found" />
         ) : (
           <>
             <TableContainer>

@@ -168,10 +168,10 @@ export default function SuperadminReports() {
                         <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid rgba(148,163,184,0.3)", bgcolor: "#fff" }}>
                            <Typography variant="caption" sx={{ fontWeight: 800, color: "text.primary" }}>Boolean Toggles</Typography>
                            <Grid container spacing={1} sx={{ mt: 1 }}>
-                              <Grid item xs={12} sm={6}><FormControlLabel control={<Switch size="small" />} label={<Typography variant="body2" sx={{ fontWeight: 700 }}>Include Inactive Users</Typography>} /></Grid>
-                              <Grid item xs={12} sm={6}><FormControlLabel control={<Switch size="small" />} label={<Typography variant="body2" sx={{ fontWeight: 700 }}>Include Closed Loans</Typography>} /></Grid>
-                              <Grid item xs={12} sm={6}><FormControlLabel control={<Switch size="small" />} label={<Typography variant="body2" sx={{ fontWeight: 700 }}>Embed KYC Metadata</Typography>} /></Grid>
-                              <Grid item xs={12} sm={6}><FormControlLabel control={<Switch size="small" defaultChecked />} label={<Typography variant="body2" sx={{ fontWeight: 700 }}>PDF High-Resolution</Typography>} /></Grid>
+                              <Grid size={{ xs: 12, sm: 6 }}><FormControlLabel control={<Switch size="small" />} label={<Typography variant="body2" sx={{ fontWeight: 700 }}>Include Inactive Users</Typography>} /></Grid>
+                              <Grid size={{ xs: 12, sm: 6 }}><FormControlLabel control={<Switch size="small" />} label={<Typography variant="body2" sx={{ fontWeight: 700 }}>Include Closed Loans</Typography>} /></Grid>
+                              <Grid size={{ xs: 12, sm: 6 }}><FormControlLabel control={<Switch size="small" />} label={<Typography variant="body2" sx={{ fontWeight: 700 }}>Embed KYC Metadata</Typography>} /></Grid>
+                              <Grid size={{ xs: 12, sm: 6 }}><FormControlLabel control={<Switch size="small" defaultChecked />} label={<Typography variant="body2" sx={{ fontWeight: 700 }}>PDF High-Resolution</Typography>} /></Grid>
                            </Grid>
                         </Paper>
                      </Stack>

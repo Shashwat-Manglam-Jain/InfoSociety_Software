@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
@@ -149,12 +150,17 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
 
   return (
     <Box>
-      <SectionHero title="Reports & Enquiries" description="Generate and manage society reports and data exports." />
+      <SectionHero 
+        icon={<DescriptionRoundedIcon sx={{ fontSize: 40 }} />}
+        eyebrow="Analytics & Exports"
+        title="Reports & Enquiries" 
+        description="Generate and manage society reports and data exports." 
+      />
       
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -192,7 +198,7 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
             <CircularProgress />
           </Box>
         ) : rows.length === 0 ? (
-          <TableEmpty message="No report jobs found. Click 'Run Report' to generate one." />
+          <TableEmpty colSpan={3} label="No report jobs found. Click 'Run Report' to generate one." />
         ) : (
           <>
             <TableContainer>

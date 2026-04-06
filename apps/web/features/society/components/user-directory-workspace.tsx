@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import CircleIcon from "@mui/icons-material/Circle";
+import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
@@ -118,12 +119,17 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
 
   return (
     <Box>
-      <SectionHero title="User Directory" description="View all users and their roles with detailed information." />
+      <SectionHero 
+        icon={<PeopleRoundedIcon sx={{ fontSize: 40 }} />}
+        eyebrow="Access Management"
+        title="User Directory" 
+        description="View all users and their roles with detailed information." 
+      />
       
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -165,7 +171,7 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
             <CircularProgress />
           </Box>
         ) : paginatedRows.length === 0 ? (
-          <TableEmpty message={search ? "No users found matching your search" : "No users found"} />
+          <TableEmpty colSpan={5} label={search ? "No users found matching your search" : "No users found"} />
         ) : (
           <>
             <TableContainer>

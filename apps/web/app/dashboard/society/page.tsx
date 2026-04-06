@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
@@ -10,7 +11,7 @@ import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded
 import MapRoundedIcon from "@mui/icons-material/MapRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
-import { Alert, Box, Button, CircularProgress, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, MenuItem, Paper, Skeleton, Stack, TextField, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { ModuleWorkspace } from "@/features/banking/operations/module-workspace";
@@ -352,7 +353,7 @@ function formatDate(value: string) {
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString("en-IN");
 }
 
-export default function SocietyDashboard() {
+function SocietyDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session = getSession();
@@ -1316,5 +1317,13 @@ export default function SocietyDashboard() {
         onSave={(payload) => void handleSaveAgentDetails(payload)}
       />
     </DashboardShell>
+  );
+}
+
+export default function SocietyDashboard() {
+  return (
+    <Suspense fallback={<Skeleton variant="rectangular" height="100vh" />}>
+      <SocietyDashboardContent />
+    </Suspense>
   );
 }

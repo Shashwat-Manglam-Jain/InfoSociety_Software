@@ -1,6 +1,8 @@
 import type { MonitoringOverview, SocietyStatus } from "../types";
 import { apiRequest } from "./http";
 
+export type { MonitoringOverview } from "../types";
+
 export type UpdateSocietyAccessPayload = {
   status?: SocietyStatus;
   isActive?: boolean;

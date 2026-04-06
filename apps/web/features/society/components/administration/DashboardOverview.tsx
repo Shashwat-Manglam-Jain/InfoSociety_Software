@@ -81,7 +81,7 @@ export function DashboardOverview({ societyForm, transactions, agents, managedUs
 
       {/* Stats Cards */}
       <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card elevation={0} sx={{ borderRadius: 2.5, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
@@ -94,7 +94,7 @@ export function DashboardOverview({ societyForm, transactions, agents, managedUs
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card elevation={0} sx={{ borderRadius: 2.5, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
@@ -107,7 +107,7 @@ export function DashboardOverview({ societyForm, transactions, agents, managedUs
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card elevation={0} sx={{ borderRadius: 2.5, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
@@ -120,7 +120,7 @@ export function DashboardOverview({ societyForm, transactions, agents, managedUs
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card elevation={0} sx={{ borderRadius: 2.5, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper }}>
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
@@ -137,7 +137,7 @@ export function DashboardOverview({ societyForm, transactions, agents, managedUs
 
       {/* Graph Area */}
       <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
+        <Grid size={{ xs: 12, md: 8 }}>
           <Paper elevation={0} sx={{ p: 4, borderRadius: 2.5, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper, height: '100%' }}>
             <Typography variant="h6" sx={{ fontWeight: 900, mb: 1 }}>People & Account Growth</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>Weekly overview of new user registrations</Typography>
@@ -149,7 +149,7 @@ export function DashboardOverview({ societyForm, transactions, agents, managedUs
             </Stack>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Paper elevation={0} sx={{ p: 4, borderRadius: 2.5, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper, height: '100%' }}>
             <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
               <Avatar sx={{ bgcolor: alpha(DESIGN_SYSTEM.COLORS.violet, 0.1), color: DESIGN_SYSTEM.COLORS.violet }}>

@@ -270,7 +270,7 @@ export default function SuperadminDashboardPage() {
 
           {/* Financial & Access Metrics */}
           <Grid container spacing={4} sx={{ mt: 5 }}>
-             <Grid item xs={12} lg={8}>
+             <Grid size={{ xs: 12, lg: 8 }}>
                <Box sx={{ p: 4, borderRadius: 6, bgcolor: "#fff", height: "100%", border: "1px solid rgba(148,163,184,0.15)", boxShadow: "0 8px 24px -12px rgba(15,23,42,0.06)", display: "flex", flexDirection: "column" }}>
                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
                    <Box>
@@ -287,7 +287,7 @@ export default function SuperadminDashboardPage() {
                          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: "#94a3b8" }} />
                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: "#94a3b8" }} />
                          <Tooltip
-                           formatter={(value: number) => fmtCurrency(value)}
+                           formatter={(value) => value !== undefined ? fmtCurrency(value as number) : ''}
                            contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontWeight: 900 }}
                          />
                          <Bar dataKey="balance" radius={[10, 10, 0, 0]} fill="#10b981" />
@@ -303,7 +303,7 @@ export default function SuperadminDashboardPage() {
                  </Box>
                </Box>
              </Grid>
-             <Grid item xs={12} lg={4}>
+             <Grid size={{ xs: 12, lg: 4 }}>
                 <Stack spacing={4} sx={{ height: "100%" }}>
                   {/* Live Status Graph */}
                   <Box sx={{ p: 4, borderRadius: 6, bgcolor: "#fff", border: "1px solid rgba(148,163,184,0.15)", boxShadow: "0 8px 24px -12px rgba(15,23,42,0.06)", flex: 1, display: "flex", flexDirection: "column" }}>

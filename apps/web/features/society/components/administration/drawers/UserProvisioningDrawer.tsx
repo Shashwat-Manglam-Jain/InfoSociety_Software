@@ -92,7 +92,7 @@ export function UserProvisioningDrawer({
           <TextField fullWidth label="Full name" value={form.fullName} onChange={(event) => updateStaffName(event.target.value)} />
 
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 select
@@ -114,7 +114,7 @@ export function UserProvisioningDrawer({
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 select
@@ -147,7 +147,7 @@ export function UserProvisioningDrawer({
           </Stack>
 
           <Grid container spacing={2}>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Username"
@@ -156,7 +156,7 @@ export function UserProvisioningDrawer({
                 helperText="Use a clear login id. It is auto-filled from the name and can still be adjusted."
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label={isEditing ? "Reset password (optional)" : "Temporary password"}
@@ -177,7 +177,7 @@ export function UserProvisioningDrawer({
 
           {form.role !== "SUPER_USER" && (
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
                   label="Phone"
@@ -185,7 +185,7 @@ export function UserProvisioningDrawer({
                   onChange={(event) => setForm({ ...form, phone: event.target.value })}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
                   label="Email"
@@ -193,7 +193,7 @@ export function UserProvisioningDrawer({
                   onChange={(event) => setForm({ ...form, email: event.target.value })}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   multiline

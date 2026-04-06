@@ -62,7 +62,7 @@ export function SocietiesSection() {
         {loading ? (
           <Grid container spacing={3}>
             {[1, 2, 3].map((idx) => (
-              <Grid item xs={12} sm={6} md={4} key={idx}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={idx}>
                 <Skeleton variant="rectangular" height={220} sx={{ borderRadius: 4 }} />
               </Grid>
             ))}
@@ -114,7 +114,7 @@ export function SocietiesSection() {
         ) : (
           <Grid container spacing={4}>
             {societies.map((society) => (
-              <Grid item xs={12} sm={6} md={4} key={society.id}>
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={society.id}>
                 <Card 
                   elevation={0}
                   sx={{ 
@@ -160,7 +160,7 @@ export function SocietiesSection() {
                           LOGIN TO WORKSPACE
                         </Typography>
                         <Grid container spacing={1.5}>
-                          <Grid item xs={12} sm={4}>
+                          <Grid size={{ xs: 12, sm: 4 }}>
                             <Button 
                               fullWidth
                               component={Link}
@@ -178,7 +178,7 @@ export function SocietiesSection() {
                               Agent
                             </Button>
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid size={{ xs: 12, sm: 4 }}>
                             <Button 
                               fullWidth
                               component={Link}
@@ -196,7 +196,7 @@ export function SocietiesSection() {
                               Staff
                             </Button>
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid size={{ xs: 12, sm: 4 }}>
                             <Button 
                               fullWidth
                               component={Link}

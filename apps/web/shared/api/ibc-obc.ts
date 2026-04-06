@@ -1,6 +1,8 @@
 import { apiRequest } from "./http";
 import type { InstrumentStatus } from "./cheque-clearing";
 
+export type { InstrumentStatus } from "./cheque-clearing";
+
 export type IbcObcType = "IBC" | "OBC";
 
 export type IbcObcRecord = {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import CircleIcon from "@mui/icons-material/Circle";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
+import AnalyticsRoundedIcon from "@mui/icons-material/AnalyticsRounded";
 import {
   Alert,
   Box,
@@ -110,12 +111,17 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
 
   return (
     <Box>
-      <SectionHero title="Society Monitoring" description="Monitor all societies and their operational status." />
+      <SectionHero 
+        icon={<AnalyticsRoundedIcon sx={{ fontSize: 40 }} />}
+        eyebrow="Operational Insights"
+        title="Society Monitoring" 
+        description="Monitor all societies and their operational status." 
+      />
       
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -186,19 +192,19 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
                         />
                       </TableCell>
                       <TableCell>{society.category || "-"}</TableCell>
-                      <TableCell>{society.class || "-"}</TableCell>
+                      <TableCell>{society.registrationNumber || "-"}</TableCell>
                       <TableCell>
                         <Chip
-                          label={society.subscription?.plan || "FREE"}
+                          label={society.subscriptionPlan || "FREE"}
                           size="small"
                           variant="outlined"
                         />
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={society.subscription?.status || "INACTIVE"}
+                          label={society.subscriptionStatus || "INACTIVE"}
                           color={
-                            society.subscription?.status === "ACTIVE"
+                            society.subscriptionStatus === "ACTIVE"
                               ? "success"
                               : "default"
                           }
@@ -206,7 +212,7 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
                         />
                       </TableCell>
                       <TableCell>
-                        {formatDate(society.createdAt)}
+                        -
                       </TableCell>
                     </TableRow>
                   ))}
@@ -218,125 +224,6 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
           )}
         </Box>
       </Paper>
-
-      {data?.systemHealth && (
-        <Paper sx={{ mx: 2, mb: 2 }}>
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              System Health
-            </Typography>
-
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Stack spacing={1}>
-                      <Typography color="textSecondary" variant="caption">
-                        Uptime
-                      </Typography>
-                      <Typography variant="h5">
-                        {((data.systemHealth.uptime || 0) * 100).toFixed(1)}%
-                      </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Stack spacing={1}>
-                      <Typography color="textSecondary" variant="caption">
-                        API Response Time
-                      </Typography>
-                      <Typography variant="h5">
-                        {data.systemHealth.avgResponseTime || 0}ms
-                      </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Stack spacing={1}>
-                      <Typography color="textSecondary" variant="caption">
-                        Database Status
-                      </Typography>
-                      <Chip
-                        label={data.systemHealth.databaseStatus || "OK"}
-                        color={data.systemHealth.databaseStatus === "OK" ? "success" : "error"}
-                        size="small"
-                      />
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Stack spacing={1}>
-                      <Typography color="textSecondary" variant="caption">
-                        Active Sessions
-                      </Typography>
-                      <Typography variant="h5">
-                        {data.systemHealth.activeSessions || 0}
-                      </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          </Box>
-        </Paper>
-      )}
-
-      {data?.provisionedSuperAdmins && data.provisionedSuperAdmins.length > 0 && (
-        <Paper sx={{ mx: 2, mb: 2 }}>
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
-              <SecurityRoundedIcon /> Provisioned Super Admins
-            </Typography>
-
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: theme.palette.mode === "dark" ? "#1e1e1e" : "#f5f5f5" }}>
-                    <TableCell>Username</TableCell>
-                    <TableCell>Full Name</TableCell>
-                    <TableCell>Society</TableCell>
-                    <TableCell>Password Status</TableCell>
-                    <TableCell>Created</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {data.provisionedSuperAdmins.map((admin, idx) => (
-                    <TableRow key={idx} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={500}>
-                          {admin.username}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{admin.fullName}</TableCell>
-                      <TableCell>{admin.society?.name || "-"}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={admin.requiresPasswordChange ? "Change Required" : "Set"}
-                          color={admin.requiresPasswordChange ? "warning" : "success"}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{formatDate(admin.createdAt || "")}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        </Paper>
-      )}
     </Box>
   );
 }

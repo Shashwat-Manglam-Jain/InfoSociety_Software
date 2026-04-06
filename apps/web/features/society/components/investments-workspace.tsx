@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
 import InfoRoundedIcon from "@mui/icons-material/InfoRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
@@ -230,12 +231,17 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
 
   return (
     <Box>
-      <SectionHero title="Investments" description="Manage bank investments, renewals, and withdrawals." />
+      <SectionHero 
+        icon={<TrendingUpRoundedIcon sx={{ fontSize: 40 }} />}
+        eyebrow="Portfolio Management"
+        title="Investments" 
+        description="Manage bank investments, renewals, and withdrawals." 
+      />
       
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -276,7 +282,7 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
             <CircularProgress />
           </Box>
         ) : rows.length === 0 ? (
-          <TableEmpty message="No investments found" />
+          <TableEmpty colSpan={6} label="No investments found" />
         ) : (
           <>
             <TableContainer>
