@@ -29,16 +29,10 @@ import {
 import Grid from "@mui/material/Grid";
 import { getPublicSocieties, login } from "@/shared/api/client";
 import { getDefaultDashboardPath, getSession, setSession } from "@/shared/auth/session";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getLoginPageCopy } from "@/shared/i18n/login-copy";
 import { toast } from "@/shared/ui/toast";
 import type { Society, UserRole } from "@/shared/types";
-
-const societyRoleOptions: Array<{ value: UserRole; label: string; helper: string }> = [
-  {
-    value: "SUPER_USER",
-    label: "Administrator / Authorized Society User",
-    helper: "Society dashboard access is restricted by the module permissions assigned to this account."
-  }
-];
 
 function matchesSocietyQuery(society: Society, query: string) {
   const normalizedQuery = query.trim().toLowerCase();
@@ -70,6 +64,9 @@ function findExactSocietyMatch(societies: Society[], query: string) {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { locale } = useLanguage();
+  const copy = getLoginPageCopy(locale);
+  const societyRoleOptions: Array<{ value: UserRole; label: string; helper: string }> = copy.roleOptions;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [societyCode, setSocietyCode] = useState("");
@@ -119,7 +116,7 @@ export default function LoginPage() {
           return;
         }
 
-        setSocietyLookupError("Society search is temporarily unavailable. You can still enter the code manually.");
+        setSocietyLookupError(copy.lookupError);
       } finally {
         if (active) {
           setSocietiesLoading(false);
@@ -132,7 +129,7 @@ export default function LoginPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [copy.lookupError]);
 
   function applySocietySelection(society: Society | null) {
     setSelectedSociety(society);
@@ -180,20 +177,20 @@ export default function LoginPage() {
     setSocietyCodeError("");
 
     if (!societyCode.trim()) {
-      setSocietyCodeError("Society code is required");
+      setSocietyCodeError(copy.validations.societyCodeRequired);
       isValid = false;
     }
 
     if (!username.trim()) {
-      setUsernameError("Username is required");
+      setUsernameError(copy.validations.usernameRequired);
       isValid = false;
     }
 
     if (!password) {
-      setPasswordError("Password is required");
+      setPasswordError(copy.validations.passwordRequired);
       isValid = false;
     } else if (password.length < 6) {
-      setPasswordError("Password must be at least 6 characters");
+      setPasswordError(copy.validations.passwordLength);
       isValid = false;
     }
 
@@ -226,18 +223,15 @@ export default function LoginPage() {
         allowedModuleSlugs: response.user.allowedModuleSlugs ?? []
       });
 
-      toast.success(`Welcome back, ${response.user.fullName}! Redirecting to your society workspace...`);
+      toast.success(copy.submitSuccess.replace("{{name}}", response.user.fullName));
       router.replace(
         getDefaultDashboardPath("SOCIETY", response.user.requiresPasswordChange, response.user.allowedModuleSlugs)
       );
     } catch (caught) {
       const status = (caught as { status?: number })?.status ? `[${(caught as { status: number }).status}] ` : "";
-      const message =
-        caught instanceof Error && caught.message
-          ? caught.message
-          : "Failed to authenticate. Please check your login details and try again.";
-
+      const message = caught instanceof Error && caught.message ? caught.message : copy.submitError;
       const fullError = `${status}${message}`;
+
       setError(fullError);
       toast.error(fullError);
       setLoading(false);
@@ -248,10 +242,14 @@ export default function LoginPage() {
   const selectedSocietyDetails =
     selectedSociety ?? societies.find((society) => society.code.toUpperCase() === societyCode.trim().toUpperCase()) ?? null;
   const approvedSocietyCount = societies.length;
+  const directoryCountCopy = copy.leftPanel.directoryCount.replace("{{count}}", String(approvedSocietyCount));
+  const selectedRegionCopy = selectedSocietyDetails?.registrationState
+    ? copy.leftPanel.selectedRegion.replace("{{region}}", selectedSocietyDetails.registrationState)
+    : null;
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
-      <Card className="surface-vibrant fade-rise" sx={{ overflow: "hidden", borderRadius: 4 }}>
+      <Card className="surface-vibrant fade-rise" sx={{ overflow: "hidden", borderRadius: 2 }}>
         <Grid container>
           <Grid
             size={{ xs: 12, md: 5 }}
@@ -275,28 +273,25 @@ export default function LoginPage() {
             }}
           >
             <Stack spacing={2.2} sx={{ height: "100%" }}>
-              <Chip label="Society Workspace" sx={{ width: "fit-content", bgcolor: "rgba(255,255,255,0.16)", color: "#fff" }} />
+              <Chip label={copy.leftPanel.chip} sx={{ width: "fit-content", bgcolor: "rgba(255,255,255,0.16)", color: "#fff" }} />
 
               <Box>
                 <Typography variant="h4" sx={{ color: "#fff", fontWeight: 800, lineHeight: 1.12 }}>
-                  Society Login
+                  {copy.leftPanel.title}
                 </Typography>
-                <Typography sx={{ color: "rgba(255,255,255,0.88)", mt: 1.1 }}>
-                  Use this portal for society administrators and other authorized society workspace users.
-                  Agent and client logins stay inside the society card on the home page, and platform superadmin uses the dedicated admin terminal.
-                </Typography>
+                <Typography sx={{ color: "rgba(255,255,255,0.88)", mt: 1.1 }}>{copy.leftPanel.description}</Typography>
               </Box>
 
               <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
-                <Chip label="Society Code Bound" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
-                <Chip label="Module Permissions" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
-                <Chip label="Role Checked in API" size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                {copy.leftPanel.tags.map((tag) => (
+                  <Chip key={tag} label={tag} size="small" sx={{ bgcolor: "rgba(255,255,255,0.18)", color: "#fff" }} />
+                ))}
               </Stack>
 
               <Box
                 sx={{
                   p: 2,
-                  borderRadius: 3,
+                  borderRadius: 2,
                   border: "1px solid rgba(255,255,255,0.16)",
                   bgcolor: "rgba(7, 16, 34, 0.2)",
                   backdropFilter: "blur(8px)"
@@ -304,13 +299,13 @@ export default function LoginPage() {
               >
                 <Stack spacing={1.2}>
                   <Typography variant="overline" sx={{ color: "rgba(255,255,255,0.72)", fontWeight: 800, letterSpacing: 1 }}>
-                    Dedicated Portals
+                    {copy.leftPanel.portalsTitle}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
-                    Agent and client users should sign in from their society entry on the home page.
+                    {copy.leftPanel.agentClientNote}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
-                    Platform superadmin should use <strong>/admin</strong>.
+                    {copy.leftPanel.adminNote}
                   </Typography>
                 </Stack>
               </Box>
@@ -318,7 +313,7 @@ export default function LoginPage() {
               <Box
                 sx={{
                   p: 2,
-                  borderRadius: 3,
+                  borderRadius: 2,
                   border: "1px solid rgba(255,255,255,0.16)",
                   bgcolor: "rgba(7, 16, 34, 0.2)",
                   backdropFilter: "blur(8px)"
@@ -326,16 +321,14 @@ export default function LoginPage() {
               >
                 <Stack spacing={1.2}>
                   <Typography variant="overline" sx={{ color: "rgba(255,255,255,0.72)", fontWeight: 800, letterSpacing: 1 }}>
-                    Live Directory
+                    {copy.leftPanel.directoryTitle}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
-                    {societiesLoading
-                      ? "Refreshing the approved society directory..."
-                      : `${approvedSocietyCount} approved societies are currently available for login.`}
+                    {societiesLoading ? copy.leftPanel.directoryLoading : directoryCountCopy}
                   </Typography>
-                  {selectedSocietyDetails?.registrationState ? (
+                  {selectedRegionCopy ? (
                     <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.86)" }}>
-                      Selected region: <strong>{selectedSocietyDetails.registrationState}</strong>
+                      {selectedRegionCopy}
                     </Typography>
                   ) : null}
                 </Stack>
@@ -344,7 +337,7 @@ export default function LoginPage() {
               <Box sx={{ mt: "auto" }}>
                 <Image
                   src="/illustrations/auth-vault.svg"
-                  alt="Illustration of secure vault login"
+                  alt={copy.leftPanel.imageAlt}
                   width={760}
                   height={520}
                   style={{ width: "100%", height: "auto", display: "block" }}
@@ -356,21 +349,21 @@ export default function LoginPage() {
           <Grid size={{ xs: 12, md: 7 }}>
             <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
               <Stack spacing={2.6}>
-              <Box>
-                <Typography variant="h4" className="section-title" sx={{ fontSize: { xs: "1.7rem", md: "2.05rem" } }}>
-                    Sign In to Your Society
-                </Typography>
-                <Typography color="text.secondary" sx={{ mt: 0.8, maxWidth: 640 }}>
-                    Search your society by name first. Once selected, we will fill the login code and show the key portal details before you continue with your assigned credentials.
-                </Typography>
-              </Box>
+                <Box>
+                  <Typography variant="h4" className="section-title" sx={{ fontSize: { xs: "1.7rem", md: "2.05rem" } }}>
+                    {copy.formPanel.title}
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ mt: 0.8, maxWidth: 640 }}>
+                    {copy.formPanel.description}
+                  </Typography>
+                </Box>
 
                 <Box
                   component="form"
                   onSubmit={onSubmit}
                   sx={{
                     p: { xs: 2, md: 3.2 },
-                    borderRadius: 4,
+                    borderRadius: 2,
                     border: "1px solid rgba(15, 23, 42, 0.08)",
                     bgcolor: "rgba(255,255,255,0.45)",
                     backdropFilter: "blur(12px)"
@@ -378,12 +371,12 @@ export default function LoginPage() {
                 >
                   <Stack spacing={3}>
                     <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 1.5 }}>
-                      Login Details
+                      {copy.formPanel.detailsTitle}
                     </Typography>
 
                     <Box>
                       <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
-                        Search Society
+                        {copy.formPanel.searchSocietyLabel}
                       </Typography>
                       <Autocomplete
                         disablePortal
@@ -417,14 +410,14 @@ export default function LoginPage() {
                         filterOptions={(options, state) =>
                           options.filter((society) => matchesSocietyQuery(society, state.inputValue)).slice(0, 8)
                         }
-                        noOptionsText={societySearch.trim() ? "No matching society found" : "Start typing the society name"}
+                        noOptionsText={societySearch.trim() ? copy.formPanel.noOptions : copy.formPanel.startTyping}
                         renderOption={(props, option) => (
                           <Box component="li" {...props} key={option.id}>
                             <Stack spacing={0.25}>
                               <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{option.name}</Typography>
                               <Typography variant="caption" color="text.secondary">
                                 {option.code}
-                                {option.registrationState ? ` • ${option.registrationState}` : ""}
+                                {option.registrationState ? ` - ${option.registrationState}` : ""}
                               </Typography>
                             </Stack>
                           </Box>
@@ -432,12 +425,9 @@ export default function LoginPage() {
                         renderInput={(params) => (
                           <TextField
                             {...params}
-                            placeholder="Search by society name or code"
+                            placeholder={copy.formPanel.searchPlaceholder}
                             onBlur={commitSocietySearch}
-                            helperText={
-                              societyLookupError ??
-                              "Pick the society name you recognize. We will fill the workspace code automatically."
-                            }
+                            helperText={societyLookupError ?? copy.formPanel.searchHelper}
                             InputProps={{
                               ...params.InputProps,
                               sx: {
@@ -462,40 +452,40 @@ export default function LoginPage() {
                       <Box
                         sx={{
                           p: 2,
-                          borderRadius: 3,
+                          borderRadius: 2,
                           border: "1px solid rgba(59, 130, 246, 0.16)",
                           bgcolor: "rgba(239, 246, 255, 0.7)"
                         }}
                       >
                         <Stack spacing={1.3}>
                           <Typography variant="overline" sx={{ color: "primary.main", fontWeight: 900, letterSpacing: 1.2 }}>
-                            Selected Society
+                            {copy.formPanel.selectedSocietyTitle}
                           </Typography>
                           <Grid container spacing={1.5}>
                             <Grid size={{ xs: 12, sm: 6 }}>
                               <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
-                                Registered Name
+                                {copy.formPanel.registeredName}
                               </Typography>
                               <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{selectedSocietyDetails.name}</Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
                               <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
-                                Society Code
+                                {copy.formPanel.societyCode}
                               </Typography>
                               <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{selectedSocietyDetails.code}</Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
                               <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
-                                Portal Status
+                                {copy.formPanel.portalStatus}
                               </Typography>
-                              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>Approved for sign-in</Typography>
+                              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{copy.formPanel.approvedStatus}</Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
                               <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
-                                Region
+                                {copy.formPanel.region}
                               </Typography>
                               <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
-                                {selectedSocietyDetails.registrationState ?? "Not provided"}
+                                {selectedSocietyDetails.registrationState ?? copy.formPanel.notProvided}
                               </Typography>
                             </Grid>
                           </Grid>
@@ -505,10 +495,10 @@ export default function LoginPage() {
 
                     <Box>
                       <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
-                        Society Code
+                        {copy.formPanel.societyCodeLabel}
                       </Typography>
                       <TextField
-                        placeholder="e.g. SOC-001"
+                        placeholder={copy.formPanel.societyCodePlaceholder}
                         value={societyCode}
                         onChange={(event) => {
                           const nextCode = event.target.value.toUpperCase();
@@ -523,7 +513,7 @@ export default function LoginPage() {
                         required
                         fullWidth
                         error={Boolean(societyCodeError)}
-                        helperText={societyCodeError || "Filled automatically from society search. You can still edit it manually if needed."}
+                        helperText={societyCodeError || copy.formPanel.societyCodeHelper}
                         InputProps={{
                           sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
                           startAdornment: <ApartmentRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
@@ -533,7 +523,7 @@ export default function LoginPage() {
 
                     <Box>
                       <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
-                        Access Role
+                        {copy.formPanel.accessRoleLabel}
                       </Typography>
                       <TextField
                         select
@@ -556,10 +546,10 @@ export default function LoginPage() {
 
                     <Box>
                       <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
-                        Username
+                        {copy.formPanel.usernameLabel}
                       </Typography>
                       <TextField
-                        placeholder="e.g. adm_skyline"
+                        placeholder={copy.formPanel.usernamePlaceholder}
                         value={username}
                         onChange={(event) => {
                           setUsername(event.target.value);
@@ -570,7 +560,7 @@ export default function LoginPage() {
                         required
                         fullWidth
                         error={Boolean(usernameError)}
-                        helperText={usernameError || "Use the username issued for your society workspace account."}
+                        helperText={usernameError || copy.formPanel.usernameHelper}
                         InputProps={{
                           sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
                           startAdornment: <BadgeRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
@@ -580,11 +570,11 @@ export default function LoginPage() {
 
                     <Box>
                       <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
-                        Password
+                        {copy.formPanel.passwordLabel}
                       </Typography>
                       <TextField
                         type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
+                        placeholder={copy.formPanel.passwordPlaceholder}
                         value={password}
                         onChange={(event) => {
                           setPassword(event.target.value);
@@ -595,7 +585,7 @@ export default function LoginPage() {
                         required
                         fullWidth
                         error={Boolean(passwordError)}
-                        helperText={passwordError}
+                        helperText={passwordError || copy.formPanel.passwordHelper}
                         InputProps={{
                           sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
                           startAdornment: <LockIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />,
@@ -611,17 +601,17 @@ export default function LoginPage() {
                     {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
 
                     <Button type="submit" variant="contained" size="large" disabled={loading} sx={{ height: 54, borderRadius: 3, fontWeight: 900 }}>
-                      {loading ? "Authorizing..." : "Open Society Workspace"}
+                      {loading ? copy.formPanel.authorizing : copy.formPanel.submit}
                     </Button>
                   </Stack>
                 </Box>
 
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
                   <Typography variant="body2" color="text.secondary">
-                    New society? <Link href="/register">Submit a registration request</Link>
+                    {copy.formPanel.newSociety} <Link href="/register">{copy.formPanel.register}</Link>
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Platform admin? <Link href="/admin">Use the admin terminal</Link>
+                    {copy.formPanel.platformAdmin} <Link href="/admin">{copy.formPanel.adminTerminal}</Link>
                   </Typography>
                 </Stack>
               </Stack>
