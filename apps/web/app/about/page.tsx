@@ -54,7 +54,7 @@ export default function AboutPage() {
 
         <Grid container spacing={4} sx={{ mb: 10 }}>
           <Grid size={{ xs: 12, md: 7 }}>
-            <Box sx={{ p: 5, borderRadius: 8, bgcolor: "#fff", border: "1px solid rgba(148, 163, 184, 0.12)", height: "100%", boxShadow: "0 20px 40px -12px rgba(15, 23, 42, 0.05)" }}>
+            <Box sx={{ p: 5, borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(148, 163, 184, 0.12)", height: "100%", boxShadow: "0 20px 40px -12px rgba(15, 23, 42, 0.05)" }}>
               <Typography variant="h5" sx={{ fontWeight: 900, mb: 2, color: "#0f172a" }}>
                 Institutional Excellence Delivered
               </Typography>
@@ -68,7 +68,7 @@ export default function AboutPage() {
           </Grid>
 
           <Grid size={{ xs: 12, md: 5 }}>
-            <Box sx={{ p: 5, borderRadius: 8, background: "linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)", color: "#fff", height: "100%", position: "relative", overflow: "hidden" }}>
+            <Box sx={{ p: 5, borderRadius: 2, background: "linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)", color: "#fff", height: "100%", position: "relative", overflow: "hidden" }}>
               <Box sx={{ position: "absolute", bottom: -20, right: -20, opacity: 0.1 }}>
                  <VerifiedRoundedIcon sx={{ fontSize: 200 }} />
               </Box>
@@ -99,7 +99,7 @@ export default function AboutPage() {
               <Box
                 sx={{
                   p: 4,
-                  borderRadius: 6,
+                  borderRadius: 1,
                   bgcolor: "#fff",
                   height: "100%",
                   border: "1px solid rgba(148, 163, 184, 0.08)",
