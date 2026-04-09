@@ -6,10 +6,8 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import LogoutIcon from "@mui/icons-material/Logout";
 import SavingsRoundedIcon from "@mui/icons-material/SavingsRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
-import { AppBar, Avatar, Box, Button, Chip, Collapse, Divider, Drawer, IconButton, Stack, Toolbar, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
-import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
-import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
+import { AppBar, Avatar, Box, Button, Chip, Collapse, Divider, Drawer, IconButton, Stack, Toolbar, Typography, useMediaQuery } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import { SettingsMenu } from "@/components/ui/settings-menu";
 import { WorkspaceFooter } from "@/components/layout/workspace-footer";
 import { appBranding } from "@/shared/config/branding";
@@ -23,6 +21,7 @@ interface DashboardShellProps {
   onLogout?: () => void;
   t?: (key: string, options?: any) => string;
   accessibleModules?: any[];
+  keepSidebarVisible?: boolean;
 }
 
 function createExpandedGroupsState(accessibleModules: any[]) {
@@ -42,9 +41,13 @@ export function DashboardShell({
   avatarDataUrl = null,
   onLogout = () => undefined,
   t = (key: string) => key,
-  accessibleModules = []
+  accessibleModules = [],
+  keepSidebarVisible = false
 }: DashboardShellProps) {
   const router = useRouter();
+  const theme = useTheme();
+  const isMobileScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const useMobileDrawer = isMobileScreen;
 
   const normalizedAccessibleModules = useMemo(() => {
     if (!Array.isArray(accessibleModules) || accessibleModules.length === 0) {
@@ -113,6 +116,12 @@ export function DashboardShell({
   const closeMobileSidebar = () => {
     setMobileSidebarOpen(false);
   };
+
+  useEffect(() => {
+    if (!useMobileDrawer && mobileSidebarOpen) {
+      setMobileSidebarOpen(false);
+    }
+  }, [useMobileDrawer, mobileSidebarOpen]);
 
   const sidebarContent = (
     <>
@@ -236,7 +245,7 @@ export function DashboardShell({
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
+                  justifyContent: "flex-start",
                   px: 2,
                   py: 1,
                   cursor: "pointer",
@@ -257,11 +266,6 @@ export function DashboardShell({
                 >
                   {group.heading}
                 </Typography>
-                {expandedGroups[gIdx] !== false ? (
-                  <KeyboardArrowDownRoundedIcon sx={{ fontSize: 16, color: "text.secondary", opacity: 0.5 }} />
-                ) : (
-                  <KeyboardArrowRightRoundedIcon sx={{ fontSize: 16, color: "text.secondary", opacity: 0.5 }} />
-                )}
               </Box>
 
               <Collapse in={expandedGroups[gIdx] !== false}>
@@ -313,7 +317,14 @@ export function DashboardShell({
         })}
       </Box>
 
-      <Box sx={{ p: 2, borderTop: "1px solid #f1f5f9", bgcolor: "#fcfdfe" }}>
+      <Box
+        sx={{
+          p: 2,
+          borderTop: (theme) =>
+            `1px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.12)" : "#f1f5f9"}`,
+          bgcolor: (theme) => (theme.palette.mode === "dark" ? "#0f172a" : "#fcfdfe")
+        }}
+      >
         <Button
           onClick={() => {
             closeMobileSidebar();
@@ -326,12 +337,12 @@ export function DashboardShell({
             py: 1.2,
             borderRadius: "10px",
             fontWeight: 900,
-            color: "#94a3b8",
+            color: (theme) => (theme.palette.mode === "dark" ? "#cbd5e1" : "#94a3b8"),
             textTransform: "none",
             fontSize: "0.82rem",
             "&:hover": {
               color: "#ef4444",
-              bgcolor: alpha("#ef4444", 0.05)
+              bgcolor: alpha("#ef4444", 0.08)
             }
           }}
         >
@@ -360,8 +371,8 @@ export function DashboardShell({
           <IconButton
             size="small"
             onClick={() => setMobileSidebarOpen(true)}
-            sx={{
-              display: { xs: "inline-flex", md: "none" },
+          sx={{
+              display: useMobileDrawer ? "inline-flex" : "none",
               color: "#fff",
               bgcolor: "rgba(255,255,255,0.08)"
             }}
@@ -451,7 +462,7 @@ export function DashboardShell({
         PaperProps={{
           sx: {
             width: 300,
-            display: { xs: "flex", md: "none" },
+            display: useMobileDrawer ? "flex" : "none",
             borderRight: (theme) => `1px solid ${theme.palette.divider}`
           }
         }}
@@ -463,24 +474,26 @@ export function DashboardShell({
 
       <Box sx={{ 
         display: "flex", 
-        height: "100vh", 
-        overflow: "hidden", 
-        pt: "64px" 
+        height: "100vh",
+        width: "100%",
+        maxWidth: "100vw",
+        overflow: "hidden",
+        pt: "64px"
       }}>
         {/* VS Code Style Collapsible Left Sidebar */}
         <Box
           sx={{
-            width: { xs: 0, md: 280 },
+            width: useMobileDrawer ? 0 : keepSidebarVisible ? { sm: 220, md: 280 } : { xs: 220, md: 280 },
             height: "100%",
             overflowY: "auto",
             overflowX: "hidden",
             borderRight: (theme) => `1px solid ${theme.palette.divider}`,
             background: (theme) => theme.palette.background.paper,
-            display: { xs: "none", md: "flex" },
+            display: useMobileDrawer ? "none" : keepSidebarVisible ? { xs: "none", sm: "flex" } : "flex",
+            flexShrink: 0,
             flexDirection: "column",
-            scrollbarWidth: "thin",
-            "&::-webkit-scrollbar": { width: "3px" },
-            "&::-webkit-scrollbar-thumb": { bgcolor: (theme) => alpha(theme.palette.text.primary, 0.1), borderRadius: "10px" }
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" }
           }}
         >
           {sidebarContent}
@@ -490,20 +503,21 @@ export function DashboardShell({
         <Box
           component="main"
           sx={{
-            flexGrow: 1,
+            flex: "1 1 0",
+            minWidth: 0,
             height: "100%",
             overflowY: "auto",
-            bgcolor: "#fcfdfe",
+            overflowX: "hidden",
+            bgcolor: (theme) => theme.palette.mode === "dark" ? "#020617" : "#fcfdfe",
             pt: { xs: 4, md: 5 },
             pb: 4,
-            px: { xs: 2.5, md: 6 },
+            px: { xs: 1.5, sm: 2.5, md: 6 },
             position: "relative",
-            scrollbarWidth: "thin",
-            "&::-webkit-scrollbar": { width: "5px" },
-            "&::-webkit-scrollbar-thumb": { bgcolor: "rgba(15, 23, 42, 0.08)", borderRadius: "10px" }
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" }
           }}
         >
-          <Box sx={{ maxWidth: 1600, mx: "auto" }}>
+          <Box sx={{ maxWidth: 1600, width: "100%", minWidth: 0, mx: "auto" }}>
              {children}
              <Box sx={{ mt: 10 }}>
                <WorkspaceFooter />

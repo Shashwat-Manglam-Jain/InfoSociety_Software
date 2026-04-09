@@ -19,6 +19,7 @@ import {
   Typography
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
+import { alpha, useTheme } from "@mui/material/styles";
 import { getMonitoringOverview } from "@/shared/api/monitoring";
 import type { MonitoringOverview } from "@/shared/types";
 import { SectionHero } from "@/features/society/components/operations/SectionHero";
@@ -39,6 +40,7 @@ function formatCurrency(value: number | string | null | undefined) {
 }
 
 export function MonitoringWorkspace({ token }: MonitoringWorkspaceProps) {
+  const theme = useTheme();
   const [overview, setOverview] = useState<MonitoringOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +114,7 @@ export function MonitoringWorkspace({ token }: MonitoringWorkspaceProps) {
               minWidth: { xs: "100%", sm: 260 },
               "& .MuiOutlinedInput-root": {
                 borderRadius: 2.5,
-                bgcolor: "rgba(255,255,255,0.08)",
+                bgcolor: alpha(theme.palette.common.white, theme.palette.mode === "dark" ? 0.08 : 0.12),
                 color: "#fff"
               }
             }}
@@ -133,10 +135,10 @@ export function MonitoringWorkspace({ token }: MonitoringWorkspaceProps) {
 
       {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, overflow: "hidden" }}>
         <TableContainer>
           <Table sx={{ minWidth: 1080, tableLayout: "fixed" }}>
-            <TableHead sx={{ bgcolor: "#f8fafc" }}>
+            <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 900, width: "20%" }}>Society</TableCell>
                 <TableCell sx={{ fontWeight: 900, width: "12%" }}>Status</TableCell>

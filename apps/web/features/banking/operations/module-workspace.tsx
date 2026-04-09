@@ -291,7 +291,7 @@ function ResponsePreview({
         <Grid container spacing={1.2}>
           {summaryItems.map((item) => (
             <Grid key={item.label} size={{ xs: 12, sm: 6 }}>
-              <Box className="surface-glass" sx={{ p: 1.4, borderRadius: 2 }}>
+              <Box className="surface-glass" sx={{ p: 1.4, borderRadius: 1 }}>
                 <Typography variant="body2" color="text.secondary">
                   {item.label}
                 </Typography>
@@ -533,7 +533,7 @@ export function ModuleWorkspace({
                       sx={{
                         width: 44,
                         height: 44,
-                        borderRadius: 2.4,
+                        borderRadius: 1,
                         display: "grid",
                         placeItems: "center",
                         bgcolor: "primary.main",
@@ -559,7 +559,7 @@ export function ModuleWorkspace({
                     <Box
                       sx={{
                         p: 1.2,
-                        borderRadius: 2.6,
+                        borderRadius: 1,
                         border: "1px solid rgba(148, 163, 184, 0.16)",
                         background: "rgba(255,255,255,0.84)"
                       }}
@@ -580,7 +580,7 @@ export function ModuleWorkspace({
                         </Box>
                       </Grid>
                       <Grid size={6}>
-                        <Box className="surface-glass" sx={{ p: 1.1, borderRadius: 2.2 }}>
+                        <Box className="surface-glass" sx={{ p: 1.1, borderRadius: 1 }}>
                           <Typography variant="caption" color="text.secondary">
                             Actions
                           </Typography>
@@ -588,7 +588,7 @@ export function ModuleWorkspace({
                         </Box>
                       </Grid>
                       <Grid size={6}>
-                        <Box className="surface-glass" sx={{ p: 1.1, borderRadius: 2.2 }}>
+                        <Box className="surface-glass" sx={{ p: 1.1, borderRadius: 1}}>
                           <Typography variant="caption" color="text.secondary">
                             Workflows
                           </Typography>
@@ -596,7 +596,7 @@ export function ModuleWorkspace({
                         </Box>
                       </Grid>
                       <Grid size={6}>
-                        <Box className="surface-glass" sx={{ p: 1.1, borderRadius: 2.2 }}>
+                        <Box className="surface-glass" sx={{ p: 1.1, borderRadius: 1 }}>
                           <Typography variant="caption" color="text.secondary">
                             Preview
                           </Typography>
@@ -624,7 +624,7 @@ export function ModuleWorkspace({
                 </CardContent>
               </Card>
 
-              <Card className="surface-glass" sx={{ borderRadius: 3.2 }}>
+              <Card className="surface-glass" sx={{ borderRadius: 1.2 }}>
                 <CardContent sx={{ p: 1.2 }}>
                   <Typography variant="overline" color="text.secondary" sx={{ px: 0.8, display: "block", mb: 0.7 }}>
                     All Modules
@@ -644,7 +644,7 @@ export function ModuleWorkspace({
                             justifyContent: "space-between",
                             px: 1.1,
                             py: 1.05,
-                            borderRadius: 2.2,
+                            borderRadius: 1,
                             textTransform: "none",
                             color: isCurrent ? "primary.main" : "text.primary",
                             bgcolor: isCurrent ? "rgba(37, 99, 235, 0.1)" : "transparent",
@@ -666,7 +666,7 @@ export function ModuleWorkspace({
                 </CardContent>
               </Card>
 
-              <Card className="surface-glass" sx={{ borderRadius: 3.2 }}>
+              <Card className="surface-glass" sx={{ borderRadius: 1.2 }}>
                 <CardContent sx={{ p: 1.2 }}>
                   <Typography variant="overline" color="text.secondary" sx={{ px: 0.8, display: "block", mb: 0.7 }}>
                     Action Shortcuts
@@ -685,7 +685,7 @@ export function ModuleWorkspace({
                             justifyContent: "space-between",
                             px: 1.1,
                             py: 1,
-                            borderRadius: 2.2,
+                            borderRadius: 1,
                             textTransform: "none",
                             color: isActive ? "primary.main" : "text.primary",
                             bgcolor: isActive ? "rgba(37, 99, 235, 0.08)" : "transparent",
@@ -711,7 +711,7 @@ export function ModuleWorkspace({
 
           <Grid size={{ xs: 12, lg: 8.8, xl: 9.1 }}>
             <Stack spacing={2}>
-              <Card className="surface-vibrant" sx={{ borderRadius: 3.2, overflow: "hidden" }}>
+              <Card className="surface-vibrant" sx={{ borderRadius: 1.2, overflow: "hidden" }}>
                 <CardContent sx={{ p: { xs: 2, md: 2.6 } }}>
                   <Stack spacing={1.4}>
                     <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
@@ -723,7 +723,7 @@ export function ModuleWorkspace({
                           gap: 1,
                           px: 1.4,
                           py: 1.1,
-                          borderRadius: 999,
+                          borderRadius: 1,
                           bgcolor: "rgba(255,255,255,0.82)",
                           border: "1px solid rgba(148, 163, 184, 0.16)"
                         }}
@@ -764,7 +764,7 @@ export function ModuleWorkspace({
 
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, xl: 7.2 }}>
-                  <Card className="surface-glass" sx={{ borderRadius: 3.2, height: "100%" }}>
+                  <Card className="surface-glass" sx={{ borderRadius: 1.2, height: "100%" }}>
                     <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
                       <Stack spacing={1.2}>
                         <Stack
@@ -818,7 +818,7 @@ export function ModuleWorkspace({
                 </Grid>
 
                 <Grid size={{ xs: 12, xl: 4.8 }}>
-                  <Card className="surface-glass" sx={{ borderRadius: 3.2, height: "100%" }}>
+                  <Card className="surface-glass" sx={{ borderRadius: 1.2, height: "100%" }}>
                     <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
                       <Stack spacing={1.25}>
                         <Box>
@@ -854,7 +854,7 @@ export function ModuleWorkspace({
                         <Box
                           sx={{
                             p: 1.35,
-                            borderRadius: 2.5,
+                            borderRadius: 1,
                             border: "1px solid rgba(148, 163, 184, 0.16)",
                             background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,248,251,0.96) 100%)"
                           }}
@@ -1007,7 +1007,7 @@ export function ModuleWorkspace({
                                 sx={{
                                   m: 0,
                                   p: 2,
-                                  borderRadius: 2,
+                                  borderRadius: 1,
                                   bgcolor: "#0f172a",
                                   color: "#dbeafe",
                                   overflowX: "auto",

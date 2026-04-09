@@ -42,6 +42,8 @@ import { SectionHero } from "./operations/SectionHero";
 import { TableEmpty } from "./operations/shared/TableEmpty";
 import type { ManagedUserRow } from "../lib/society-admin-dashboard";
 import { toast } from "@/shared/ui/toast";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getLoanWorkspaceCopy } from "@/shared/i18n/loan-workspace-copy";
 
 type LoanWorkspaceProps = {
   token: string;
@@ -63,16 +65,20 @@ type LoanApplicationForm = {
 
 const statusOptions: Array<LoanStatus | ""> = ["", "APPLIED", "SANCTIONED", "DISBURSED", "OVERDUE", "CLOSED"];
 
-function formatCurrency(value: number | string | null | undefined) {
+function resolveIntlLocale(locale: "en" | "hi" | "mr") {
+  return locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+}
+
+function formatCurrency(value: number | string | null | undefined, locale: "en" | "hi" | "mr") {
   const numericValue = typeof value === "string" ? Number(value) : value ?? 0;
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat(resolveIntlLocale(locale), {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0
   }).format(Number.isFinite(numericValue) ? numericValue : 0);
 }
 
-function formatDate(value?: string | null) {
+function formatDate(value: string | null | undefined, locale: "en" | "hi" | "mr") {
   if (!value) {
     return "-";
   }
@@ -82,7 +88,7 @@ function formatDate(value?: string | null) {
     return value;
   }
 
-  return parsed.toLocaleDateString("en-IN");
+  return parsed.toLocaleDateString(resolveIntlLocale(locale));
 }
 
 function formatPersonName(firstName?: string | null, lastName?: string | null) {
@@ -108,6 +114,8 @@ export function LoanWorkspace({
   canApplyLoan = true,
   canManageLoanActions = true
 }: LoanWorkspaceProps) {
+  const { locale } = useLanguage();
+  const copy = getLoanWorkspaceCopy(locale);
   const clientProfiles = useMemo(
     () =>
       managedUsers
@@ -149,7 +157,7 @@ export function LoanWorkspace({
       const response = await listLoans(token, { q: search, status, page: 1, limit: 100 });
       setRows(response.rows);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to load loan records.");
+      setError(caught instanceof Error ? caught.message : copy.errors.loadFailed);
     } finally {
       setLoading(false);
     }
@@ -183,12 +191,16 @@ export function LoanWorkspace({
     const disbursedLoans = rows.filter((loan) => loan.status === "DISBURSED").length;
 
     return [
-      { label: "Loan Cases", value: String(rows.length), caption: "Loan applications visible in this registry." },
-      { label: "Applied Amount", value: formatCurrency(totalApplied), caption: "Total application amount across visible loans." },
-      { label: "Active Loans", value: String(activeLoans), caption: "Loan cases still in progress or collectible." },
-      { label: "Overdue", value: `${overdueLoans}/${disbursedLoans}`, caption: "Loans flagged overdue against disbursed cases." }
+      { label: copy.metrics.loanCases.label, value: String(rows.length), caption: copy.metrics.loanCases.caption },
+      {
+        label: copy.metrics.appliedAmount.label,
+        value: formatCurrency(totalApplied, locale),
+        caption: copy.metrics.appliedAmount.caption
+      },
+      { label: copy.metrics.activeLoans.label, value: String(activeLoans), caption: copy.metrics.activeLoans.caption },
+      { label: copy.metrics.overdue.label, value: `${overdueLoans}/${disbursedLoans}`, caption: copy.metrics.overdue.caption }
     ];
-  }, [rows]);
+  }, [rows, copy, locale]);
 
   const selectedBorrower = useMemo(
     () => clientProfiles.find((client) => client.customerId === form.customerId) ?? null,
@@ -221,9 +233,9 @@ export function LoanWorkspace({
       setCreateOpen(false);
       setForm(createEmptyLoanApplicationForm());
       await loadRows();
-      toast.success("Loan application created.");
+      toast.success(copy.success.created);
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Unable to create loan application.";
+      const message = caught instanceof Error ? caught.message : copy.errors.createFailed;
       setError(message);
       toast.error(message);
     } finally {
@@ -257,15 +269,15 @@ export function LoanWorkspace({
       await loadRows();
       toast.success(
         action === "sanction"
-          ? "Loan sanctioned."
+          ? copy.success.sanctioned
           : action === "disburse"
-            ? "Loan amount disbursed."
+            ? copy.success.disbursed
             : action === "recover"
-              ? "Recovery recorded."
-              : "Overdue updated."
+              ? copy.success.recovered
+              : copy.success.overdueUpdated
       );
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Unable to update the loan.";
+      const message = caught instanceof Error ? caught.message : copy.errors.updateFailed;
       setError(message);
       toast.error(message);
     } finally {
@@ -277,12 +289,12 @@ export function LoanWorkspace({
     <Stack spacing={3}>
       <SectionHero
         icon={<GavelRoundedIcon />}
-        eyebrow="Loans"
-        title="Loan Desk"
+        eyebrow={copy.hero.eyebrow}
+        title={copy.hero.title}
         description={
           canManageLoanActions
-            ? "Create loan applications, assign guarantors, and manage sanction, disbursement, recovery, and overdue tracking from the society dashboard."
-            : "Review live loan records, track repayment progress, and submit new loan requests within your allowed customer scope."
+            ? copy.hero.manageDescription
+            : copy.hero.reviewDescription
         }
         colorScheme="sky"
         actions={
@@ -294,11 +306,11 @@ export function LoanWorkspace({
                 setPage(0);
                 setSearch(event.target.value);
               }}
-              placeholder="Search borrower, guarantor, or account..."
+              placeholder={copy.actions.searchPlaceholder}
               sx={{
                 minWidth: { xs: "100%", sm: 260 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 2.5,
+                  borderRadius: 1,
                   bgcolor: "rgba(255,255,255,0.08)",
                   color: "#fff"
                 }
@@ -318,7 +330,7 @@ export function LoanWorkspace({
               sx={{
                 minWidth: { xs: "100%", sm: 180 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 2.5,
+                  borderRadius: 1,
                   bgcolor: "rgba(255,255,255,0.08)",
                   color: "#fff"
                 }
@@ -326,7 +338,7 @@ export function LoanWorkspace({
             >
               {statusOptions.map((option) => (
                 <MenuItem key={option || "all"} value={option}>
-                  {option || "All Statuses"}
+                  {option ? copy.statuses[option] : copy.actions.allStatuses}
                 </MenuItem>
               ))}
             </TextField>
@@ -336,9 +348,9 @@ export function LoanWorkspace({
                 startIcon={<AddRoundedIcon />}
                 onClick={() => setCreateOpen(true)}
                 disabled={!clientProfiles.length}
-                sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2.5, fontWeight: 900, "&:hover": { bgcolor: "#e2e8f0" } }}
+                sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 1, fontWeight: 900, "&:hover": { bgcolor: "#e2e8f0" } }}
               >
-                Apply Loan
+                {copy.actions.applyLoan}
               </Button>
             ) : null}
           </>
@@ -355,11 +367,11 @@ export function LoanWorkspace({
 
       {!clientProfiles.length ? (
         <Alert severity="warning" sx={{ borderRadius: 3 }}>
-          No active client accounts are available for loan processing yet.
+          {copy.alerts.noClients}
         </Alert>
       ) : !canManageLoanActions ? (
         <Alert severity="info" sx={{ borderRadius: 3 }}>
-          Administrative loan actions are hidden for this login. You can still review live loan data and open your own loan requests if your access allows it.
+          {copy.alerts.restrictedActions}
         </Alert>
       ) : null}
       {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
@@ -369,23 +381,23 @@ export function LoanWorkspace({
           <Table sx={{ minWidth: 1100, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: "#f8fafc" }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 900, width: "20%" }}>Borrower</TableCell>
-                <TableCell sx={{ fontWeight: 900, width: "14%" }}>Account</TableCell>
-                <TableCell sx={{ fontWeight: 900, width: "22%" }}>Guarantors</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 900, width: "14%" }}>Applied</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 900, width: "14%" }}>Overdue</TableCell>
-                <TableCell sx={{ fontWeight: 900, width: "10%" }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 900, width: "20%" }}>{copy.table.borrower}</TableCell>
+                <TableCell sx={{ fontWeight: 900, width: "14%" }}>{copy.table.account}</TableCell>
+                <TableCell sx={{ fontWeight: 900, width: "22%" }}>{copy.table.guarantors}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 900, width: "14%" }}>{copy.table.applied}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 900, width: "14%" }}>{copy.table.overdue}</TableCell>
+                <TableCell sx={{ fontWeight: 900, width: "10%" }}>{copy.table.status}</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 900, width: "6%" }} />
               </TableRow>
             </TableHead>
             <TableBody>
               {!loading && rows.length === 0 ? (
-                <TableEmpty colSpan={7} label="No loan records matched the current filters." />
+                <TableEmpty colSpan={7} label={copy.table.emptyState} />
               ) : loading ? (
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
                     <Typography variant="body2" color="text.secondary">
-                      Loading loan registry...
+                      {copy.table.loading}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -411,26 +423,26 @@ export function LoanWorkspace({
                           {loan.account.accountNumber}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {formatDate(loan.createdAt)}
+                          {formatDate(loan.createdAt, locale)}
                         </Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">
-                          {guarantorNames || "No guarantor assigned"}
+                          {guarantorNames || copy.table.noGuarantorAssigned}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
                         <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                          {formatCurrency(loan.applicationAmount)}
+                          {formatCurrency(loan.applicationAmount, locale)}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
                         <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                          {formatCurrency(loan.overdueAmount)}
+                          {formatCurrency(loan.overdueAmount, locale)}
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Chip size="small" label={loan.status} color={loan.status === "DISBURSED" ? "success" : "default"} />
+                        <Chip size="small" label={copy.statuses[loan.status]} color={loan.status === "DISBURSED" ? "success" : "default"} />
                       </TableCell>
                       <TableCell align="right">
                         <IconButton size="small" onClick={() => setDetailLoan(loan)}>
@@ -454,6 +466,11 @@ export function LoanWorkspace({
             setRowsPerPage(parseInt(event.target.value, 10));
             setPage(0);
           }}
+          labelRowsPerPage={copy.pagination.rowsPerPage}
+          labelDisplayedRows={({ from, to, count }) =>
+            copy.pagination.displayedRows.replace("{{from}}", String(from)).replace("{{to}}", String(to)).replace("{{count}}", String(count))
+          }
+          getItemAriaLabel={(buttonType) => buttonType === "next" ? copy.pagination.nextPage : copy.pagination.previousPage}
         />
       </Paper>
 
@@ -469,7 +486,7 @@ export function LoanWorkspace({
               <CloseRoundedIcon />
             </IconButton>
             <Typography variant="h5" sx={{ fontWeight: 900 }}>
-              Apply New Loan
+              {copy.actions.applyNewLoan}
             </Typography>
           </Box>
           <Box sx={{ p: 3 }}>
@@ -477,7 +494,7 @@ export function LoanWorkspace({
               <TextField
                 select
                 fullWidth
-                label="Borrower"
+                label={copy.drawer.borrower}
                 value={form.customerId}
                 onChange={(event) => setForm((previous) => ({ ...previous, customerId: event.target.value }))}
               >
@@ -493,7 +510,7 @@ export function LoanWorkspace({
                   <TextField
                     type="number"
                     fullWidth
-                    label="Application Amount"
+                    label={copy.drawer.applicationAmount}
                     value={form.applicationAmount}
                     onChange={(event) =>
                       setForm((previous) => ({ ...previous, applicationAmount: Number(event.target.value) }))
@@ -504,7 +521,7 @@ export function LoanWorkspace({
                   <TextField
                     type="number"
                     fullWidth
-                    label="Interest Rate"
+                    label={copy.drawer.interestRate}
                     value={form.interestRate}
                     onChange={(event) => setForm((previous) => ({ ...previous, interestRate: Number(event.target.value) }))}
                   />
@@ -514,7 +531,7 @@ export function LoanWorkspace({
               <TextField
                 type="date"
                 fullWidth
-                label="Expiry Date"
+                label={copy.drawer.expiryDate}
                 value={form.expiryDate}
                 onChange={(event) => setForm((previous) => ({ ...previous, expiryDate: event.target.value }))}
                 InputLabelProps={{ shrink: true }}
@@ -523,11 +540,11 @@ export function LoanWorkspace({
               <TextField
                 select
                 fullWidth
-                label="Primary Guarantor"
+                label={copy.drawer.primaryGuarantor}
                 value={form.guarantor1Id}
                 onChange={(event) => setForm((previous) => ({ ...previous, guarantor1Id: event.target.value }))}
               >
-                <MenuItem value="">Not assigned</MenuItem>
+                <MenuItem value="">{copy.drawer.notAssigned}</MenuItem>
                 {guarantorOptions.map((client) => (
                   <MenuItem key={client.customerId} value={client.customerId}>
                     {client.fullName} ({client.customerCode})
@@ -537,11 +554,11 @@ export function LoanWorkspace({
               <TextField
                 select
                 fullWidth
-                label="Secondary Guarantor"
+                label={copy.drawer.secondaryGuarantor}
                 value={form.guarantor2Id}
                 onChange={(event) => setForm((previous) => ({ ...previous, guarantor2Id: event.target.value }))}
               >
-                <MenuItem value="">Not assigned</MenuItem>
+                <MenuItem value="">{copy.drawer.notAssigned}</MenuItem>
                 {guarantorOptions.map((client) => (
                   <MenuItem key={client.customerId} value={client.customerId}>
                     {client.fullName} ({client.customerCode})
@@ -551,11 +568,11 @@ export function LoanWorkspace({
               <TextField
                 select
                 fullWidth
-                label="Third Guarantor"
+                label={copy.drawer.thirdGuarantor}
                 value={form.guarantor3Id}
                 onChange={(event) => setForm((previous) => ({ ...previous, guarantor3Id: event.target.value }))}
               >
-                <MenuItem value="">Not assigned</MenuItem>
+                <MenuItem value="">{copy.drawer.notAssigned}</MenuItem>
                 {guarantorOptions.map((client) => (
                   <MenuItem key={client.customerId} value={client.customerId}>
                     {client.fullName} ({client.customerCode})
@@ -567,7 +584,7 @@ export function LoanWorkspace({
                 fullWidth
                 multiline
                 minRows={2}
-                label="Remarks"
+                label={copy.drawer.remarks}
                 value={form.remarks}
                 onChange={(event) => setForm((previous) => ({ ...previous, remarks: event.target.value }))}
               />
@@ -575,13 +592,13 @@ export function LoanWorkspace({
               {selectedBorrower ? (
                 <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)", bgcolor: "#f8fafc" }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1 }}>
-                    Borrower Preview
+                    {copy.drawer.borrowerPreview}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {selectedBorrower.fullName} ({selectedBorrower.customerCode})
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Branch: {selectedBorrower.branchName}
+                    {copy.drawer.branch.replace("{{branch}}", selectedBorrower.branchName)}
                   </Typography>
                 </Paper>
               ) : null}
@@ -592,7 +609,7 @@ export function LoanWorkspace({
                 disabled={!form.customerId || Number(form.applicationAmount) <= 0 || submitting}
                 sx={{ py: 1.5, borderRadius: 2.5, fontWeight: 900 }}
               >
-                Create Loan Application
+                {copy.actions.createLoanApplication}
               </Button>
             </Stack>
           </Box>
@@ -618,34 +635,34 @@ export function LoanWorkspace({
                 {formatPersonName(detailLoan.customer.firstName, detailLoan.customer.lastName)} ({detailLoan.customer.customerCode})
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} useFlexGap flexWrap="wrap">
-                <Chip label={detailLoan.status} sx={{ bgcolor: "rgba(255,255,255,0.12)", color: "#fff" }} />
-                <Chip label={`Applied ${formatCurrency(detailLoan.applicationAmount)}`} sx={{ bgcolor: "rgba(255,255,255,0.12)", color: "#fff" }} />
-                <Chip label={`Overdue ${formatCurrency(detailLoan.overdueAmount)}`} sx={{ bgcolor: "rgba(255,255,255,0.12)", color: "#fff" }} />
+                <Chip label={copy.statuses[detailLoan.status]} sx={{ bgcolor: "rgba(255,255,255,0.12)", color: "#fff" }} />
+                <Chip label={copy.drawer.appliedChip.replace("{{amount}}", formatCurrency(detailLoan.applicationAmount, locale))} sx={{ bgcolor: "rgba(255,255,255,0.12)", color: "#fff" }} />
+                <Chip label={copy.drawer.overdueChip.replace("{{amount}}", formatCurrency(detailLoan.overdueAmount, locale))} sx={{ bgcolor: "rgba(255,255,255,0.12)", color: "#fff" }} />
               </Stack>
             </Box>
 
             <Box sx={{ p: 3, overflowY: "auto", flex: 1 }}>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 4 }}>
-                  <MetricCard label="Applied" value={formatCurrency(detailLoan.applicationAmount)} caption="Borrower application amount." />
+                  <MetricCard label={copy.detailMetrics.applied.label} value={formatCurrency(detailLoan.applicationAmount, locale)} caption={copy.detailMetrics.applied.caption} />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
-                  <MetricCard label="Sanctioned" value={formatCurrency(detailLoan.sanctionedAmount)} caption="Latest sanctioned amount." />
+                  <MetricCard label={copy.detailMetrics.sanctioned.label} value={formatCurrency(detailLoan.sanctionedAmount, locale)} caption={copy.detailMetrics.sanctioned.caption} />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
-                  <MetricCard label="Disbursed" value={formatCurrency(detailLoan.disbursedAmount)} caption="Amount already disbursed." />
+                  <MetricCard label={copy.detailMetrics.disbursed.label} value={formatCurrency(detailLoan.disbursedAmount, locale)} caption={copy.detailMetrics.disbursed.caption} />
                 </Grid>
               </Grid>
 
               <Stack spacing={2.5} sx={{ mt: 3 }}>
                 <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
                   <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
-                    Guarantor Responsibility
+                    {copy.drawer.guarantorResponsibility}
                   </Typography>
                   <Stack spacing={1}>
                     {[detailLoan.guarantor1, detailLoan.guarantor2, detailLoan.guarantor3].filter(Boolean).length === 0 ? (
                       <Typography variant="body2" color="text.secondary">
-                        No guarantors assigned to this loan.
+                        {copy.drawer.noGuarantorsAssigned}
                       </Typography>
                     ) : (
                       [detailLoan.guarantor1, detailLoan.guarantor2, detailLoan.guarantor3]
@@ -663,14 +680,14 @@ export function LoanWorkspace({
                   <>
                     <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
                       <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
-                        Sanction Loan
+                        {copy.drawer.sanctionLoan}
                       </Typography>
                       <Grid container spacing={2}>
                         <Grid size={{ xs: 12, md: 4 }}>
                           <TextField
                             type="number"
                             fullWidth
-                            label="Sanctioned Amount"
+                            label={copy.drawer.sanctionedAmount}
                             value={sanctionedAmount}
                             onChange={(event) => setSanctionedAmount(Number(event.target.value))}
                           />
@@ -679,7 +696,7 @@ export function LoanWorkspace({
                           <TextField
                             type="date"
                             fullWidth
-                            label="Sanction Date"
+                            label={copy.drawer.sanctionDate}
                             value={sanctionDate}
                             onChange={(event) => setSanctionDate(event.target.value)}
                             InputLabelProps={{ shrink: true }}
@@ -689,7 +706,7 @@ export function LoanWorkspace({
                           <TextField
                             type="date"
                             fullWidth
-                            label="Expiry Date"
+                            label={copy.drawer.expiryDate}
                             value={detailExpiryDate}
                             onChange={(event) => setDetailExpiryDate(event.target.value)}
                             InputLabelProps={{ shrink: true }}
@@ -702,7 +719,7 @@ export function LoanWorkspace({
                         disabled={submitting || sanctionedAmount <= 0}
                         onClick={() => void handleLoanAction("sanction")}
                       >
-                        Save Sanction
+                        {copy.actions.saveSanction}
                       </Button>
                     </Paper>
 
@@ -710,12 +727,12 @@ export function LoanWorkspace({
                       <Grid size={{ xs: 12, md: 6 }}>
                         <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)", height: "100%" }}>
                           <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
-                            Disburse
+                            {copy.drawer.disburse}
                           </Typography>
                           <TextField
                             type="number"
                             fullWidth
-                            label="Disburse Amount"
+                            label={copy.actions.disburseAmount}
                             value={disburseAmount}
                             onChange={(event) => setDisburseAmount(Number(event.target.value))}
                           />
@@ -725,19 +742,19 @@ export function LoanWorkspace({
                             disabled={submitting || disburseAmount <= 0}
                             onClick={() => void handleLoanAction("disburse")}
                           >
-                            Disburse Amount
+                            {copy.actions.disburseAmount}
                           </Button>
                         </Paper>
                       </Grid>
                       <Grid size={{ xs: 12, md: 6 }}>
                         <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)", height: "100%" }}>
                           <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
-                            Recovery
+                            {copy.drawer.recovery}
                           </Typography>
                           <TextField
                             type="number"
                             fullWidth
-                            label="Recover Amount"
+                            label={copy.drawer.recoverAmount}
                             value={recoverAmountValue}
                             onChange={(event) => setRecoverAmountValue(Number(event.target.value))}
                           />
@@ -747,7 +764,7 @@ export function LoanWorkspace({
                             disabled={submitting || recoverAmountValue <= 0}
                             onClick={() => void handleLoanAction("recover")}
                           >
-                            Record Recovery
+                            {copy.actions.recordRecovery}
                           </Button>
                         </Paper>
                       </Grid>
@@ -755,13 +772,13 @@ export function LoanWorkspace({
 
                     <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
                       <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
-                        Overdue Control
+                        {copy.drawer.overdueControl}
                       </Typography>
                       <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
                         <TextField
                           type="number"
                           fullWidth
-                          label="Overdue Amount"
+                          label={copy.drawer.overdueAmount}
                           value={overdueAmount}
                           onChange={(event) => setOverdueAmount(Number(event.target.value))}
                         />
@@ -771,7 +788,7 @@ export function LoanWorkspace({
                           disabled={submitting || overdueAmount < 0}
                           onClick={() => void handleLoanAction("overdue")}
                         >
-                          Update Overdue
+                          {copy.actions.updateOverdue}
                         </Button>
                       </Stack>
                     </Paper>

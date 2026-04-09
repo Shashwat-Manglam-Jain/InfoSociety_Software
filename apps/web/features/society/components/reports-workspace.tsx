@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Alert,
   Box,
@@ -32,22 +31,38 @@ import {
   getReportCatalog,
   runReport,
   listReportJobs,
-  getReportJob,
   type ReportCatalog,
-  type ReportJobRecord,
-  type ReportStatus
+  type ReportJobRecord
 } from "@/shared/api/reports";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getReportsWorkspaceCopy } from "@/shared/i18n/reports-workspace-copy";
+import { toast } from "@/shared/ui/toast";
 import { MetricCard } from "./operations/MetricCard";
 import { SectionHero } from "./operations/SectionHero";
 import { TableEmpty } from "./operations/shared/TableEmpty";
-import { toast } from "@/shared/ui/toast";
 
 type ReportsWorkspaceProps = {
   token: string;
 };
 
+function resolveIntlLocale(locale: "en" | "hi" | "mr") {
+  return locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+}
+
+function formatDateTime(dateStr: string, locale: "en" | "hi" | "mr") {
+  return new Date(dateStr).toLocaleDateString(resolveIntlLocale(locale), {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
   const theme = useTheme();
+  const { locale } = useLanguage();
+  const copy = getReportsWorkspaceCopy(locale);
   const [rows, setRows] = useState<ReportJobRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +84,7 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
         setSelectedReport(data[firstCategory]?.[0] || "");
       }
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Unable to load report catalog.";
+      const msg = caught instanceof Error ? caught.message : copy.errors.loadCatalogFailed;
       toast.error(msg);
     }
   }
@@ -85,7 +100,7 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
       });
       setRows(response.rows);
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Unable to load report jobs.";
+      const msg = caught instanceof Error ? caught.message : copy.errors.loadJobsFailed;
       setError(msg);
       toast.error(msg);
     } finally {
@@ -95,7 +110,7 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
 
   useEffect(() => {
     void loadCatalog();
-  }, [token]);
+  }, [token, copy.errors.loadCatalogFailed]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -103,7 +118,7 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
     }, 200);
 
     return () => window.clearTimeout(timeoutId);
-  }, [page, rowsPerPage, token]);
+  }, [page, rowsPerPage, token, copy.errors.loadJobsFailed]);
 
   const metrics = useMemo(() => {
     const total = rows.length;
@@ -112,16 +127,16 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
     const failed = rows.filter((r) => r.status === "FAILED").length;
 
     return [
-      { label: "Report Jobs", value: String(total), caption: "Total report generation jobs." },
-      { label: "Completed", value: String(done), caption: "Successfully generated reports." },
-      { label: "Running", value: String(running), caption: "Reports in progress." },
-      { label: "Failed", value: String(failed), caption: "Failed generation jobs." }
+      { label: copy.metrics.reportJobs.label, value: String(total), caption: copy.metrics.reportJobs.caption },
+      { label: copy.metrics.completed.label, value: String(done), caption: copy.metrics.completed.caption },
+      { label: copy.metrics.running.label, value: String(running), caption: copy.metrics.running.caption },
+      { label: copy.metrics.failed.label, value: String(failed), caption: copy.metrics.failed.caption }
     ];
-  }, [rows]);
+  }, [rows, copy]);
 
   async function handleRunReport() {
     if (!selectedCategory || !selectedReport) {
-      toast.error("Please select a report");
+      toast.error(copy.errors.selectReport);
       return;
     }
 
@@ -131,12 +146,12 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
         category: selectedCategory,
         reportName: selectedReport
       });
-      toast.success("Report generation started");
+      toast.success(copy.success.started);
       setRunOpen(false);
       setSelectedReport("");
       void loadRows();
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Failed to run report";
+      const msg = caught instanceof Error ? caught.message : copy.errors.runFailed;
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -147,14 +162,21 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
     return selectedCategory ? catalog[selectedCategory] || [] : [];
   }, [selectedCategory, catalog]);
 
+  function localizeStatus(status: string) {
+    if (status === "DONE") return copy.statuses.done;
+    if (status === "RUNNING") return copy.statuses.running;
+    if (status === "FAILED") return copy.statuses.failed;
+    return status;
+  }
+
   return (
     <Box>
-      <SectionHero title="Reports & Enquiries" description="Generate and manage society reports and data exports." />
-      
+      <SectionHero icon={<RefreshRoundedIcon />} eyebrow={copy.hero.eyebrow} title={copy.hero.title} description={copy.hero.description} />
+
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -170,20 +192,11 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
       <Paper sx={{ mx: 2, mb: 2 }}>
         <Box sx={{ p: 2, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
           <Box sx={{ flex: 1, minWidth: 250 }} />
-          <Button
-            variant="contained"
-            startIcon={<RefreshRoundedIcon />}
-            onClick={() => void loadRows()}
-            disabled={loading}
-          >
-            Refresh
+          <Button variant="contained" startIcon={<RefreshRoundedIcon />} onClick={() => void loadRows()} disabled={loading}>
+            {copy.actions.refresh}
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={() => setRunOpen(true)}
-          >
-            Run Report
+          <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setRunOpen(true)}>
+            {copy.actions.runReport}
           </Button>
         </Box>
 
@@ -192,19 +205,23 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
             <CircularProgress />
           </Box>
         ) : rows.length === 0 ? (
-          <TableEmpty message="No report jobs found. Click 'Run Report' to generate one." />
+          <Table>
+            <TableBody>
+              <TableEmpty colSpan={6} label={copy.table.emptyState} />
+            </TableBody>
+          </Table>
         ) : (
           <>
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: theme.palette.mode === "dark" ? "#1e1e1e" : "#f5f5f5" }}>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Report Name</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Requested At</TableCell>
-                    <TableCell>Completed At</TableCell>
-                    <TableCell>Requested By</TableCell>
+                    <TableCell>{copy.table.category}</TableCell>
+                    <TableCell>{copy.table.reportName}</TableCell>
+                    <TableCell>{copy.table.status}</TableCell>
+                    <TableCell>{copy.table.requestedAt}</TableCell>
+                    <TableCell>{copy.table.completedAt}</TableCell>
+                    <TableCell>{copy.table.requestedBy}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -214,7 +231,7 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
                       <TableCell>{row.reportName}</TableCell>
                       <TableCell>
                         <Chip
-                          label={row.status}
+                          label={localizeStatus(row.status)}
                           color={
                             row.status === "DONE"
                               ? "success"
@@ -227,26 +244,8 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
                           size="small"
                         />
                       </TableCell>
-                      <TableCell>
-                        {new Date(row.requestedAt).toLocaleDateString("en-IN", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        })}
-                      </TableCell>
-                      <TableCell>
-                        {row.completedAt
-                          ? new Date(row.completedAt).toLocaleDateString("en-IN", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit"
-                            })
-                          : "-"}
-                      </TableCell>
+                      <TableCell>{formatDateTime(row.requestedAt, locale)}</TableCell>
+                      <TableCell>{row.completedAt ? formatDateTime(row.completedAt, locale) : "-"}</TableCell>
                       <TableCell>{row.requestedBy?.fullName || "-"}</TableCell>
                     </TableRow>
                   ))}
@@ -261,16 +260,20 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
               page={page}
               onPageChange={(_, newPage) => setPage(newPage)}
               onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+              labelRowsPerPage={copy.pagination.rowsPerPage}
+              labelDisplayedRows={({ from, to, count }) =>
+                copy.pagination.displayedRows.replace("{{from}}", String(from)).replace("{{to}}", String(to)).replace("{{count}}", String(count))
+              }
+              getItemAriaLabel={(buttonType) => buttonType === "next" ? copy.pagination.nextPage : copy.pagination.previousPage}
             />
           </>
         )}
       </Paper>
 
-      {/* Run Report Drawer */}
       <Drawer anchor="right" open={runOpen} onClose={() => setRunOpen(false)}>
         <Box sx={{ width: 400, p: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography variant="h6">Run Report</Typography>
+            <Typography variant="h6">{copy.drawer.title}</Typography>
             <IconButton size="small" onClick={() => setRunOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>
@@ -279,7 +282,7 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
           <Stack spacing={2}>
             <TextField
               select
-              label="Category"
+              label={copy.drawer.category}
               value={selectedCategory}
               onChange={(e) => {
                 setSelectedCategory(e.target.value);
@@ -298,7 +301,7 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
 
             <TextField
               select
-              label="Report"
+              label={copy.drawer.report}
               value={selectedReport}
               onChange={(e) => setSelectedReport(e.target.value)}
               fullWidth
@@ -312,25 +315,14 @@ export function ReportsWorkspace({ token }: ReportsWorkspaceProps) {
               ))}
             </TextField>
 
-            <Alert severity="info">
-              The report will be generated asynchronously. You'll receive a notification when it's complete.
-            </Alert>
+            <Alert severity="info">{copy.drawer.asyncInfo}</Alert>
 
             <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => setRunOpen(false)}
-              >
-                Cancel
+              <Button variant="outlined" fullWidth onClick={() => setRunOpen(false)}>
+                {copy.actions.cancel}
               </Button>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleRunReport}
-                disabled={submitting || !selectedReport}
-              >
-                {submitting ? "Starting..." : "Run Report"}
+              <Button variant="contained" fullWidth onClick={handleRunReport} disabled={submitting || !selectedReport}>
+                {submitting ? copy.actions.starting : copy.actions.start}
               </Button>
             </Box>
           </Stack>

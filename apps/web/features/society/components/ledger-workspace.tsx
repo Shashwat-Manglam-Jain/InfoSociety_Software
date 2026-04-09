@@ -25,21 +25,27 @@ import {
 import Grid from "@mui/material/Grid";
 import { alpha } from "@mui/material/styles";
 import { listCashbookEntries, recomputeGeneralLedger, type CashbookEntryRecord } from "@/shared/api/cashbook";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getLedgerWorkspaceCopy } from "@/shared/i18n/ledger-workspace-copy";
 
 type LedgerWorkspaceProps = {
   token: string;
 };
 
-function formatCurrency(value: number | string) {
+function resolveIntlLocale(locale: "en" | "hi" | "mr") {
+  return locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+}
+
+function formatCurrency(value: number | string, locale: "en" | "hi" | "mr") {
   const numericValue = typeof value === "string" ? Number(value) : value;
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat(resolveIntlLocale(locale), {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0
   }).format(Number.isFinite(numericValue) ? numericValue : 0);
 }
 
-function formatDate(value?: string | null) {
+function formatDate(value: string | null | undefined, locale: "en" | "hi" | "mr") {
   if (!value) {
     return "-";
   }
@@ -49,7 +55,7 @@ function formatDate(value?: string | null) {
     return value;
   }
 
-  return parsed.toLocaleDateString("en-IN");
+  return parsed.toLocaleDateString(resolveIntlLocale(locale));
 }
 
 function MetricCard({ label, value, caption }: { label: string; value: string; caption: string }) {
@@ -76,11 +82,11 @@ function MetricCard({ label, value, caption }: { label: string; value: string; c
   );
 }
 
-function StatusChip({ isPosted }: { isPosted: boolean }) {
+function StatusChip({ isPosted, postedLabel, pendingLabel }: { isPosted: boolean; postedLabel: string; pendingLabel: string }) {
   return (
     <Chip
       size="small"
-      label={isPosted ? "Posted" : "Pending"}
+      label={isPosted ? postedLabel : pendingLabel}
       sx={{
         fontWeight: 800,
         borderRadius: 1.5,
@@ -92,6 +98,8 @@ function StatusChip({ isPosted }: { isPosted: boolean }) {
 }
 
 export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
+  const { locale } = useLanguage();
+  const copy = getLedgerWorkspaceCopy(locale);
   const [rows, setRows] = useState<CashbookEntryRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -129,7 +137,7 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
       setRows(response.rows);
       setTotal(response.total);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to load ledger records.");
+      setError(caught instanceof Error ? caught.message : copy.errors.loadFailed);
     } finally {
       setLoading(false);
     }
@@ -148,7 +156,7 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
       setLedgerSummary(response.heads);
       await loadLedgerEntries();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to refresh ledger summary.");
+      setError(caught instanceof Error ? caught.message : copy.errors.refreshFailed);
     } finally {
       setRefreshing(false);
     }
@@ -161,27 +169,27 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
 
     return [
       {
-        label: "Visible Entries",
+        label: copy.metrics.visibleEntries.label,
         value: String(total),
-        caption: "Ledger rows matching the current filters."
+        caption: copy.metrics.visibleEntries.caption
       },
       {
-        label: "Posted Entries",
+        label: copy.metrics.postedEntries.label,
         value: String(postedCount),
-        caption: "Entries already posted to the daily ledger."
+        caption: copy.metrics.postedEntries.caption
       },
       {
-        label: "Debit Total",
-        value: formatCurrency(totalDebits),
-        caption: "Debit total in the current result set."
+        label: copy.metrics.debitTotal.label,
+        value: formatCurrency(totalDebits, locale),
+        caption: copy.metrics.debitTotal.caption
       },
       {
-        label: "Credit Total",
-        value: formatCurrency(totalCredits),
-        caption: "Credit total in the current result set."
+        label: copy.metrics.creditTotal.label,
+        value: formatCurrency(totalCredits, locale),
+        caption: copy.metrics.creditTotal.caption
       }
     ];
-  }, [rows, total]);
+  }, [rows, total, copy, locale]);
 
   const headSummaryRows = Object.entries(ledgerSummary);
 
@@ -191,7 +199,7 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
         elevation={0}
         sx={{
           p: { xs: 2.2, md: 3 },
-          borderRadius: 4,
+          borderRadius: 1,
           border: "1px solid rgba(15, 23, 42, 0.08)",
           background:
             "linear-gradient(135deg, rgba(15,23,42,0.96) 0%, rgba(30,41,59,0.96) 46%, rgba(16,185,129,0.92) 100%)",
@@ -204,7 +212,7 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
               sx={{
                 width: 56,
                 height: 56,
-                borderRadius: 3,
+                borderRadius: 1,
                 display: "grid",
                 placeItems: "center",
                 bgcolor: "rgba(255,255,255,0.12)",
@@ -215,13 +223,13 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
             </Box>
             <Box>
               <Typography variant="overline" sx={{ color: "rgba(255,255,255,0.72)", letterSpacing: "0.08em" }}>
-                Ledger
+                {copy.hero.eyebrow}
               </Typography>
               <Typography variant="h4" sx={{ fontWeight: 900, letterSpacing: "-0.04em" }}>
-                Ledger Register
+                {copy.hero.title}
               </Typography>
               <Typography sx={{ color: "rgba(255,255,255,0.75)", maxWidth: 820 }}>
-                View cashbook and ledger records in one searchable register. Use the refresh action to rebuild the head-wise summary for the selected date.
+                {copy.hero.description}
               </Typography>
             </Box>
           </Stack>
@@ -234,11 +242,11 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
                 setPage(0);
                 setSearch(event.target.value);
               }}
-              placeholder="Search head code, head name, remark..."
+              placeholder={copy.actions.searchPlaceholder}
               sx={{
                 minWidth: { xs: "100%", sm: 280 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
+                  borderRadius: 1,
                   bgcolor: "rgba(255,255,255,0.08)",
                   color: "#fff"
                 }
@@ -255,12 +263,12 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
               sx={{
                 bgcolor: "#fff",
                 color: "#0f172a",
-                borderRadius: 2.5,
+                borderRadius: 1,
                 fontWeight: 900,
                 "&:hover": { bgcolor: "#e2e8f0" }
               }}
             >
-              Refresh Ledger
+              {copy.actions.refreshLedger}
             </Button>
           </Stack>
         </Stack>
@@ -278,7 +286,7 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
         <TextField
           type="date"
           fullWidth
-          label="Entry Date"
+          label={copy.filters.entryDate}
           value={dateFilter}
           onChange={(event) => {
             setPage(0);
@@ -289,35 +297,35 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
         <TextField
           select
           fullWidth
-          label="Posting Status"
+          label={copy.filters.postingStatus}
           value={postedFilter}
           onChange={(event) => {
             setPage(0);
             setPostedFilter(event.target.value as "" | "true" | "false");
           }}
         >
-          <MenuItem value="">All Entries</MenuItem>
-          <MenuItem value="true">Posted</MenuItem>
-          <MenuItem value="false">Pending</MenuItem>
+          <MenuItem value="">{copy.filters.allEntries}</MenuItem>
+          <MenuItem value="true">{copy.statuses.posted}</MenuItem>
+          <MenuItem value="false">{copy.statuses.pending}</MenuItem>
         </TextField>
       </Stack>
 
-      {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
+      {error ? <Alert severity="error" sx={{ borderRadius: 1 }}>{error}</Alert> : null}
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ borderRadius: 1, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
         <TableContainer>
           <Table sx={{ minWidth: 1080, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: "#f8fafc" }}>
               <TableRow>
                 {[
-                  { label: "Head Code", width: "12%", align: "left" },
-                  { label: "Head Name", width: "20%", align: "left" },
-                  { label: "Type", width: "10%", align: "left" },
-                  { label: "Mode", width: "10%", align: "left" },
-                  { label: "Amount", width: "12%", align: "right" },
-                  { label: "Entry Date", width: "12%", align: "left" },
-                  { label: "Status", width: "9%", align: "center" },
-                  { label: "Remark", width: "15%", align: "left" }
+                  { label: copy.table.headCode, width: "12%", align: "left" },
+                  { label: copy.table.headName, width: "20%", align: "left" },
+                  { label: copy.table.type, width: "10%", align: "left" },
+                  { label: copy.table.mode, width: "10%", align: "left" },
+                  { label: copy.table.amount, width: "12%", align: "right" },
+                  { label: copy.table.entryDate, width: "12%", align: "left" },
+                  { label: copy.table.status, width: "9%", align: "center" },
+                  { label: copy.table.remark, width: "15%", align: "left" }
                 ].map((col, idx) => (
                   <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid rgba(15, 23, 42, 0.08)` }}>
                     {col.label}
@@ -330,7 +338,7 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
                 <TableRow>
                   <TableCell colSpan={8} align="center" sx={{ py: 5 }}>
                     <Typography variant="body2" color="text.secondary">
-                      No ledger records matched the current filters.
+                      {copy.table.emptyState}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -357,13 +365,13 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
                       <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{entry.mode}</Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(entry.amount)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(entry.amount, locale)}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{formatDate(entry.entryDate)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{formatDate(entry.entryDate, locale)}</Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <StatusChip isPosted={entry.isPosted} />
+                      <StatusChip isPosted={entry.isPosted} postedLabel={copy.statuses.posted} pendingLabel={copy.statuses.pending} />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{entry.remark || "-"}</Typography>
@@ -384,16 +392,21 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
             setRowsPerPage(parseInt(event.target.value, 10));
             setPage(0);
           }}
+          labelRowsPerPage={copy.pagination.rowsPerPage}
+          labelDisplayedRows={({ from, to, count }) =>
+            copy.pagination.displayedRows.replace("{{from}}", String(from)).replace("{{to}}", String(to)).replace("{{count}}", String(count))
+          }
+          getItemAriaLabel={(buttonType) => buttonType === "next" ? copy.pagination.nextPage : copy.pagination.previousPage}
         />
       </Paper>
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ borderRadius: 1, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
         <Box sx={{ p: 2.4, borderBottom: "1px solid rgba(15, 23, 42, 0.08)" }}>
           <Typography variant="h6" sx={{ fontWeight: 900 }}>
-            Head Summary
+            {copy.headSummary.title}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Debit and credit totals grouped by ledger head.
+            {copy.headSummary.description}
           </Typography>
         </Box>
         <TableContainer>
@@ -401,10 +414,10 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
             <TableHead sx={{ bgcolor: "#f8fafc" }}>
               <TableRow>
                 {[
-                  { label: "Head Code", width: "25%", align: "left" },
-                  { label: "Head Name", width: "35%", align: "left" },
-                  { label: "Debit", width: "20%", align: "right" },
-                  { label: "Credit", width: "20%", align: "right" }
+                  { label: copy.table.headCode, width: "25%", align: "left" },
+                  { label: copy.table.headName, width: "35%", align: "left" },
+                  { label: copy.headSummary.debit, width: "20%", align: "right" },
+                  { label: copy.headSummary.credit, width: "20%", align: "right" }
                 ].map((col, idx) => (
                   <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid rgba(15, 23, 42, 0.08)` }}>
                     {col.label}
@@ -417,7 +430,7 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
                 <TableRow>
                   <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="text.secondary">
-                      Refresh ledger to build the head summary.
+                      {copy.headSummary.emptyState}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -438,10 +451,10 @@ export function LedgerWorkspace({ token }: LedgerWorkspaceProps) {
                       <Typography variant="body2" sx={{ fontWeight: 700, color: "text.secondary" }}>{entry.headName}</Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(entry.debit)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(entry.debit, locale)}</Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(entry.credit)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(entry.credit, locale)}</Typography>
                     </TableCell>
                   </TableRow>
                 ))

@@ -27,6 +27,7 @@ import {
   Typography
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
+import { alpha, useTheme } from "@mui/material/styles";
 import { getPublicSocieties, login } from "@/shared/api/client";
 import { getDefaultDashboardPath, getSession, setSession } from "@/shared/auth/session";
 import { useLanguage } from "@/shared/i18n/language-provider";
@@ -64,8 +65,10 @@ function findExactSocietyMatch(societies: Society[], query: string) {
 
 export default function LoginPage() {
   const router = useRouter();
+  const theme = useTheme();
   const { locale } = useLanguage();
   const copy = getLoginPageCopy(locale);
+  const isDark = theme.palette.mode === "dark";
   const societyRoleOptions: Array<{ value: UserRole; label: string; helper: string }> = copy.roleOptions;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -246,6 +249,53 @@ export default function LoginPage() {
   const selectedRegionCopy = selectedSocietyDetails?.registrationState
     ? copy.leftPanel.selectedRegion.replace("{{region}}", selectedSocietyDetails.registrationState)
     : null;
+  const formShellSx = {
+    border: `1px solid ${isDark ? alpha("#cbd5e1", 0.18) : "rgba(15, 23, 42, 0.08)"}`,
+    bgcolor: isDark ? alpha("#0f172a", 0.7) : "rgba(255,255,255,0.45)",
+    backdropFilter: "blur(12px)"
+  } as const;
+  const panelSx = {
+    border: `1px solid ${isDark ? alpha("#93c5fd", 0.18) : "rgba(59, 130, 246, 0.16)"}`,
+    bgcolor: isDark ? alpha("#0f172a", 0.6) : "rgba(239, 246, 255, 0.7)"
+  } as const;
+  const fieldLabelSx = {
+    mb: 1.2,
+    fontWeight: 700,
+    color: isDark ? "rgba(226, 232, 240, 0.96)" : "#1e293b"
+  } as const;
+  const helperTextSx = {
+    color: isDark ? "rgba(148, 163, 184, 0.96)" : undefined
+  } as const;
+  const inputShellSx = {
+    borderRadius: 2.5,
+    bgcolor: isDark ? alpha("#0f172a", 0.92) : "#fff",
+    color: isDark ? "#e2e8f0" : "#0f172a",
+    "& input": {
+      color: isDark ? "#e2e8f0" : "#0f172a"
+    },
+    "& input::placeholder": {
+      color: isDark ? "rgba(148, 163, 184, 0.82)" : undefined,
+      opacity: 1
+    },
+    "& .MuiSvgIcon-root": {
+      color: isDark ? alpha(theme.palette.primary.light, 0.95) : theme.palette.primary.main
+    },
+    "& .Mui-disabled": {
+      WebkitTextFillColor: isDark ? "rgba(226, 232, 240, 0.9)" : undefined
+    },
+    "& fieldset": {
+      borderColor: isDark ? alpha("#94a3b8", 0.28) : "rgba(15, 23, 42, 0.12)"
+    },
+    "&:hover fieldset": {
+      borderColor: isDark ? alpha("#cbd5e1", 0.45) : "rgba(15, 23, 42, 0.22)"
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: theme.palette.primary.main
+    }
+  } as const;
+  const inputTextFieldSx = {
+    "& .MuiFormHelperText-root": helperTextSx
+  } as const;
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
@@ -364,9 +414,7 @@ export default function LoginPage() {
                   sx={{
                     p: { xs: 2, md: 3.2 },
                     borderRadius: 2,
-                    border: "1px solid rgba(15, 23, 42, 0.08)",
-                    bgcolor: "rgba(255,255,255,0.45)",
-                    backdropFilter: "blur(12px)"
+                    ...formShellSx
                   }}
                 >
                   <Stack spacing={3}>
@@ -375,7 +423,7 @@ export default function LoginPage() {
                     </Typography>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                      <Typography variant="subtitle2" sx={fieldLabelSx}>
                         {copy.formPanel.searchSocietyLabel}
                       </Typography>
                       <Autocomplete
@@ -428,13 +476,11 @@ export default function LoginPage() {
                             placeholder={copy.formPanel.searchPlaceholder}
                             onBlur={commitSocietySearch}
                             helperText={societyLookupError ?? copy.formPanel.searchHelper}
+                            sx={inputTextFieldSx}
+                            FormHelperTextProps={{ sx: helperTextSx }}
                             InputProps={{
                               ...params.InputProps,
-                              sx: {
-                                borderRadius: 2.5,
-                                bgcolor: "#fff",
-                                "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" }
-                              },
+                              sx: inputShellSx,
                               startAdornment: <SearchRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />,
                               endAdornment: (
                                 <>
@@ -453,8 +499,7 @@ export default function LoginPage() {
                         sx={{
                           p: 2,
                           borderRadius: 2,
-                          border: "1px solid rgba(59, 130, 246, 0.16)",
-                          bgcolor: "rgba(239, 246, 255, 0.7)"
+                          ...panelSx
                         }}
                       >
                         <Stack spacing={1.3}>
@@ -466,25 +511,31 @@ export default function LoginPage() {
                               <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
                                 {copy.formPanel.registeredName}
                               </Typography>
-                              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{selectedSocietyDetails.name}</Typography>
+                              <Typography sx={{ fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                                {selectedSocietyDetails.name}
+                              </Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
                               <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
                                 {copy.formPanel.societyCode}
                               </Typography>
-                              <Typography sx={{ fontWeight: 800, color: "#0f172a" }}>{selectedSocietyDetails.code}</Typography>
+                              <Typography sx={{ fontWeight: 800, color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                                {selectedSocietyDetails.code}
+                              </Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
                               <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
                                 {copy.formPanel.portalStatus}
                               </Typography>
-                              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>{copy.formPanel.approvedStatus}</Typography>
+                              <Typography sx={{ fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>
+                                {copy.formPanel.approvedStatus}
+                              </Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
                               <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
                                 {copy.formPanel.region}
                               </Typography>
-                              <Typography sx={{ fontWeight: 700, color: "#0f172a" }}>
+                              <Typography sx={{ fontWeight: 700, color: isDark ? "#e2e8f0" : "#0f172a" }}>
                                 {selectedSocietyDetails.registrationState ?? copy.formPanel.notProvided}
                               </Typography>
                             </Grid>
@@ -494,7 +545,7 @@ export default function LoginPage() {
                     ) : null}
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                      <Typography variant="subtitle2" sx={fieldLabelSx}>
                         {copy.formPanel.societyCodeLabel}
                       </Typography>
                       <TextField
@@ -514,15 +565,17 @@ export default function LoginPage() {
                         fullWidth
                         error={Boolean(societyCodeError)}
                         helperText={societyCodeError || copy.formPanel.societyCodeHelper}
+                        sx={inputTextFieldSx}
+                        FormHelperTextProps={{ sx: helperTextSx }}
                         InputProps={{
-                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          sx: inputShellSx,
                           startAdornment: <ApartmentRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
                         }}
                       />
                     </Box>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                      <Typography variant="subtitle2" sx={fieldLabelSx}>
                         {copy.formPanel.accessRoleLabel}
                       </Typography>
                       <TextField
@@ -531,8 +584,10 @@ export default function LoginPage() {
                         onChange={(event) => setSelectedRole(event.target.value as UserRole)}
                         fullWidth
                         helperText={selectedRoleCopy.helper}
+                        sx={inputTextFieldSx}
+                        FormHelperTextProps={{ sx: helperTextSx }}
                         InputProps={{
-                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          sx: inputShellSx,
                           startAdornment: <BadgeRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
                         }}
                       >
@@ -545,7 +600,7 @@ export default function LoginPage() {
                     </Box>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                      <Typography variant="subtitle2" sx={fieldLabelSx}>
                         {copy.formPanel.usernameLabel}
                       </Typography>
                       <TextField
@@ -561,15 +616,17 @@ export default function LoginPage() {
                         fullWidth
                         error={Boolean(usernameError)}
                         helperText={usernameError || copy.formPanel.usernameHelper}
+                        sx={inputTextFieldSx}
+                        FormHelperTextProps={{ sx: helperTextSx }}
                         InputProps={{
-                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          sx: inputShellSx,
                           startAdornment: <BadgeRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
                         }}
                       />
                     </Box>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                      <Typography variant="subtitle2" sx={fieldLabelSx}>
                         {copy.formPanel.passwordLabel}
                       </Typography>
                       <TextField
@@ -586,8 +643,10 @@ export default function LoginPage() {
                         fullWidth
                         error={Boolean(passwordError)}
                         helperText={passwordError || copy.formPanel.passwordHelper}
+                        sx={inputTextFieldSx}
+                        FormHelperTextProps={{ sx: helperTextSx }}
                         InputProps={{
-                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          sx: inputShellSx,
                           startAdornment: <LockIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />,
                           endAdornment: (
                             <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end" size="small">

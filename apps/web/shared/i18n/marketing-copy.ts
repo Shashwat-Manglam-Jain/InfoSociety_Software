@@ -37,6 +37,7 @@ type FooterCopy = {
   privacyLabel: string;
   termsLabel: string;
   complianceLabel: string;
+  advertisingLabel: string;
   summary: string;
   publicOperationsNote: string;
   workspaceOperationsNote: string;
@@ -108,6 +109,7 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
       privacyLabel: "Privacy Policy",
       termsLabel: "Terms of Service",
       complianceLabel: "Compliance",
+      advertisingLabel: "Advertising Disclosure",
       summary: "Society savings workflows for members, agents, and administrators.",
       publicOperationsNote: "Frontend and API work together across onboarding, operations, monitoring, and reporting.",
       workspaceOperationsNote: "Operational workspaces remain role-based, secure, and ready for day-to-day public use.",
@@ -174,6 +176,7 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
       privacyLabel: "गोपनीयता नीति",
       termsLabel: "सेवा की शर्तें",
       complianceLabel: "अनुपालन",
+      advertisingLabel: "विज्ञापन प्रकटीकरण",
       summary: "सदस्यों, एजेंटों और प्रशासकों के लिए सोसाइटी सेविंग्स वर्कफ़्लो।",
       publicOperationsNote: "फ्रंटएंड और API मिलकर ऑनबोर्डिंग, ऑपरेशन्स, मॉनिटरिंग और रिपोर्टिंग को सपोर्ट करते हैं।",
       workspaceOperationsNote: "ऑपरेशनल वर्कस्पेस भूमिका-आधारित, सुरक्षित और रोज़मर्रा के सार्वजनिक उपयोग के लिए तैयार हैं।",
@@ -240,6 +243,7 @@ const marketingCopy: Record<AppLocale, MarketingCopyBundle> = {
       privacyLabel: "गोपनीयता धोरण",
       termsLabel: "सेवेच्या अटी",
       complianceLabel: "अनुपालन",
+      advertisingLabel: "जाहिरात प्रकटीकरण",
       summary: "सदस्य, एजंट आणि प्रशासकांसाठी सोसायटी सेव्हिंग्स वर्कफ्लोज.",
       publicOperationsNote: "फ्रंटएंड आणि API एकत्र येऊन ऑनबोर्डिंग, ऑपरेशन्स, मॉनिटरिंग आणि रिपोर्टिंगला सपोर्ट करतात.",
       workspaceOperationsNote: "ऑपरेशनल वर्कस्पेसेस भूमिका-आधारित, सुरक्षित आणि दैनंदिन सार्वजनिक वापरासाठी तयार आहेत.",

@@ -23,7 +23,7 @@ export function MetricCard({ label, value, caption, trend }: MetricCardProps) {
       elevation={0}
       sx={{
         p: 2.5,
-        borderRadius: 3,
+        borderRadius: 1,
         border: `1px solid ${surfaces.border}`,
         height: "100%",
         bgcolor: surfaces.paper,

@@ -38,7 +38,7 @@ export function PricingSection({ t, pricingPlans, pricingLoading, pricingError, 
       </Typography>
 
       {pricingError && !pricingLoading && pricingPlans.length === 0 ? (
-        <Alert severity="warning" sx={{ maxWidth: 900, mx: "auto", mb: 4, borderRadius: 3 }}>
+        <Alert severity="warning" sx={{ maxWidth: 900, mx: "auto", mb: 4, borderRadius: 1 }}>
           {pricingError}
         </Alert>
       ) : null}
@@ -47,7 +47,7 @@ export function PricingSection({ t, pricingPlans, pricingLoading, pricingError, 
         {pricingLoading
           ? [1, 2].map((item) => (
               <Grid size={{ xs: 12, md: 6 }} key={item} sx={{ overflow: "visible", position: "relative" }}>
-                <Card sx={{ height: "100%", minHeight: 320, borderRadius: 3 }}>
+                <Card sx={{ height: "100%", minHeight: 320, borderRadius: 1 }}>
                   <CardContent sx={{ p: 3 }}>
                     <Skeleton variant="text" width={140} height={38} />
                     <Skeleton variant="text" width="80%" />

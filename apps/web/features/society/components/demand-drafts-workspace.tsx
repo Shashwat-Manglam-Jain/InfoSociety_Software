@@ -33,17 +33,20 @@ import {
   createDemandDraft,
   updateDemandDraft,
   updateDemandDraftStatus,
-  type DemandDraftRecord,
-  type InstrumentStatus
+  type DemandDraftRecord
 } from "@/shared/api/demand-drafts";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getDemandDraftsWorkspaceCopy } from "@/shared/i18n/demand-drafts-workspace-copy";
+import { toast } from "@/shared/ui/toast";
 import { MetricCard } from "./operations/MetricCard";
 import { SectionHero } from "./operations/SectionHero";
 import { TableEmpty } from "./operations/shared/TableEmpty";
-import { toast } from "@/shared/ui/toast";
 
 type DemandDraftsWorkspaceProps = {
   token: string;
 };
+
+type InstrumentStatus = "ENTERED" | "CLEARED" | "RETURNED" | "CANCELLED";
 
 type DemandDraftForm = {
   accountId: string;
@@ -61,21 +64,27 @@ function createEmptyDemandDraftForm(): DemandDraftForm {
   };
 }
 
-function formatCurrency(value: number | string): string {
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return "₹0";
-  return `₹${num.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+function resolveIntlLocale(locale: "en" | "hi" | "mr") {
+  return locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
 }
 
-function formatDate(dateStr: string): string {
+function formatCurrency(value: number | string, locale: "en" | "hi" | "mr"): string {
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return "\u20b90";
+  return `\u20b9${num.toLocaleString(resolveIntlLocale(locale), { maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(dateStr: string, locale: "en" | "hi" | "mr"): string {
   if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleDateString("en-IN");
+  return new Date(dateStr).toLocaleDateString(resolveIntlLocale(locale));
 }
 
 const STATUSES: InstrumentStatus[] = ["ENTERED", "CLEARED", "RETURNED", "CANCELLED"];
 
 export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
   const theme = useTheme();
+  const { locale } = useLanguage();
+  const copy = getDemandDraftsWorkspaceCopy(locale);
   const [rows, setRows] = useState<DemandDraftRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +113,7 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
       });
       setRows(response.rows);
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Unable to load demand drafts.";
+      const msg = caught instanceof Error ? caught.message : copy.errors.loadFailed;
       setError(msg);
       toast.error(msg);
     } finally {
@@ -118,7 +127,7 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
     }, 200);
 
     return () => window.clearTimeout(timeoutId);
-  }, [search, status, page, rowsPerPage, token]);
+  }, [search, status, page, rowsPerPage, token, copy.errors.loadFailed]);
 
   const metrics = useMemo(() => {
     const totalAmount = rows.reduce((sum, dd) => sum + Number(dd.amount || 0), 0);
@@ -126,16 +135,16 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
     const returned = rows.filter((dd) => dd.status === "RETURNED").length;
 
     return [
-      { label: "Total Drafts", value: String(rows.length), caption: "Demand draft records." },
-      { label: "Total Amount", value: formatCurrency(totalAmount), caption: "Total draft amount." },
-      { label: "Cleared", value: String(cleared), caption: "Successfully cleared drafts." },
-      { label: "Returned", value: String(returned), caption: "Returned drafts." }
+      { label: copy.metrics.totalDrafts.label, value: String(rows.length), caption: copy.metrics.totalDrafts.caption },
+      { label: copy.metrics.totalAmount.label, value: formatCurrency(totalAmount, locale), caption: copy.metrics.totalAmount.caption },
+      { label: copy.metrics.cleared.label, value: String(cleared), caption: copy.metrics.cleared.caption },
+      { label: copy.metrics.returned.label, value: String(returned), caption: copy.metrics.returned.caption }
     ];
-  }, [rows]);
+  }, [rows, copy, locale]);
 
   async function handleCreate() {
     if (!form.beneficiary || !form.amount) {
-      toast.error("Please fill required fields");
+      toast.error(copy.errors.requiredFields);
       return;
     }
 
@@ -147,12 +156,12 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
         beneficiary: form.beneficiary,
         amount: parseFloat(form.amount)
       });
-      toast.success("Demand draft created successfully");
+      toast.success(copy.success.created);
       setCreateOpen(false);
       setForm(createEmptyDemandDraftForm());
       void loadRows();
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Failed to create demand draft";
+      const msg = caught instanceof Error ? caught.message : copy.errors.createFailed;
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -161,7 +170,7 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
 
   async function handleUpdate() {
     if (!selectedDraft || !form.beneficiary || !form.amount) {
-      toast.error("Please fill required fields");
+      toast.error(copy.errors.requiredFields);
       return;
     }
 
@@ -171,13 +180,13 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
         beneficiary: form.beneficiary,
         amount: parseFloat(form.amount)
       });
-      toast.success("Demand draft updated successfully");
+      toast.success(copy.success.updated);
       setEditOpen(false);
       setSelectedDraft(null);
       setForm(createEmptyDemandDraftForm());
       void loadRows();
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Failed to update demand draft";
+      const msg = caught instanceof Error ? caught.message : copy.errors.updateFailed;
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -186,19 +195,19 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
 
   async function handleStatusChange() {
     if (!selectedDraft) {
-      toast.error("Please select a draft");
+      toast.error(copy.errors.selectDraft);
       return;
     }
 
     setSubmitting(true);
     try {
       await updateDemandDraftStatus(token, selectedDraft.id, newStatus);
-      toast.success(`Status changed to ${newStatus}`);
+      toast.success(copy.success.statusChanged.replace("{{status}}", copy.statuses[newStatus]));
       setStatusOpen(false);
       setSelectedDraft(null);
       void loadRows();
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Failed to update status";
+      const msg = caught instanceof Error ? caught.message : copy.errors.statusUpdateFailed;
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -207,12 +216,12 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
 
   return (
     <Box>
-      <SectionHero title="Demand Drafts" description="Manage demand draft issuance, tracking, and status updates." />
-      
+      <SectionHero icon={<SearchRoundedIcon />} eyebrow={copy.hero.eyebrow} title={copy.hero.title} description={copy.hero.description} />
+
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -228,7 +237,7 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
       <Paper sx={{ mx: 2, mb: 2 }}>
         <Box sx={{ p: 2, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
           <TextField
-            placeholder="Search by beneficiary, draft number..."
+            placeholder={copy.actions.searchPlaceholder}
             variant="outlined"
             size="small"
             value={search}
@@ -241,7 +250,7 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
           />
           <TextField
             select
-            label="Status"
+            label={copy.actions.status}
             value={status}
             onChange={(e) => {
               setStatus(e.target.value as InstrumentStatus | "");
@@ -250,19 +259,15 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
             size="small"
             sx={{ minWidth: 150 }}
           >
-            <MenuItem value="">All Statuses</MenuItem>
+            <MenuItem value="">{copy.actions.allStatuses}</MenuItem>
             {STATUSES.map((s) => (
               <MenuItem key={s} value={s}>
-                {s}
+                {copy.statuses[s]}
               </MenuItem>
             ))}
           </TextField>
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={() => setCreateOpen(true)}
-          >
-            New Draft
+          <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setCreateOpen(true)}>
+            {copy.actions.newDraft}
           </Button>
         </Box>
 
@@ -271,19 +276,23 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
             <CircularProgress />
           </Box>
         ) : rows.length === 0 ? (
-          <TableEmpty message="No demand drafts found" />
+          <Table>
+            <TableBody>
+              <TableEmpty colSpan={6} label={copy.table.emptyState} />
+            </TableBody>
+          </Table>
         ) : (
           <>
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: theme.palette.mode === "dark" ? "#1e1e1e" : "#f5f5f5" }}>
-                    <TableCell>Draft Number</TableCell>
-                    <TableCell>Beneficiary</TableCell>
-                    <TableCell align="right">Amount</TableCell>
-                    <TableCell>Issued Date</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="center">Actions</TableCell>
+                    <TableCell>{copy.table.draftNumber}</TableCell>
+                    <TableCell>{copy.table.beneficiary}</TableCell>
+                    <TableCell align="right">{copy.table.amount}</TableCell>
+                    <TableCell>{copy.table.issuedDate}</TableCell>
+                    <TableCell>{copy.table.status}</TableCell>
+                    <TableCell align="center">{copy.table.actions}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -291,20 +300,16 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
                     <TableRow key={row.id} hover>
                       <TableCell>{row.draftNumber}</TableCell>
                       <TableCell>{row.beneficiary}</TableCell>
-                      <TableCell align="right">{formatCurrency(row.amount)}</TableCell>
-                      <TableCell>{formatDate(row.issuedAt)}</TableCell>
+                      <TableCell align="right">{formatCurrency(row.amount, locale)}</TableCell>
+                      <TableCell>{formatDate(row.issuedAt, locale)}</TableCell>
                       <TableCell>
-                        <Chip
-                          label={row.status}
-                          color={row.status === "CLEARED" ? "success" : row.status === "RETURNED" ? "error" : "default"}
-                          size="small"
-                        />
+                        <Chip label={copy.statuses[row.status]} color={row.status === "CLEARED" ? "success" : row.status === "RETURNED" ? "error" : "default"} size="small" />
                       </TableCell>
                       <TableCell align="center">
                         <Box sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}>
                           <IconButton
                             size="small"
-                            title="Edit"
+                            title={copy.actions.edit}
                             onClick={() => {
                               setSelectedDraft(row);
                               setForm({
@@ -327,7 +332,7 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
                               setStatusOpen(true);
                             }}
                           >
-                            Change Status
+                            {copy.actions.changeStatus}
                           </Button>
                         </Box>
                       </TableCell>
@@ -344,126 +349,72 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
               page={page}
               onPageChange={(_, newPage) => setPage(newPage)}
               onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+              labelRowsPerPage={copy.pagination.rowsPerPage}
+              labelDisplayedRows={({ from, to, count }) =>
+                copy.pagination.displayedRows.replace("{{from}}", String(from)).replace("{{to}}", String(to)).replace("{{count}}", String(count))
+              }
+              getItemAriaLabel={(buttonType) => buttonType === "next" ? copy.pagination.nextPage : copy.pagination.previousPage}
             />
           </>
         )}
       </Paper>
 
-      {/* Create Drawer */}
       <Drawer anchor="right" open={createOpen} onClose={() => setCreateOpen(false)}>
         <Box sx={{ width: 400, p: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography variant="h6">New Demand Draft</Typography>
+            <Typography variant="h6">{copy.drawers.newDemandDraft}</Typography>
             <IconButton size="small" onClick={() => setCreateOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>
           </Box>
 
           <Stack spacing={2}>
-            <TextField
-              label="Account ID (optional)"
-              value={form.accountId}
-              onChange={(e) => setForm({ ...form, accountId: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Customer ID (optional)"
-              value={form.customerId}
-              onChange={(e) => setForm({ ...form, customerId: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Beneficiary"
-              value={form.beneficiary}
-              onChange={(e) => setForm({ ...form, beneficiary: e.target.value })}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Amount"
-              type="number"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              fullWidth
-              required
-              inputProps={{ step: "0.01" }}
-            />
+            <TextField label={copy.drawers.accountIdOptional} value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })} fullWidth />
+            <TextField label={copy.drawers.customerIdOptional} value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })} fullWidth />
+            <TextField label={copy.drawers.beneficiary} value={form.beneficiary} onChange={(e) => setForm({ ...form, beneficiary: e.target.value })} fullWidth required />
+            <TextField label={copy.drawers.amount} type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} fullWidth required inputProps={{ step: "0.01" }} />
 
             <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => setCreateOpen(false)}
-              >
-                Cancel
+              <Button variant="outlined" fullWidth onClick={() => setCreateOpen(false)}>
+                {copy.actions.cancel}
               </Button>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleCreate}
-                disabled={submitting}
-              >
-                {submitting ? "Creating..." : "Create"}
+              <Button variant="contained" fullWidth onClick={handleCreate} disabled={submitting}>
+                {submitting ? copy.actions.creating : copy.actions.create}
               </Button>
             </Box>
           </Stack>
         </Box>
       </Drawer>
 
-      {/* Edit Drawer */}
       <Drawer anchor="right" open={editOpen} onClose={() => setEditOpen(false)}>
         <Box sx={{ width: 400, p: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography variant="h6">Edit Demand Draft</Typography>
+            <Typography variant="h6">{copy.drawers.editDemandDraft}</Typography>
             <IconButton size="small" onClick={() => setEditOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>
           </Box>
 
           <Stack spacing={2}>
-            <TextField
-              label="Beneficiary"
-              value={form.beneficiary}
-              onChange={(e) => setForm({ ...form, beneficiary: e.target.value })}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Amount"
-              type="number"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              fullWidth
-              required
-              inputProps={{ step: "0.01" }}
-            />
+            <TextField label={copy.drawers.beneficiary} value={form.beneficiary} onChange={(e) => setForm({ ...form, beneficiary: e.target.value })} fullWidth required />
+            <TextField label={copy.drawers.amount} type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} fullWidth required inputProps={{ step: "0.01" }} />
 
             <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => setEditOpen(false)}
-              >
-                Cancel
+              <Button variant="outlined" fullWidth onClick={() => setEditOpen(false)}>
+                {copy.actions.cancel}
               </Button>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleUpdate}
-                disabled={submitting}
-              >
-                {submitting ? "Updating..." : "Update"}
+              <Button variant="contained" fullWidth onClick={handleUpdate} disabled={submitting}>
+                {submitting ? copy.actions.updating : copy.actions.update}
               </Button>
             </Box>
           </Stack>
         </Box>
       </Drawer>
 
-      {/* Status Change Drawer */}
       <Drawer anchor="right" open={statusOpen} onClose={() => setStatusOpen(false)}>
         <Box sx={{ width: 400, p: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography variant="h6">Change Status</Typography>
+            <Typography variant="h6">{copy.drawers.changeStatus}</Typography>
             <IconButton size="small" onClick={() => setStatusOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>
@@ -471,37 +422,22 @@ export function DemandDraftsWorkspace({ token }: DemandDraftsWorkspaceProps) {
 
           <Stack spacing={2}>
             <Typography variant="body2" color="textSecondary">
-              Current Status: {selectedDraft?.status}
+              {copy.drawers.currentStatus.replace("{{status}}", selectedDraft ? copy.statuses[selectedDraft.status] : "-")}
             </Typography>
-            <TextField
-              select
-              label="New Status"
-              value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as InstrumentStatus)}
-              fullWidth
-            >
+            <TextField select label={copy.drawers.newStatus} value={newStatus} onChange={(e) => setNewStatus(e.target.value as InstrumentStatus)} fullWidth>
               {STATUSES.map((s) => (
                 <MenuItem key={s} value={s}>
-                  {s}
+                  {copy.statuses[s]}
                 </MenuItem>
               ))}
             </TextField>
 
             <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => setStatusOpen(false)}
-              >
-                Cancel
+              <Button variant="outlined" fullWidth onClick={() => setStatusOpen(false)}>
+                {copy.actions.cancel}
               </Button>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleStatusChange}
-                disabled={submitting}
-              >
-                {submitting ? "Updating..." : "Update"}
+              <Button variant="contained" fullWidth onClick={handleStatusChange} disabled={submitting}>
+                {submitting ? copy.actions.updating : copy.actions.update}
               </Button>
             </Box>
           </Stack>

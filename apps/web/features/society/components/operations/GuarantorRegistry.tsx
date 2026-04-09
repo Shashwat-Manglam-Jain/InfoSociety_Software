@@ -24,6 +24,8 @@ import { SectionHero } from "./SectionHero";
 import { TableEmpty } from "./shared/TableEmpty";
 import { StatusChip } from "./shared/StatusChip";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getGuarantorRegistryCopy } from "@/shared/i18n/guarantor-registry-copy";
 
 export type RegistryType = "guarantor" | "coapplicant";
 
@@ -51,53 +53,74 @@ export function GuarantorRegistry({
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
-
-  const title = type === "guarantor" ? "Guarantor Registry" : "Co-Applicant Registry";
-  const eyebrow = type === "guarantor" ? "Security" : "Joint Member";
-  const description = type === "guarantor" 
-    ? "Review and monitor institutional guarantors attached to active loan and credit facilities."
-    : "Track joint applicants and co-signatories associated with institutional deposit and credit accounts.";
+  const { locale } = useLanguage();
+  const copy = getGuarantorRegistryCopy(locale);
+  const registryCopy = type === "guarantor" ? copy.guarantor : copy.coapplicant;
   const icon = type === "guarantor" ? <ShieldRoundedIcon /> : <GroupAddRoundedIcon />;
   const colorScheme = type === "guarantor" ? "sky" : "violet";
+  const getStatusMeta = (status: string) => {
+    if (status === "Active") {
+      return {
+        label: copy.common.statuses.active,
+        tone: "success" as const
+      };
+    }
+
+    if (status === "Verified") {
+      return {
+        label: copy.common.statuses.verified,
+        tone: "success" as const
+      };
+    }
+
+    if (status === "Pending") {
+      return {
+        label: copy.common.statuses.pending,
+        tone: "warning" as const
+      };
+    }
+
+    return { label: status, tone: "warning" as const };
+  };
 
   const columnLabels = type === "guarantor" 
     ? [
-        { label: "Guarantor Name", width: "25%", align: "left" },
-        { label: "Branch", width: "15%", align: "left" },
-        { label: "Account Ref", width: "15%", align: "left" },
-        { label: "Facility Type", width: "15%", align: "left" },
-        { label: "Linked Plan", width: "15%", align: "left" },
-        { label: "Security Status", width: "15%", align: "left" },
-        { label: "Actions", width: "10%", align: "right" }
+        { label: copy.guarantor.columns.name, width: "25%", align: "left" },
+        { label: copy.guarantor.columns.branch, width: "15%", align: "left" },
+        { label: copy.guarantor.columns.accountRef, width: "15%", align: "left" },
+        { label: copy.guarantor.columns.facilityType, width: "15%", align: "left" },
+        { label: copy.guarantor.columns.linkedPlan, width: "15%", align: "left" },
+        { label: copy.guarantor.columns.status, width: "15%", align: "left" },
+        { label: copy.guarantor.columns.actions, width: "10%", align: "right" }
       ]
     : [
-        { label: "Applicant Name", width: "25%", align: "left" },
-        { label: "Branch", width: "15%", align: "left" },
-        { label: "Co-Applicant", width: "15%", align: "left" },
-        { label: "Relationship", width: "15%", align: "left" },
-        { label: "Linked Acc", width: "15%", align: "left" },
-        { label: "Status", width: "15%", align: "left" },
-        { label: "Actions", width: "10%", align: "right" }
+        { label: copy.coapplicant.columns.name, width: "25%", align: "left" },
+        { label: copy.coapplicant.columns.branch, width: "15%", align: "left" },
+        { label: copy.coapplicant.columns.coApplicant, width: "15%", align: "left" },
+        { label: copy.coapplicant.columns.relationship, width: "15%", align: "left" },
+        { label: copy.coapplicant.columns.linkedAccount, width: "15%", align: "left" },
+        { label: copy.coapplicant.columns.status, width: "15%", align: "left" },
+        { label: copy.coapplicant.columns.actions, width: "10%", align: "right" }
       ];
 
   return (
     <Stack spacing={3}>
       <SectionHero
         icon={icon}
-        eyebrow={eyebrow}
-        title={title}
-        description={description}
+        eyebrow={registryCopy.eyebrow}
+        title={registryCopy.title}
+        description={registryCopy.description}
         colorScheme={colorScheme}
         actions={
           <TextField
             size="small"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search registry..."
+            placeholder={copy.common.searchPlaceholder}
             sx={{
               minWidth: { xs: "100%", sm: 260 },
               "& .MuiOutlinedInput-root": {
-                borderRadius: 3,
+                borderRadius: 1,
                 bgcolor: surfaces.input,
                 color: "#fff",
                 border: `1px solid ${surfaces.inputBorder}`
@@ -110,7 +133,7 @@ export function GuarantorRegistry({
         }
       />
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+      <Paper elevation={0} sx={{ borderRadius: 1, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
           <Table sx={{ minWidth: 1000, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
@@ -124,11 +147,14 @@ export function GuarantorRegistry({
             </TableHead>
             <TableBody>
               {rows.length === 0 ? (
-                <TableEmpty colSpan={7} label={`No ${type} records documented in the current registry view.`} />
+                <TableEmpty colSpan={7} label={registryCopy.emptyState} />
               ) : (
                 rows
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((row, idx) => (
+                  .map((row, idx) => {
+                    const status = getStatusMeta(row.status);
+
+                    return (
                     <TableRow 
                       key={idx} 
                       hover
@@ -153,11 +179,12 @@ export function GuarantorRegistry({
                         <Typography variant="body2" sx={{ fontWeight: 700, color: "primary.main" }}>{type === "guarantor" ? row.planName : row.linkedAccountNo}</Typography>
                       </TableCell>
                       <TableCell>
-                        <StatusChip label={row.status} tone={row.status === "Active" || row.status === "Verified" ? "success" : "warning"} />
+                        <StatusChip label={status.label} tone={status.tone} />
                       </TableCell>
                       <TableCell align="right">
                         <Button 
                           size="small" 
+                          aria-label={copy.common.actions.edit}
                           sx={{ 
                             minWidth: "auto", 
                             p: 1, 
@@ -169,7 +196,8 @@ export function GuarantorRegistry({
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))
+                  );
+                  })
               )}
             </TableBody>
           </Table>
@@ -181,6 +209,16 @@ export function GuarantorRegistry({
           onPageChange={(_, p) => setPage(p)}
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+          labelRowsPerPage={copy.common.pagination.rowsPerPage}
+          labelDisplayedRows={({ from, to, count }) =>
+            copy.common.pagination.displayedRows
+              .replace("{{from}}", String(from))
+              .replace("{{to}}", String(to))
+              .replace("{{count}}", String(count))
+          }
+          getItemAriaLabel={(buttonType) =>
+            buttonType === "next" ? copy.common.pagination.nextPage : copy.common.pagination.previousPage
+          }
         />
       </Paper>
     </Stack>

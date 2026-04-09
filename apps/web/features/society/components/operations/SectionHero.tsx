@@ -12,6 +12,7 @@ export type SectionHeroProps = {
   description: string;
   actions?: React.ReactNode;
   colorScheme?: DesignColorScheme;
+  borderRadius?: number | string;
 };
 
 export function SectionHero({
@@ -20,7 +21,8 @@ export function SectionHero({
   title,
   description,
   actions,
-  colorScheme = "blue"
+  colorScheme = "blue",
+  borderRadius = 1
 }: SectionHeroProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
@@ -32,7 +34,7 @@ export function SectionHero({
     <Box
       sx={{
         p: { xs: 2, md: 2.25 },
-        borderRadius: 3,
+        borderRadius: borderRadius,
         position: "relative",
         overflow: "hidden",
         background: gradients[colorScheme],
@@ -56,8 +58,8 @@ export function SectionHero({
         }} 
       />
 
-      <Stack direction={{ xs: "column", lg: "row" }} spacing={2} justifyContent="space-between" alignItems={{ lg: "center" }}>
-        <Stack direction="row" spacing={2} alignItems="center">
+      <Stack direction={{ xs: "column", lg: "row" }} spacing={2.5} justifyContent="space-between" alignItems={{ lg: "center" }}>
+        <Stack direction="row" spacing={2.5} alignItems="center">
           <Box
             sx={{
               width: 46,
@@ -75,17 +77,23 @@ export function SectionHero({
           >
             {icon}
           </Box>
-          <Box>
-            <Typography variant="overline" sx={{ letterSpacing: 1.5, fontWeight: 900, color: "rgba(255,255,255,0.65)", mb: 0, display: "block", lineHeight: 1.1, fontSize: '0.65rem' }}>
+          <Stack spacing={0.55} sx={{ py: 0.25 }}>
+            <Typography
+              variant="overline"
+              sx={{ letterSpacing: 1.5, fontWeight: 900, color: "rgba(255,255,255,0.65)", display: "block", lineHeight: 1.2, fontSize: "0.65rem" }}
+            >
               {eyebrow}
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.05, mb: 0.5, fontSize: { xs: '1.15rem', md: '1.35rem' } }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 900, letterSpacing: "-0.03em", lineHeight: 1.12, fontSize: { xs: "1.15rem", md: "1.35rem" } }}
+            >
               {title}
             </Typography>
-            <Typography sx={{ color: "rgba(255,255,255,0.68)", maxWidth: { xs: "100%", lg: 640 }, fontSize: "0.85rem", lineHeight: 1.45, fontWeight: 500 }}>
+            <Typography sx={{ color: "rgba(255,255,255,0.68)", maxWidth: { xs: "100%", lg: 640 }, fontSize: "0.85rem", lineHeight: 1.5, fontWeight: 500 }}>
               {description}
             </Typography>
-          </Box>
+          </Stack>
         </Stack>
         {actions && (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ alignItems: "center", width: { xs: "100%", lg: "auto" } }}>

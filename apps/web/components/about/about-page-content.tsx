@@ -19,13 +19,13 @@ export function AboutPageContent() {
   const copy = getAboutPageCopy(locale);
 
   return (
-    <Box sx={{ py: { xs: 8, md: 12 }, bgcolor: "#f8fafc" }}>
+    <Box sx={{ py: { xs: 8, md: 12 }, bgcolor: "background.default" }}>
       <Container maxWidth="lg">
         <Box sx={{ textAlign: "center", mb: 8 }}>
           <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 3 }}>
             {copy.heroBadge}
           </Typography>
-          <Typography variant="h2" sx={{ fontWeight: 900, color: "#0f172a", mt: 1, letterSpacing: "-0.04em" }}>
+          <Typography variant="h2" sx={{ fontWeight: 900, color: "text.primary", mt: 1, letterSpacing: "-0.04em" }}>
             {copy.heroTitle}
           </Typography>
           <Typography variant="h6" sx={{ color: "text.secondary", mt: 3, maxWidth: 800, mx: "auto", lineHeight: 1.6, fontWeight: 500 }}>
@@ -35,8 +35,8 @@ export function AboutPageContent() {
 
         <Grid container spacing={4} sx={{ mb: 10 }}>
           <Grid size={{ xs: 12, md: 7 }}>
-            <Box sx={{ p: 5, borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(148, 163, 184, 0.12)", height: "100%", boxShadow: "0 20px 40px -12px rgba(15, 23, 42, 0.05)" }}>
-              <Typography variant="h5" sx={{ fontWeight: 900, mb: 2, color: "#0f172a" }}>
+            <Box sx={{ p: 5, borderRadius: 2, bgcolor: "background.paper", border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, height: "100%", boxShadow: (theme) => theme.shadows[1] }}>
+              <Typography variant="h5" sx={{ fontWeight: 900, mb: 2, color: "text.primary" }}>
                 {copy.excellenceTitle}
               </Typography>
               <Typography color="text.secondary" sx={{ fontSize: "1.1rem", lineHeight: 1.8 }} paragraph>
@@ -77,11 +77,11 @@ export function AboutPageContent() {
                 sx={{
                   p: 4,
                   borderRadius: 1,
-                  bgcolor: "#fff",
+                  bgcolor: "background.paper",
                   height: "100%",
-                  border: "1px solid rgba(148, 163, 184, 0.08)",
+                  border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`,
                   transition: "all 300ms ease",
-                  "&:hover": { transform: "translateY(-8px)", boxShadow: "0 32px 64px -16px rgba(15, 23, 42, 0.1)" }
+                  "&:hover": { transform: "translateY(-8px)", boxShadow: (theme) => theme.shadows[4] }
                 }}
               >
                 <Box
@@ -96,7 +96,7 @@ export function AboutPageContent() {
                 >
                   {valueCardIcons[index].icon}
                 </Box>
-                <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5, color: "#0f172a" }}>
+                <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5, color: "text.primary" }}>
                   {item.title}
                 </Typography>
                 <Typography color="text.secondary" sx={{ fontWeight: 500, lineHeight: 1.6 }}>

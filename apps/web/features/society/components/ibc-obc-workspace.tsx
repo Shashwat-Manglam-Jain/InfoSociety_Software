@@ -32,17 +32,20 @@ import {
   createIbcObc,
   updateIbcObcStatus,
   type IbcObcRecord,
-  type IbcObcType,
-  type InstrumentStatus
+  type IbcObcType
 } from "@/shared/api/ibc-obc";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getIbcObcWorkspaceCopy } from "@/shared/i18n/ibc-obc-workspace-copy";
+import { toast } from "@/shared/ui/toast";
 import { MetricCard } from "./operations/MetricCard";
 import { SectionHero } from "./operations/SectionHero";
 import { TableEmpty } from "./operations/shared/TableEmpty";
-import { toast } from "@/shared/ui/toast";
 
 type IbcObcWorkspaceProps = {
   token: string;
 };
+
+type InstrumentStatus = "ENTERED" | "CLEARED" | "RETURNED" | "CANCELLED";
 
 type IbcObcForm = {
   instrumentNumber: string;
@@ -62,15 +65,19 @@ function createEmptyIbcObcForm(): IbcObcForm {
   };
 }
 
-function formatCurrency(value: number | string): string {
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return "₹0";
-  return `₹${num.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+function resolveIntlLocale(locale: "en" | "hi" | "mr") {
+  return locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
 }
 
-function formatDate(dateStr: string): string {
+function formatCurrency(value: number | string, locale: "en" | "hi" | "mr"): string {
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return "\u20b90";
+  return `\u20b9${num.toLocaleString(resolveIntlLocale(locale), { maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(dateStr: string, locale: "en" | "hi" | "mr"): string {
   if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleDateString("en-IN");
+  return new Date(dateStr).toLocaleDateString(resolveIntlLocale(locale));
 }
 
 const STATUSES: InstrumentStatus[] = ["ENTERED", "CLEARED", "RETURNED", "CANCELLED"];
@@ -78,6 +85,8 @@ const TYPES: IbcObcType[] = ["IBC", "OBC"];
 
 export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
   const theme = useTheme();
+  const { locale } = useLanguage();
+  const copy = getIbcObcWorkspaceCopy(locale);
   const [rows, setRows] = useState<IbcObcRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +116,7 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
       });
       setRows(response.rows);
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Unable to load IBC/OBC instruments.";
+      const msg = caught instanceof Error ? caught.message : copy.errors.loadFailed;
       setError(msg);
       toast.error(msg);
     } finally {
@@ -121,25 +130,24 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
     }, 200);
 
     return () => window.clearTimeout(timeoutId);
-  }, [search, type, status, page, rowsPerPage, token]);
+  }, [search, type, status, page, rowsPerPage, token, copy.errors.loadFailed]);
 
   const metrics = useMemo(() => {
     const totalAmount = rows.reduce((sum, ibc) => sum + Number(ibc.amount || 0), 0);
     const ibcCount = rows.filter((ibc) => ibc.type === "IBC").length;
     const obcCount = rows.filter((ibc) => ibc.type === "OBC").length;
-    const cleared = rows.filter((ibc) => ibc.status === "CLEARED").length;
 
     return [
-      { label: "Total Instruments", value: String(rows.length), caption: "Total IBC/OBC records." },
-      { label: "Total Amount", value: formatCurrency(totalAmount), caption: "Total instrument amount." },
-      { label: "IBC", value: String(ibcCount), caption: "Inward Bill Collection." },
-      { label: "OBC", value: String(obcCount), caption: "Outward Bill Collection." }
+      { label: copy.metrics.totalInstruments.label, value: String(rows.length), caption: copy.metrics.totalInstruments.caption },
+      { label: copy.metrics.totalAmount.label, value: formatCurrency(totalAmount, locale), caption: copy.metrics.totalAmount.caption },
+      { label: copy.metrics.ibc.label, value: String(ibcCount), caption: copy.metrics.ibc.caption },
+      { label: copy.metrics.obc.label, value: String(obcCount), caption: copy.metrics.obc.caption }
     ];
-  }, [rows]);
+  }, [rows, copy, locale]);
 
   async function handleCreate() {
     if (!form.instrumentNumber || !form.amount) {
-      toast.error("Please fill required fields");
+      toast.error(copy.errors.requiredFields);
       return;
     }
 
@@ -152,12 +160,12 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
         customerId: form.customerId || undefined,
         amount: parseFloat(form.amount)
       });
-      toast.success("Instrument created successfully");
+      toast.success(copy.success.created);
       setCreateOpen(false);
       setForm(createEmptyIbcObcForm());
       void loadRows();
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Failed to create instrument";
+      const msg = caught instanceof Error ? caught.message : copy.errors.createFailed;
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -166,19 +174,19 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
 
   async function handleStatusChange() {
     if (!selectedInstrument) {
-      toast.error("Please select an instrument");
+      toast.error(copy.errors.selectInstrument);
       return;
     }
 
     setSubmitting(true);
     try {
       await updateIbcObcStatus(token, selectedInstrument.id, newStatus);
-      toast.success(`Status changed to ${newStatus}`);
+      toast.success(copy.success.statusChanged.replace("{{status}}", copy.statuses[newStatus]));
       setStatusOpen(false);
       setSelectedInstrument(null);
       void loadRows();
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Failed to update status";
+      const msg = caught instanceof Error ? caught.message : copy.errors.statusUpdateFailed;
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -187,12 +195,12 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
 
   return (
     <Box>
-      <SectionHero title="IBC/OBC Instruments" description="Manage inward and outward bill collection." />
-      
+      <SectionHero icon={<SearchRoundedIcon />} eyebrow={copy.hero.eyebrow} title={copy.hero.title} description={copy.hero.description} />
+
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -208,7 +216,7 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
       <Paper sx={{ mx: 2, mb: 2 }}>
         <Box sx={{ p: 2, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
           <TextField
-            placeholder="Search by instrument number..."
+            placeholder={copy.actions.searchPlaceholder}
             variant="outlined"
             size="small"
             value={search}
@@ -221,7 +229,7 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
           />
           <TextField
             select
-            label="Type"
+            label={copy.actions.type}
             value={type}
             onChange={(e) => {
               setType(e.target.value as IbcObcType | "");
@@ -230,16 +238,16 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
             size="small"
             sx={{ minWidth: 120 }}
           >
-            <MenuItem value="">All Types</MenuItem>
+            <MenuItem value="">{copy.actions.allTypes}</MenuItem>
             {TYPES.map((t) => (
               <MenuItem key={t} value={t}>
-                {t}
+                {copy.types[t]}
               </MenuItem>
             ))}
           </TextField>
           <TextField
             select
-            label="Status"
+            label={copy.actions.status}
             value={status}
             onChange={(e) => {
               setStatus(e.target.value as InstrumentStatus | "");
@@ -248,19 +256,15 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
             size="small"
             sx={{ minWidth: 150 }}
           >
-            <MenuItem value="">All Statuses</MenuItem>
+            <MenuItem value="">{copy.actions.allStatuses}</MenuItem>
             {STATUSES.map((s) => (
               <MenuItem key={s} value={s}>
-                {s}
+                {copy.statuses[s]}
               </MenuItem>
             ))}
           </TextField>
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={() => setCreateOpen(true)}
-          >
-            New Instrument
+          <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setCreateOpen(true)}>
+            {copy.actions.newInstrument}
           </Button>
         </Box>
 
@@ -269,19 +273,23 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
             <CircularProgress />
           </Box>
         ) : rows.length === 0 ? (
-          <TableEmpty message="No IBC/OBC instruments found" />
+          <Table>
+            <TableBody>
+              <TableEmpty colSpan={6} label={copy.table.emptyState} />
+            </TableBody>
+          </Table>
         ) : (
           <>
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: theme.palette.mode === "dark" ? "#1e1e1e" : "#f5f5f5" }}>
-                    <TableCell>Instrument Number</TableCell>
-                    <TableCell>Type</TableCell>
-                    <TableCell align="right">Amount</TableCell>
-                    <TableCell>Entry Date</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="center">Actions</TableCell>
+                    <TableCell>{copy.table.instrumentNumber}</TableCell>
+                    <TableCell>{copy.table.type}</TableCell>
+                    <TableCell align="right">{copy.table.amount}</TableCell>
+                    <TableCell>{copy.table.entryDate}</TableCell>
+                    <TableCell>{copy.table.status}</TableCell>
+                    <TableCell align="center">{copy.table.actions}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -289,20 +297,12 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
                     <TableRow key={row.id} hover>
                       <TableCell>{row.instrumentNumber}</TableCell>
                       <TableCell>
-                        <Chip
-                          label={row.type}
-                          color={row.type === "IBC" ? "primary" : "secondary"}
-                          size="small"
-                        />
+                        <Chip label={copy.types[row.type]} color={row.type === "IBC" ? "primary" : "secondary"} size="small" />
                       </TableCell>
-                      <TableCell align="right">{formatCurrency(row.amount)}</TableCell>
-                      <TableCell>{formatDate(row.entryDate)}</TableCell>
+                      <TableCell align="right">{formatCurrency(row.amount, locale)}</TableCell>
+                      <TableCell>{formatDate(row.entryDate, locale)}</TableCell>
                       <TableCell>
-                        <Chip
-                          label={row.status}
-                          color={row.status === "CLEARED" ? "success" : row.status === "RETURNED" ? "error" : "default"}
-                          size="small"
-                        />
+                        <Chip label={copy.statuses[row.status]} color={row.status === "CLEARED" ? "success" : row.status === "RETURNED" ? "error" : "default"} size="small" />
                       </TableCell>
                       <TableCell align="center">
                         <Button
@@ -314,7 +314,7 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
                             setStatusOpen(true);
                           }}
                         >
-                          Change Status
+                          {copy.actions.changeStatus}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -330,91 +330,54 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
               page={page}
               onPageChange={(_, newPage) => setPage(newPage)}
               onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+              labelRowsPerPage={copy.pagination.rowsPerPage}
+              labelDisplayedRows={({ from, to, count }) =>
+                copy.pagination.displayedRows.replace("{{from}}", String(from)).replace("{{to}}", String(to)).replace("{{count}}", String(count))
+              }
+              getItemAriaLabel={(buttonType) => buttonType === "next" ? copy.pagination.nextPage : copy.pagination.previousPage}
             />
           </>
         )}
       </Paper>
 
-      {/* Create Drawer */}
       <Drawer anchor="right" open={createOpen} onClose={() => setCreateOpen(false)}>
         <Box sx={{ width: 400, p: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography variant="h6">New Instrument</Typography>
+            <Typography variant="h6">{copy.drawers.newInstrument}</Typography>
             <IconButton size="small" onClick={() => setCreateOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>
           </Box>
 
           <Stack spacing={2}>
-            <TextField
-              label="Instrument Number"
-              value={form.instrumentNumber}
-              onChange={(e) => setForm({ ...form, instrumentNumber: e.target.value })}
-              fullWidth
-              required
-            />
-            <TextField
-              select
-              label="Type"
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value as IbcObcType })}
-              fullWidth
-              required
-            >
+            <TextField label={copy.drawers.instrumentNumber} value={form.instrumentNumber} onChange={(e) => setForm({ ...form, instrumentNumber: e.target.value })} fullWidth required />
+            <TextField select label={copy.drawers.type} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as IbcObcType })} fullWidth required>
               {TYPES.map((t) => (
                 <MenuItem key={t} value={t}>
-                  {t}
+                  {copy.types[t]}
                 </MenuItem>
               ))}
             </TextField>
-            <TextField
-              label="Account ID (optional)"
-              value={form.accountId}
-              onChange={(e) => setForm({ ...form, accountId: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Customer ID (optional)"
-              value={form.customerId}
-              onChange={(e) => setForm({ ...form, customerId: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Amount"
-              type="number"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              fullWidth
-              required
-              inputProps={{ step: "0.01" }}
-            />
+            <TextField label={copy.drawers.accountIdOptional} value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })} fullWidth />
+            <TextField label={copy.drawers.customerIdOptional} value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })} fullWidth />
+            <TextField label={copy.drawers.amount} type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} fullWidth required inputProps={{ step: "0.01" }} />
 
             <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => setCreateOpen(false)}
-              >
-                Cancel
+              <Button variant="outlined" fullWidth onClick={() => setCreateOpen(false)}>
+                {copy.actions.cancel}
               </Button>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleCreate}
-                disabled={submitting}
-              >
-                {submitting ? "Creating..." : "Create"}
+              <Button variant="contained" fullWidth onClick={handleCreate} disabled={submitting}>
+                {submitting ? copy.actions.creating : copy.actions.create}
               </Button>
             </Box>
           </Stack>
         </Box>
       </Drawer>
 
-      {/* Status Change Drawer */}
       <Drawer anchor="right" open={statusOpen} onClose={() => setStatusOpen(false)}>
         <Box sx={{ width: 400, p: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography variant="h6">Change Status</Typography>
+            <Typography variant="h6">{copy.drawers.changeStatus}</Typography>
             <IconButton size="small" onClick={() => setStatusOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>
@@ -422,37 +385,22 @@ export function IbcObcWorkspace({ token }: IbcObcWorkspaceProps) {
 
           <Stack spacing={2}>
             <Typography variant="body2" color="textSecondary">
-              Current Status: {selectedInstrument?.status}
+              {copy.drawers.currentStatus.replace("{{status}}", selectedInstrument ? copy.statuses[selectedInstrument.status] : "-")}
             </Typography>
-            <TextField
-              select
-              label="New Status"
-              value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as InstrumentStatus)}
-              fullWidth
-            >
+            <TextField select label={copy.drawers.newStatus} value={newStatus} onChange={(e) => setNewStatus(e.target.value as InstrumentStatus)} fullWidth>
               {STATUSES.map((s) => (
                 <MenuItem key={s} value={s}>
-                  {s}
+                  {copy.statuses[s]}
                 </MenuItem>
               ))}
             </TextField>
 
             <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => setStatusOpen(false)}
-              >
-                Cancel
+              <Button variant="outlined" fullWidth onClick={() => setStatusOpen(false)}>
+                {copy.actions.cancel}
               </Button>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleStatusChange}
-                disabled={submitting}
-              >
-                {submitting ? "Updating..." : "Update"}
+              <Button variant="contained" fullWidth onClick={handleStatusChange} disabled={submitting}>
+                {submitting ? copy.actions.updating : copy.actions.update}
               </Button>
             </Box>
           </Stack>
