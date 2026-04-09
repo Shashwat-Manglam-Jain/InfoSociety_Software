@@ -23,10 +23,14 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import { getSession, setSession, getDefaultDashboardPath } from "@/shared/auth/session";
 import { changePassword } from "@/shared/api/auth";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getSiteCopy } from "@/shared/i18n/site-copy";
 import { toast } from "@/shared/ui/toast";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
+  const { locale } = useLanguage();
+  const copy = getSiteCopy(locale).changePassword;
   const [session, setSessionState] = useState(getSession());
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -52,12 +56,12 @@ export default function ChangePasswordPage() {
     setError(null);
 
     if (newPassword !== confirmPassword) {
-      setError("New passwords do not match.");
+      setError(copy.mismatchError);
       return;
     }
 
     if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(copy.minLengthError);
       return;
     }
 
@@ -71,10 +75,10 @@ export default function ChangePasswordPage() {
       const updatedSession = { ...session, requiresPasswordChange: false };
       setSession(updatedSession);
       
-      toast.success("Security credentials updated. Dashboard access authorized.");
+      toast.success(copy.success);
       router.replace(getDefaultDashboardPath(session.accountType, false, session.allowedModuleSlugs));
     } catch (caught: any) {
-      const msg = caught.message || "Failed to update security credentials.";
+      const msg = caught.message || copy.fallbackError;
       setError(msg);
       toast.error(msg);
     } finally {
@@ -108,23 +112,23 @@ export default function ChangePasswordPage() {
                   <SecurityRoundedIcon sx={{ fontSize: 40 }} />
                 </Box>
                 <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a", mb: 1 }}>
-                  Security Verification
+                  {copy.title}
                 </Typography>
                 <Typography color="text.secondary">
-                  Institutional policy requires a mandatory credential update on the first login to secure your workspace.
+                  {copy.description}
                 </Typography>
               </Box>
 
               <Box component="form" onSubmit={onSubmit}>
                 <Stack spacing={3}>
                   <Box>
-                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: "#475569" }}>System Password (Temporary)</Typography>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: "#475569" }}>{copy.currentLabel}</Typography>
                     <TextField
                       fullWidth
                       type={showCurrent ? "text" : "password"}
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Provisioned password"
+                      placeholder={copy.currentPlaceholder}
                       required
                       InputProps={{
                         sx: { borderRadius: 3, bgcolor: "#fff" },
@@ -145,13 +149,13 @@ export default function ChangePasswordPage() {
                   </Box>
 
                   <Box>
-                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: "#475569" }}>Personal Secure Password</Typography>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: "#475569" }}>{copy.newLabel}</Typography>
                     <TextField
                       fullWidth
                       type={showNew ? "text" : "password"}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Enter new password"
+                      placeholder={copy.newPlaceholder}
                       required
                       InputProps={{
                         sx: { borderRadius: 3, bgcolor: "#fff" },
@@ -172,13 +176,13 @@ export default function ChangePasswordPage() {
                   </Box>
 
                   <Box>
-                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: "#475569" }}>Confirm New Password</Typography>
+                    <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: "#475569" }}>{copy.confirmLabel}</Typography>
                     <TextField
                       fullWidth
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm new password"
+                      placeholder={copy.confirmPlaceholder}
                       required
                       InputProps={{
                         sx: { borderRadius: 3, bgcolor: "#fff" },
@@ -206,11 +210,11 @@ export default function ChangePasswordPage() {
                       boxShadow: "0 10px 15px -3px rgba(37, 99, 235, 0.25)"
                     }}
                   >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : "Secure Account & Continue"}
+                    {loading ? <CircularProgress size={24} color="inherit" /> : copy.submit}
                   </Button>
 
                   <Typography variant="caption" sx={{ textAlign: "center", color: "text.secondary", mt: 2 }}>
-                    Your new password must be at least 6 characters long. By securing your account, you authorize your institutional credentials for this session.
+                    {copy.footerNote}
                   </Typography>
                 </Stack>
               </Box>

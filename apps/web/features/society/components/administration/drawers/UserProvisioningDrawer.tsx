@@ -20,9 +20,10 @@ import type { UserFormState } from "../../../lib/society-admin-dashboard";
 import {
   isStrongPassword,
   normalizeAllowedModules,
-  ROLE_META,
   toAccountType
 } from "../../../lib/society-admin-dashboard";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getUserProvisioningDrawerCopy } from "@/shared/i18n/user-provisioning-drawer-copy";
 import type { Branch, UserRole } from "@/shared/types";
 
 type UserProvisioningDrawerProps = {
@@ -52,13 +53,15 @@ export function UserProvisioningDrawer({
   regeneratePassword,
   mode
 }: UserProvisioningDrawerProps) {
-  const roleMeta = ROLE_META[form.role];
+  const { locale } = useLanguage();
+  const copy = getUserProvisioningDrawerCopy(locale);
+  const roleMeta = copy.roles[form.role];
   const isEditing = mode === "edit";
   const passwordProvided = form.password.trim().length > 0;
   const passwordIsValid = !passwordProvided || isStrongPassword(form.password);
   const passwordHelperText = isEditing
-    ? "Leave blank to keep the current password. New passwords need 8+ chars with upper, lower, number, and special character."
-    : "Use 8+ chars with upper, lower, number, and special character.";
+    ? copy.password.editHelper
+    : copy.password.createHelper;
 
   return (
     <Drawer
@@ -74,12 +77,10 @@ export function UserProvisioningDrawer({
           <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                {isEditing ? "Update account" : "Add account"}
+                {isEditing ? copy.title.update : copy.title.add}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {isEditing
-                  ? "Update account identity, branch assignment, login reset, and contact information."
-                  : "Create a society admin, field agent, or client account with the right modules."}
+                {isEditing ? copy.description.update : copy.description.add}
               </Typography>
             </Box>
             <IconButton onClick={onClose}>
@@ -89,14 +90,14 @@ export function UserProvisioningDrawer({
         </Box>
 
         <Stack spacing={3} sx={{ flex: 1, overflowY: "auto", px: 3, py: 3 }}>
-          <TextField fullWidth label="Full name" value={form.fullName} onChange={(event) => updateStaffName(event.target.value)} />
+          <TextField fullWidth label={copy.fields.fullName} value={form.fullName} onChange={(event) => updateStaffName(event.target.value)} />
 
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 select
-                label="Account type"
+                label={copy.fields.accountType}
                 value={form.role}
                 onChange={(event) =>
                   setForm({
@@ -109,20 +110,20 @@ export function UserProvisioningDrawer({
               >
                 {roleOptions.map((role) => (
                   <MenuItem key={role} value={role}>
-                    {ROLE_META[role].label}
+                    {copy.roles[role].label}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 select
-                label="Branch"
+                label={copy.fields.branch}
                 value={form.branchId}
                 onChange={(event) => setForm({ ...form, branchId: event.target.value })}
               >
-                <MenuItem value="">Head office / unassigned</MenuItem>
+                <MenuItem value="">{copy.fields.headOfficeUnassigned}</MenuItem>
                 {branches.map((branch) => (
                   <MenuItem key={branch.id} value={branch.id}>
                     {branch.name}
@@ -147,19 +148,19 @@ export function UserProvisioningDrawer({
           </Stack>
 
           <Grid container spacing={2}>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
-                label="Username"
+                label={copy.fields.username}
                 value={form.username}
                 onChange={(event) => setForm({ ...form, username: event.target.value })}
-                helperText="Use a clear login id. It is auto-filled from the name and can still be adjusted."
+                helperText={copy.fields.usernameHelper}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
-                label={isEditing ? "Reset password (optional)" : "Temporary password"}
+                label={isEditing ? copy.fields.resetPasswordOptional : copy.fields.temporaryPassword}
                 value={form.password}
                 onChange={(event) => setForm({ ...form, password: event.target.value })}
                 error={!passwordIsValid}
@@ -177,28 +178,28 @@ export function UserProvisioningDrawer({
 
           {form.role !== "SUPER_USER" && (
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
-                  label="Phone"
+                  label={copy.fields.phone}
                   value={form.phone}
                   onChange={(event) => setForm({ ...form, phone: event.target.value })}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   fullWidth
-                  label="Email"
+                  label={copy.fields.email}
                   value={form.email}
                   onChange={(event) => setForm({ ...form, email: event.target.value })}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   multiline
                   minRows={2}
-                  label="Address"
+                  label={copy.fields.address}
                   value={form.address}
                   onChange={(event) => setForm({ ...form, address: event.target.value })}
                 />
@@ -226,7 +227,7 @@ export function UserProvisioningDrawer({
               onClick={onSave}
               sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
             >
-              {isEditing ? `Update ${roleMeta.shortLabel.toLowerCase()} account` : `Create ${roleMeta.shortLabel.toLowerCase()} account`}
+              {(isEditing ? copy.actions.updateAccount : copy.actions.createAccount).replace("{{role}}", roleMeta.actionNoun)}
             </Button>
           </Box>
         </Stack>

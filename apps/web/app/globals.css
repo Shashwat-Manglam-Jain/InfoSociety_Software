@@ -39,6 +39,26 @@ body {
   overflow-x: hidden;
 }
 
+html {
+  scrollbar-width: none;
+}
+
+body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 body {
   display: flex;
   flex-direction: column;

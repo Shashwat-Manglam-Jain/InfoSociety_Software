@@ -27,6 +27,8 @@ import { SectionHero } from "./SectionHero";
 import { TableEmpty } from "./shared/TableEmpty";
 import { StatusChip } from "./shared/StatusChip";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getAccountRegistryCopy } from "@/shared/i18n/account-registry-copy";
 
 export type AccountRegistryProps = {
   accounts: any[];
@@ -64,6 +66,8 @@ export function AccountRegistry({
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
+  const { locale } = useLanguage();
+  const copy = getAccountRegistryCopy(locale);
 
   const filteredAccounts = accounts.filter((account) => {
     const search = accountSearch.toLowerCase();
@@ -78,9 +82,9 @@ export function AccountRegistry({
     <Stack spacing={3}>
       <SectionHero
         icon={<PaymentsRoundedIcon />}
-        eyebrow="Account"
-        title="Account Registry"
-        description="View all deposit and loan accounts, manage ledger entries, and access detailed account statements."
+        eyebrow={copy.hero.eyebrow}
+        title={copy.hero.title}
+        description={copy.hero.description}
         colorScheme="violet"
         actions={
           <>
@@ -88,7 +92,7 @@ export function AccountRegistry({
               size="small"
               value={accountSearch}
               onChange={(event) => setAccountSearch(event.target.value)}
-              placeholder="Search registry..."
+              placeholder={copy.hero.searchPlaceholder}
               sx={{
                 minWidth: { xs: "100%", sm: 260 },
                 "& .MuiOutlinedInput-root": {
@@ -102,7 +106,7 @@ export function AccountRegistry({
                 startAdornment: <SearchRoundedIcon sx={{ mr: 1, fontSize: 18, color: "rgba(255,255,255,0.6)" }} />
               }}
             />
-            <Tooltip title={!members.length ? "Create a client first" : (!plans.length ? "Configure at least one product plan first" : "Initialize a new institutional account")}>
+            <Tooltip title={!members.length ? copy.tooltips.createClientFirst : (!plans.length ? copy.tooltips.configurePlanFirst : copy.tooltips.initializeAccount)}>
               <span>
                 <Button
                   variant="contained"
@@ -122,7 +126,7 @@ export function AccountRegistry({
                     "&.Mui-disabled": { bgcolor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.3)", boxShadow: "none" }
                   }}
                 >
-                  Open Account
+                  {copy.hero.openAccount}
                 </Button>
               </span>
             </Tooltip>
@@ -136,12 +140,12 @@ export function AccountRegistry({
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
                 {[
-                  { label: "Account Info", width: "15%", align: "left" },
-                  { label: "Member Details", width: "22%", align: "left" },
-                  { label: "Subscribed Plan", width: "20%", align: "left" },
-                  { label: "Opened On", width: "12%", align: "left" },
-                  { label: "Status", width: "11%", align: "left" },
-                  { label: "Current Balance", width: "15%", align: "right" },
+                  { label: copy.table.accountInfo, width: "15%", align: "left" },
+                  { label: copy.table.memberDetails, width: "22%", align: "left" },
+                  { label: copy.table.subscribedPlan, width: "20%", align: "left" },
+                  { label: copy.table.openedOn, width: "12%", align: "left" },
+                  { label: copy.table.status, width: "11%", align: "left" },
+                  { label: copy.table.currentBalance, width: "15%", align: "right" },
                   { label: "", width: "5%", align: "right" }
                 ].map((col, idx) => (
                   <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
@@ -152,7 +156,7 @@ export function AccountRegistry({
             </TableHead>
             <TableBody>
               {filteredAccounts.length === 0 ? (
-                <TableEmpty colSpan={7} label="No account records found matching the criteria." />
+                <TableEmpty colSpan={7} label={copy.table.emptyState} />
               ) : (
                 filteredAccounts
                   .slice(accountPage * accountRowsPerPage, accountPage * accountRowsPerPage + accountRowsPerPage)
@@ -182,7 +186,7 @@ export function AccountRegistry({
                         <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>{formatDate(account.openDate)}</Typography>
                       </TableCell>
                       <TableCell>
-                        <StatusChip label={account.status} tone={account.status === "Active" ? "success" : "warning"} />
+                        <StatusChip label={account.status === "Active" ? copy.table.active : account.status} tone={account.status === "Active" ? "success" : "warning"} />
                       </TableCell>
                       <TableCell align="right">
                         <Typography variant="body2" sx={{ fontWeight: 900, color: "text.primary" }}>{formatCurrency(account.amount)}</Typography>
@@ -212,6 +216,9 @@ export function AccountRegistry({
           onPageChange={(_, p) => setAccountPage(p)}
           rowsPerPage={accountRowsPerPage}
           onRowsPerPageChange={(e) => setAccountRowsPerPage(parseInt(e.target.value, 10))}
+          labelRowsPerPage={copy.pagination.rowsPerPage}
+          labelDisplayedRows={({ from, to, count }) => copy.pagination.displayedRows.replace("{{from}}", String(from)).replace("{{to}}", String(to)).replace("{{count}}", String(count))}
+          getItemAriaLabel={(buttonType) => buttonType === "next" ? copy.pagination.nextPage : copy.pagination.previousPage}
         />
       </Paper>
     </Stack>

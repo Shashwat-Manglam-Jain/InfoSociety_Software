@@ -53,6 +53,8 @@ import { listCustomers, updateCustomer } from "@/shared/api/customers";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import { getMe } from "@/shared/api/client";
 import { clearSession, getDefaultDashboardPath, getSession } from "@/shared/auth/session";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getSocietyDashboardPageCopy } from "@/shared/i18n/society-dashboard-page-copy";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
 import type { AuthUser, Branch, UserRole } from "@/shared/types";
 import { toast } from "@/shared/ui/toast";
@@ -335,27 +337,12 @@ async function loadDashboardSnapshot(token: string): Promise<DashboardSnapshot> 
   };
 }
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0
-  }).format(value || 0);
-}
-
-function formatDate(value: string) {
-  if (!value) {
-    return "-";
-  }
-
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString("en-IN");
-}
-
 export default function SocietyDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session = getSession();
+  const { locale } = useLanguage();
+  const copy = getSocietyDashboardPageCopy(locale);
   const requestedView = searchParams.get("view");
   const requestedModuleSlug = searchParams.get("module");
   const currentView: SocietyView = requestedView && SOCIETY_VIEWS.has(requestedView as SocietyView)
@@ -364,7 +351,7 @@ export default function SocietyDashboard() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
-
+  const localeTag = copy.localeTag;
   const [societyForm, setSocietyForm] = useState<SocietyFormState>(createEmptySocietyForm);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [managedUsers, setManagedUsers] = useState<ManagedUserRow[]>([]);
@@ -422,7 +409,7 @@ export default function SocietyDashboard() {
       return true;
     } catch (caught) {
       const status = (caught as { status?: number })?.status;
-      const message = caught instanceof Error ? caught.message : "Unable to load the society dashboard.";
+      const message = caught instanceof Error ? caught.message : copy.feedback.loadDashboardError;
 
       if (status === 401 || status === 403) {
         clearSession();
@@ -490,28 +477,28 @@ export default function SocietyDashboard() {
   const customAccessibleModules = useMemo(() => {
     const administrationItems = [
       {
-        label: "Dashboard",
+        label: copy.nav.dashboard,
         href: "/dashboard/society?view=overview",
         icon: <BusinessRoundedIcon />,
         active: !requestedModuleSlug && currentView === "overview",
         moduleCandidates: ["administration"]
       },
       {
-        label: "Society Profile",
+        label: copy.nav.societyProfile,
         href: "/dashboard/society?view=master_company",
         icon: <BusinessRoundedIcon />,
         active: !requestedModuleSlug && currentView === "master_company",
         moduleCandidates: ["administration"]
       },
       {
-        label: "Branches",
+        label: copy.nav.branches,
         href: "/dashboard/society?view=master_branches",
         icon: <MapRoundedIcon />,
         active: !requestedModuleSlug && currentView === "master_branches",
         moduleCandidates: ["administration"]
       },
       {
-        label: "User Access",
+        label: copy.nav.userAccess,
         href: "/dashboard/society?view=directory",
         icon: <ManageAccountsRoundedIcon />,
         active: !requestedModuleSlug && currentView === "directory",
@@ -521,42 +508,42 @@ export default function SocietyDashboard() {
 
     const operationItems = [
       {
-        label: "Field Agents",
+        label: copy.nav.fieldAgents,
         href: "/dashboard/society?view=promoter_agents",
         icon: <ManageAccountsRoundedIcon />,
         active: !requestedModuleSlug && currentView === "promoter_agents",
         moduleCandidates: ["administration"]
       },
       {
-        label: "Clients",
+        label: copy.nav.clients,
         href: "/dashboard/society?view=membership_clients",
         icon: <ManageAccountsRoundedIcon />,
         active: !requestedModuleSlug && currentView === "membership_clients",
         moduleCandidates: ["customers"]
       },
       {
-        label: "Share Register",
+        label: copy.nav.shareRegister,
         href: "/dashboard/society?view=share_register",
         icon: <ReceiptLongRoundedIcon />,
         active: !requestedModuleSlug && currentView === "share_register",
         moduleCandidates: ["customers"]
       },
       {
-        label: "Guarantors",
+        label: copy.nav.guarantors,
         href: "/dashboard/society?view=membership_guarantors",
         icon: <ShieldRoundedIcon />,
         active: !requestedModuleSlug && currentView === "membership_guarantors",
         moduleCandidates: ["loans"]
       },
       {
-        label: "Co-Applicants",
+        label: copy.nav.coApplicants,
         href: "/dashboard/society?view=membership_coapplicants",
         icon: <ManageAccountsRoundedIcon />,
         active: !requestedModuleSlug && currentView === "membership_coapplicants",
         moduleCandidates: ["customers"]
       },
       {
-        label: "Audit Trail",
+        label: copy.nav.auditTrail,
         href: "/dashboard/society?view=treasury_audit",
         icon: <ReceiptLongRoundedIcon />,
         active: !requestedModuleSlug && currentView === "treasury_audit",
@@ -566,42 +553,42 @@ export default function SocietyDashboard() {
 
     const bankingItems = [
       {
-        label: "Accounts",
+        label: copy.nav.accounts,
         href: "/dashboard/society?view=account_registry",
         icon: <AccountBalanceIcon />,
         active: !requestedModuleSlug && currentView === "account_registry",
         moduleCandidates: ["accounts"]
       },
       {
-        label: "Plans",
+        label: copy.nav.plans,
         href: "/dashboard/society?view=plan_catalogue",
         icon: <MapRoundedIcon />,
         active: !requestedModuleSlug && currentView === "plan_catalogue",
         moduleCandidates: ["deposits"]
       },
       {
-        label: "Ledger",
+        label: copy.nav.ledger,
         href: "/dashboard/society?view=ledger_workspace",
         icon: <HistoryRoundedIcon />,
         active: !requestedModuleSlug && currentView === "ledger_workspace",
         moduleCandidates: ["transactions", "cashbook"]
       },
       {
-        label: "Loans",
+        label: copy.nav.loans,
         href: "/dashboard/society?view=loan_workspace",
         icon: <GavelRoundedIcon />,
         active: !requestedModuleSlug && currentView === "loan_workspace",
         moduleCandidates: ["loans"]
       },
       {
-        label: "Cheque",
+        label: copy.nav.cheque,
         href: "/dashboard/society?view=cheque_workspace",
         icon: <ReceiptLongRoundedIcon />,
         active: !requestedModuleSlug && currentView === "cheque_workspace",
         moduleCandidates: ["cheque-clearing"]
       },
       {
-        label: "Locker",
+        label: copy.nav.locker,
         href: "/dashboard/society?view=locker_workspace",
         icon: <LockRoundedIcon />,
         active: !requestedModuleSlug && currentView === "locker_workspace",
@@ -619,44 +606,44 @@ export default function SocietyDashboard() {
       }));
 
     // New Additional Services section for dedicated workspaces
-    const additionalServicesItems = [
+      const additionalServicesItems = [
       {
-        label: "Investments",
+        label: copy.nav.investments,
         href: "/dashboard/society?view=investments_workspace",
         icon: getSocietyModuleIcon("investments"),
         active: !requestedModuleSlug && currentView === "investments_workspace",
         moduleCandidates: ["investments"]
       },
       {
-        label: "Demand Drafts",
+        label: copy.nav.demandDrafts,
         href: "/dashboard/society?view=demand_drafts_workspace",
         icon: getSocietyModuleIcon("demand-drafts"),
         active: !requestedModuleSlug && currentView === "demand_drafts_workspace",
         moduleCandidates: ["demand-drafts"]
       },
       {
-        label: "IBC/OBC",
+        label: copy.nav.ibcObc,
         href: "/dashboard/society?view=ibc_obc_workspace",
         icon: getSocietyModuleIcon("ibc-obc"),
         active: !requestedModuleSlug && currentView === "ibc_obc_workspace",
         moduleCandidates: ["ibc-obc"]
       },
       {
-        label: "Reports",
+        label: copy.nav.reports,
         href: "/dashboard/society?view=reports_workspace",
         icon: getSocietyModuleIcon("reports"),
         active: !requestedModuleSlug && currentView === "reports_workspace",
         moduleCandidates: ["reports"]
       },
       {
-        label: "User Directory",
+        label: copy.nav.userDirectory,
         href: "/dashboard/society?view=user_directory_workspace",
         icon: getSocietyModuleIcon("users"),
         active: !requestedModuleSlug && currentView === "user_directory_workspace",
         moduleCandidates: ["users"]
       },
       {
-        label: "Monitoring",
+        label: copy.nav.monitoring,
         href: "/dashboard/society?view=monitoring_workspace",
         icon: getSocietyModuleIcon("monitoring"),
         active: !requestedModuleSlug && currentView === "monitoring_workspace",
@@ -665,13 +652,13 @@ export default function SocietyDashboard() {
     ].filter((item) => hasAllowedModule(allowedModuleSet, item.moduleCandidates));
 
     return [
-      ...(administrationItems.length > 0 ? [{ heading: "Administration", items: administrationItems }] : []),
-      ...(operationItems.length > 0 ? [{ heading: "Operations", items: operationItems }] : []),
-      ...(bankingItems.length > 0 ? [{ heading: "Banking Services", items: bankingItems }] : []),
-      ...(additionalServicesItems.length > 0 ? [{ heading: "Additional Services", items: additionalServicesItems }] : []),
-      ...(additionalModuleItems.length > 0 ? [{ heading: "Other Modules", items: additionalModuleItems }] : [])
+      ...(administrationItems.length > 0 ? [{ heading: copy.sections.administration, items: administrationItems }] : []),
+      ...(operationItems.length > 0 ? [{ heading: copy.sections.operations, items: operationItems }] : []),
+      ...(bankingItems.length > 0 ? [{ heading: copy.sections.bankingServices, items: bankingItems }] : []),
+      ...(additionalServicesItems.length > 0 ? [{ heading: copy.sections.additionalServices, items: additionalServicesItems }] : []),
+      ...(additionalModuleItems.length > 0 ? [{ heading: copy.sections.otherModules, items: additionalModuleItems }] : [])
     ];
-  }, [allowedModuleSet, currentView, requestedModuleSlug, societyModuleWorkspaceItems]);
+  }, [allowedModuleSet, copy, currentView, requestedModuleSlug, societyModuleWorkspaceItems]);
 
   useEffect(() => {
     if (loading || !shellUser) {
@@ -743,9 +730,9 @@ export default function SocietyDashboard() {
 
       setShellUser(nextUser);
       setSocietyForm(mapSocietyToForm(nextUser));
-      toast.success("Society profile saved.");
+      toast.success(copy.feedback.saveSocietySuccess);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to save the society profile.");
+      toast.error(caught instanceof Error ? caught.message : copy.feedback.saveSocietyError);
     } finally {
       setSocietySaving(false);
     }
@@ -806,16 +793,16 @@ export default function SocietyDashboard() {
       );
       setActiveDrawer(null);
       setBranchForm(createEmptyBranchForm());
-      toast.success(branchForm.id ? "Branch updated." : "Branch created.");
+      toast.success(branchForm.id ? copy.feedback.saveBranchSuccessUpdate : copy.feedback.saveBranchSuccessCreate);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to save the branch.");
+      toast.error(caught instanceof Error ? caught.message : copy.feedback.saveBranchError);
     } finally {
       setBranchSaving(false);
     }
   }
 
   async function handleDeleteBranch(branchId: string) {
-    if (!window.confirm("Delete this branch?")) {
+    if (!window.confirm(copy.feedback.deleteBranchConfirm)) {
       return;
     }
 
@@ -828,9 +815,9 @@ export default function SocietyDashboard() {
     try {
       await adminDeleteBranch(session.accessToken, branchId);
       setBranches((previous) => previous.filter((branch) => branch.id !== branchId));
-      toast.success("Branch deleted.");
+      toast.success(copy.feedback.deleteBranchSuccess);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to delete the branch.");
+      toast.error(caught instanceof Error ? caught.message : copy.feedback.deleteBranchError);
     }
   }
 
@@ -872,9 +859,9 @@ export default function SocietyDashboard() {
 
       closeUserDrawer();
       await hydrateDashboard(false);
-      toast.success(editingManagedUser ? "User account updated." : "User account created.");
+      toast.success(editingManagedUser ? copy.feedback.saveUserSuccessUpdate : copy.feedback.saveUserSuccessCreate);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to save the account.");
+      toast.error(caught instanceof Error ? caught.message : copy.feedback.saveUserError);
     } finally {
       setUserSaving(false);
     }
@@ -887,7 +874,7 @@ export default function SocietyDashboard() {
   }
 
   async function handleDeleteManagedUser(user: ManagedUserRow) {
-    if (!window.confirm(`Remove ${user.fullName}'s account?`)) {
+    if (!window.confirm(copy.feedback.deleteUserConfirm.replace("{{name}}", user.fullName))) {
       return;
     }
 
@@ -906,9 +893,9 @@ export default function SocietyDashboard() {
         closeUserDrawer();
       }
       await hydrateDashboard(false);
-      toast.success("User account removed.");
+      toast.success(copy.feedback.deleteUserSuccess);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to remove the account.");
+      toast.error(caught instanceof Error ? caught.message : copy.feedback.deleteUserError);
     }
   }
 
@@ -939,9 +926,9 @@ export default function SocietyDashboard() {
           : previous
       );
       setSelectedUserAccess((previous) => (previous?.id === id ? { ...previous, isActive: !current } : previous));
-      toast.success(!current ? "User activated." : "User deactivated.");
+      toast.success(!current ? copy.feedback.userActivated : copy.feedback.userDeactivated);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to update the user status.");
+      toast.error(caught instanceof Error ? caught.message : copy.feedback.userStatusError);
     }
   }
 
@@ -975,9 +962,9 @@ export default function SocietyDashboard() {
       setSelectedUserAccess((previous) =>
         previous ? { ...previous, allowedModuleSlugs: normalizedAllowedModuleSlugs } : previous
       );
-      toast.success("Access updated.");
+      toast.success(copy.feedback.accessUpdated);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to update module access.");
+      toast.error(caught instanceof Error ? caught.message : copy.feedback.accessUpdateError);
     } finally {
       setAccessSaving(false);
     }
@@ -985,7 +972,7 @@ export default function SocietyDashboard() {
 
   async function handleOpenAgentDetails(agent: SocietyAgentRow) {
     if (!agent.customerId) {
-      toast.error("This agent is not linked to a customer profile yet.");
+      toast.error(copy.feedback.agentUnlinked);
       return;
     }
 
@@ -1003,7 +990,7 @@ export default function SocietyDashboard() {
       const details = await getAgentDetails(session.accessToken, agent.customerId);
       setEditingAgentDetails(details);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to load agent details.");
+      toast.error(caught instanceof Error ? caught.message : copy.feedback.agentLoadError);
       setEditingAgent(null);
     } finally {
       setAgentLoading(false);
@@ -1044,9 +1031,9 @@ export default function SocietyDashboard() {
       await hydrateDashboard(false);
       setEditingAgent(null);
       setEditingAgentDetails(null);
-      toast.success("Agent updated.");
+      toast.success(copy.feedback.agentSaveSuccess);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to save the agent.");
+      toast.error(caught instanceof Error ? caught.message : copy.feedback.agentSaveError);
     } finally {
       setAgentLoading(false);
     }
@@ -1057,6 +1044,22 @@ export default function SocietyDashboard() {
     setEditingAgentDetails(null);
     setAgentLoading(false);
   }
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat(localeTag, {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0
+    }).format(value || 0);
+
+  const formatDate = (value: string) => {
+    if (!value) {
+      return "-";
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString(localeTag);
+  };
 
   const isLedgerView = currentView === "ledger_workspace";
   const isLockerView = currentView === "locker_workspace";
@@ -1134,9 +1137,9 @@ export default function SocietyDashboard() {
   }
 
   return (
-    <DashboardShell
+      <DashboardShell
       user={shellUser}
-      accountTypeLabel={`Society Dashboard${branchFilterActive ? ` · ${branches.find((branch) => branch.id === selectedBranchFilter)?.name ?? "Branch"}` : ""}`}
+      accountTypeLabel={`${copy.shell.accountTypeLabel}${branchFilterActive ? ` · ${branches.find((branch) => branch.id === selectedBranchFilter)?.name ?? copy.shell.branchFallback}` : ""}`}
       avatarDataUrl={null}
       onLogout={() => {
         clearSession();
@@ -1151,18 +1154,21 @@ export default function SocietyDashboard() {
             sx={{
               mb: 3,
               borderRadius: 4,
-              border: "1px solid rgba(15, 23, 42, 0.08)",
+              border: `1px solid ${surfaces.border}`,
               bgcolor: surfaces.paper,
+              backgroundImage: isDark
+                ? "linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%)"
+                : "none",
               p: { xs: 2, sm: 2.5 }
             }}
           >
             <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} justifyContent="space-between">
               <Box>
                 <Typography variant="overline" sx={{ color: "primary.main", fontWeight: 900 }}>
-                  Branch Scope
+                  {copy.branchScope.title}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Filter the visible society dashboard records by branch, or keep the full society view.
+                  {copy.branchScope.description}
                 </Typography>
               </Box>
               <TextField
@@ -1172,7 +1178,7 @@ export default function SocietyDashboard() {
                 onChange={(event) => setSelectedBranchFilter(event.target.value)}
                 sx={{ minWidth: { xs: "100%", md: 280 } }}
               >
-                <MenuItem value={ALL_BRANCHES_FILTER}>All branches</MenuItem>
+                <MenuItem value={ALL_BRANCHES_FILTER}>{copy.branchScope.allBranches}</MenuItem>
                 {branches.map((branch) => (
                   <MenuItem key={branch.id} value={branch.id}>
                     {branch.name}
@@ -1190,7 +1196,7 @@ export default function SocietyDashboard() {
             summary={selectedSocietyModule.summary}
             dashboardHref={defaultSocietyPath}
             accessibleModules={societyModuleWorkspaceItems}
-            viewerName={`${shellUser?.fullName ?? "Society User"}${branchFilterActive ? ` · ${branches.find((branch) => branch.id === selectedBranchFilter)?.name ?? ""}` : ""}`}
+            viewerName={`${shellUser?.fullName ?? copy.shell.viewerFallback}${branchFilterActive ? ` · ${branches.find((branch) => branch.id === selectedBranchFilter)?.name ?? ""}` : ""}`}
           />
         ) : isLedgerView && session ? (
           <LedgerWorkspace token={session.accessToken} />

@@ -14,7 +14,6 @@ import {
   CircularProgress,
   Drawer,
   IconButton,
-  MenuItem,
   Paper,
   Stack,
   Table,
@@ -36,10 +35,12 @@ import {
   withdrawInvestment,
   type InvestmentRecord
 } from "@/shared/api/investments";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getInvestmentsWorkspaceCopy } from "@/shared/i18n/investments-workspace-copy";
+import { toast } from "@/shared/ui/toast";
 import { MetricCard } from "./operations/MetricCard";
 import { SectionHero } from "./operations/SectionHero";
 import { TableEmpty } from "./operations/shared/TableEmpty";
-import { toast } from "@/shared/ui/toast";
 
 type InvestmentsWorkspaceProps = {
   token: string;
@@ -67,19 +68,25 @@ function createEmptyInvestmentForm(): InvestmentForm {
   };
 }
 
-function formatCurrency(value: number | string): string {
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return "₹0";
-  return `₹${num.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+function resolveIntlLocale(locale: "en" | "hi" | "mr") {
+  return locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
 }
 
-function formatDate(dateStr: string): string {
+function formatCurrency(value: number | string, locale: "en" | "hi" | "mr"): string {
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return "\u20b90";
+  return `\u20b9${num.toLocaleString(resolveIntlLocale(locale), { maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(dateStr: string, locale: "en" | "hi" | "mr"): string {
   if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleDateString("en-IN");
+  return new Date(dateStr).toLocaleDateString(resolveIntlLocale(locale));
 }
 
 export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
   const theme = useTheme();
+  const { locale } = useLanguage();
+  const copy = getInvestmentsWorkspaceCopy(locale);
   const [rows, setRows] = useState<InvestmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +123,7 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
       });
       setRows(response.rows);
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Unable to load investments.";
+      const msg = caught instanceof Error ? caught.message : copy.errors.loadFailed;
       setError(msg);
       toast.error(msg);
     } finally {
@@ -130,7 +137,7 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
     }, 200);
 
     return () => window.clearTimeout(timeoutId);
-  }, [search, page, rowsPerPage, token]);
+  }, [search, page, rowsPerPage, token, copy.errors.loadFailed]);
 
   const metrics = useMemo(() => {
     const totalAmount = rows.reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
@@ -138,16 +145,16 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
     const activeInvestments = rows.filter((inv) => !inv.withdrawnDate).length;
 
     return [
-      { label: "Total Investments", value: String(rows.length), caption: "Active investment records." },
-      { label: "Invested Amount", value: formatCurrency(totalAmount), caption: "Total invested capital." },
-      { label: "Maturity Value", value: formatCurrency(totalMaturity), caption: "Expected maturity returns." },
-      { label: "Active", value: String(activeInvestments), caption: "Non-withdrawn investments." }
+      { label: copy.metrics.totalInvestments.label, value: String(rows.length), caption: copy.metrics.totalInvestments.caption },
+      { label: copy.metrics.investedAmount.label, value: formatCurrency(totalAmount, locale), caption: copy.metrics.investedAmount.caption },
+      { label: copy.metrics.maturityValue.label, value: formatCurrency(totalMaturity, locale), caption: copy.metrics.maturityValue.caption },
+      { label: copy.metrics.active.label, value: String(activeInvestments), caption: copy.metrics.active.caption }
     ];
-  }, [rows]);
+  }, [rows, copy, locale]);
 
   async function handleCreate() {
     if (!form.bankName || !form.investmentType || !form.amount || !form.startDate || !form.maturityDate) {
-      toast.error("Please fill all required fields");
+      toast.error(copy.errors.requiredCreateFields);
       return;
     }
 
@@ -162,12 +169,12 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
         maturityDate: form.maturityDate,
         maturityAmount: form.maturityAmount ? parseFloat(form.maturityAmount) : undefined
       });
-      toast.success("Investment created successfully");
+      toast.success(copy.success.created);
       setCreateOpen(false);
       setForm(createEmptyInvestmentForm());
       void loadRows();
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Failed to create investment";
+      const msg = caught instanceof Error ? caught.message : copy.errors.createFailed;
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -176,7 +183,7 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
 
   async function handleRenew() {
     if (!selectedInvestment || !renewForm.maturityDate) {
-      toast.error("Please fill required fields");
+      toast.error(copy.errors.requiredActionFields);
       return;
     }
 
@@ -188,14 +195,14 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
         amount: renewForm.amount ? parseFloat(renewForm.amount) : undefined,
         interestRate: renewForm.interestRate ? parseFloat(renewForm.interestRate) : undefined
       });
-      toast.success("Investment renewed successfully");
+      toast.success(copy.success.renewed);
       setActionOpen(false);
       setActionType(null);
       setSelectedInvestment(null);
       setRenewForm({ startDate: "", maturityDate: "", amount: "", interestRate: "" });
       void loadRows();
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Failed to renew investment";
+      const msg = caught instanceof Error ? caught.message : copy.errors.renewFailed;
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -204,7 +211,7 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
 
   async function handleWithdraw() {
     if (!selectedInvestment) {
-      toast.error("Please select an investment");
+      toast.error(copy.errors.selectInvestment);
       return;
     }
 
@@ -214,14 +221,14 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
         withdrawnDate: withdrawForm.withdrawnDate || undefined,
         maturityAmount: withdrawForm.maturityAmount ? parseFloat(withdrawForm.maturityAmount) : undefined
       });
-      toast.success("Investment withdrawn successfully");
+      toast.success(copy.success.withdrawn);
       setActionOpen(false);
       setActionType(null);
       setSelectedInvestment(null);
       setWithdrawForm({ withdrawnDate: "", maturityAmount: "" });
       void loadRows();
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Failed to withdraw investment";
+      const msg = caught instanceof Error ? caught.message : copy.errors.withdrawFailed;
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -230,12 +237,12 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
 
   return (
     <Box>
-      <SectionHero title="Investments" description="Manage bank investments, renewals, and withdrawals." />
-      
+      <SectionHero icon={<InfoRoundedIcon />} eyebrow={copy.hero.eyebrow} title={copy.hero.title} description={copy.hero.description} />
+
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -251,7 +258,7 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
       <Paper sx={{ mx: 2, mb: 2 }}>
         <Box sx={{ p: 2, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
           <TextField
-            placeholder="Search by bank name..."
+            placeholder={copy.actions.searchPlaceholder}
             variant="outlined"
             size="small"
             value={search}
@@ -262,12 +269,8 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
             InputProps={{ startAdornment: <SearchRoundedIcon sx={{ mr: 1, color: "text.secondary" }} /> }}
             sx={{ flex: 1, minWidth: 250 }}
           />
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={() => setCreateOpen(true)}
-          >
-            New Investment
+          <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => setCreateOpen(true)}>
+            {copy.actions.newInvestment}
           </Button>
         </Box>
 
@@ -276,21 +279,25 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
             <CircularProgress />
           </Box>
         ) : rows.length === 0 ? (
-          <TableEmpty message="No investments found" />
+          <Table>
+            <TableBody>
+              <TableEmpty colSpan={8} label={copy.table.emptyState} />
+            </TableBody>
+          </Table>
         ) : (
           <>
             <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: theme.palette.mode === "dark" ? "#1e1e1e" : "#f5f5f5" }}>
-                    <TableCell>Bank</TableCell>
-                    <TableCell>Type</TableCell>
-                    <TableCell align="right">Amount</TableCell>
-                    <TableCell align="right">Interest Rate</TableCell>
-                    <TableCell>Start Date</TableCell>
-                    <TableCell>Maturity Date</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="center">Actions</TableCell>
+                    <TableCell>{copy.table.bank}</TableCell>
+                    <TableCell>{copy.table.type}</TableCell>
+                    <TableCell align="right">{copy.table.amount}</TableCell>
+                    <TableCell align="right">{copy.table.interestRate}</TableCell>
+                    <TableCell>{copy.table.startDate}</TableCell>
+                    <TableCell>{copy.table.maturityDate}</TableCell>
+                    <TableCell>{copy.table.status}</TableCell>
+                    <TableCell align="center">{copy.table.actions}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -298,23 +305,19 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
                     <TableRow key={row.id} hover>
                       <TableCell>{row.bankName}</TableCell>
                       <TableCell>{row.investmentType}</TableCell>
-                      <TableCell align="right">{formatCurrency(row.amount)}</TableCell>
+                      <TableCell align="right">{formatCurrency(row.amount, locale)}</TableCell>
                       <TableCell align="right">{Number(row.interestRate || 0).toFixed(2)}%</TableCell>
-                      <TableCell>{formatDate(row.startDate)}</TableCell>
-                      <TableCell>{formatDate(row.maturityDate)}</TableCell>
+                      <TableCell>{formatDate(row.startDate, locale)}</TableCell>
+                      <TableCell>{formatDate(row.maturityDate, locale)}</TableCell>
                       <TableCell>
-                        <Chip
-                          label={row.withdrawnDate ? "Withdrawn" : "Active"}
-                          color={row.withdrawnDate ? "default" : "success"}
-                          size="small"
-                        />
+                        <Chip label={row.withdrawnDate ? copy.table.withdrawn : copy.table.active} color={row.withdrawnDate ? "default" : "success"} size="small" />
                       </TableCell>
                       <TableCell align="center">
                         {!row.withdrawnDate && (
                           <Box sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}>
                             <IconButton
                               size="small"
-                              title="Renew"
+                              title={copy.actions.renew}
                               onClick={() => {
                                 setSelectedInvestment(row);
                                 setActionType("renew");
@@ -331,7 +334,7 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
                             </IconButton>
                             <IconButton
                               size="small"
-                              title="Withdraw"
+                              title={copy.actions.withdraw}
                               onClick={() => {
                                 setSelectedInvestment(row);
                                 setActionType("withdraw");
@@ -360,109 +363,57 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
               page={page}
               onPageChange={(_, newPage) => setPage(newPage)}
               onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+              labelRowsPerPage={copy.pagination.rowsPerPage}
+              labelDisplayedRows={({ from, to, count }) =>
+                copy.pagination.displayedRows.replace("{{from}}", String(from)).replace("{{to}}", String(to)).replace("{{count}}", String(count))
+              }
+              getItemAriaLabel={(buttonType) => buttonType === "next" ? copy.pagination.nextPage : copy.pagination.previousPage}
             />
           </>
         )}
       </Paper>
 
-      {/* Create Investment Drawer */}
       <Drawer anchor="right" open={createOpen} onClose={() => setCreateOpen(false)}>
         <Box sx={{ width: 400, p: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography variant="h6">New Investment</Typography>
+            <Typography variant="h6">{copy.drawers.newInvestment}</Typography>
             <IconButton size="small" onClick={() => setCreateOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>
           </Box>
 
           <Stack spacing={2}>
+            <TextField label={copy.drawers.bankName} value={form.bankName} onChange={(e) => setForm({ ...form, bankName: e.target.value })} fullWidth required />
             <TextField
-              label="Bank Name"
-              value={form.bankName}
-              onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Investment Type"
+              label={copy.drawers.investmentType}
               value={form.investmentType}
               onChange={(e) => setForm({ ...form, investmentType: e.target.value })}
               fullWidth
               required
-              placeholder="e.g., FD, Bonds, etc."
+              placeholder={copy.drawers.investmentTypePlaceholder}
             />
-            <TextField
-              label="Amount"
-              type="number"
-              value={form.amount}
-              onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              fullWidth
-              required
-              inputProps={{ step: "0.01" }}
-            />
-            <TextField
-              label="Interest Rate (%)"
-              type="number"
-              value={form.interestRate}
-              onChange={(e) => setForm({ ...form, interestRate: e.target.value })}
-              fullWidth
-              inputProps={{ step: "0.01" }}
-            />
-            <TextField
-              label="Start Date"
-              type="date"
-              value={form.startDate}
-              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-              fullWidth
-              required
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Maturity Date"
-              type="date"
-              value={form.maturityDate}
-              onChange={(e) => setForm({ ...form, maturityDate: e.target.value })}
-              fullWidth
-              required
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Maturity Amount"
-              type="number"
-              value={form.maturityAmount}
-              onChange={(e) => setForm({ ...form, maturityAmount: e.target.value })}
-              fullWidth
-              inputProps={{ step: "0.01" }}
-            />
+            <TextField label={copy.drawers.amount} type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} fullWidth required inputProps={{ step: "0.01" }} />
+            <TextField label={copy.drawers.interestRate} type="number" value={form.interestRate} onChange={(e) => setForm({ ...form, interestRate: e.target.value })} fullWidth inputProps={{ step: "0.01" }} />
+            <TextField label={copy.drawers.startDate} type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} fullWidth required InputLabelProps={{ shrink: true }} />
+            <TextField label={copy.drawers.maturityDate} type="date" value={form.maturityDate} onChange={(e) => setForm({ ...form, maturityDate: e.target.value })} fullWidth required InputLabelProps={{ shrink: true }} />
+            <TextField label={copy.drawers.maturityAmount} type="number" value={form.maturityAmount} onChange={(e) => setForm({ ...form, maturityAmount: e.target.value })} fullWidth inputProps={{ step: "0.01" }} />
 
             <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => setCreateOpen(false)}
-              >
-                Cancel
+              <Button variant="outlined" fullWidth onClick={() => setCreateOpen(false)}>
+                {copy.actions.cancel}
               </Button>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={handleCreate}
-                disabled={submitting}
-              >
-                {submitting ? "Creating..." : "Create"}
+              <Button variant="contained" fullWidth onClick={handleCreate} disabled={submitting}>
+                {submitting ? copy.actions.creating : copy.actions.create}
               </Button>
             </Box>
           </Stack>
         </Box>
       </Drawer>
 
-      {/* Action Drawer (Renew/Withdraw) */}
       <Drawer anchor="right" open={actionOpen} onClose={() => setActionOpen(false)}>
         <Box sx={{ width: 400, p: 2 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography variant="h6">
-              {actionType === "renew" ? "Renew Investment" : "Withdraw Investment"}
-            </Typography>
+            <Typography variant="h6">{actionType === "renew" ? copy.drawers.renewInvestment : copy.drawers.withdrawInvestment}</Typography>
             <IconButton size="small" onClick={() => setActionOpen(false)}>
               <CloseRoundedIcon />
             </IconButton>
@@ -471,78 +422,26 @@ export function InvestmentsWorkspace({ token }: InvestmentsWorkspaceProps) {
           <Stack spacing={2}>
             {actionType === "renew" && (
               <>
-                <TextField
-                  label="New Start Date"
-                  type="date"
-                  value={renewForm.startDate}
-                  onChange={(e) => setRenewForm({ ...renewForm, startDate: e.target.value })}
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="New Maturity Date"
-                  type="date"
-                  value={renewForm.maturityDate}
-                  onChange={(e) => setRenewForm({ ...renewForm, maturityDate: e.target.value })}
-                  fullWidth
-                  required
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="Amount (optional)"
-                  type="number"
-                  value={renewForm.amount}
-                  onChange={(e) => setRenewForm({ ...renewForm, amount: e.target.value })}
-                  fullWidth
-                  inputProps={{ step: "0.01" }}
-                />
-                <TextField
-                  label="Interest Rate (optional)"
-                  type="number"
-                  value={renewForm.interestRate}
-                  onChange={(e) => setRenewForm({ ...renewForm, interestRate: e.target.value })}
-                  fullWidth
-                  inputProps={{ step: "0.01" }}
-                />
+                <TextField label={copy.drawers.newStartDate} type="date" value={renewForm.startDate} onChange={(e) => setRenewForm({ ...renewForm, startDate: e.target.value })} fullWidth InputLabelProps={{ shrink: true }} />
+                <TextField label={copy.drawers.newMaturityDate} type="date" value={renewForm.maturityDate} onChange={(e) => setRenewForm({ ...renewForm, maturityDate: e.target.value })} fullWidth required InputLabelProps={{ shrink: true }} />
+                <TextField label={copy.drawers.amountOptional} type="number" value={renewForm.amount} onChange={(e) => setRenewForm({ ...renewForm, amount: e.target.value })} fullWidth inputProps={{ step: "0.01" }} />
+                <TextField label={copy.drawers.interestRateOptional} type="number" value={renewForm.interestRate} onChange={(e) => setRenewForm({ ...renewForm, interestRate: e.target.value })} fullWidth inputProps={{ step: "0.01" }} />
               </>
             )}
 
             {actionType === "withdraw" && (
               <>
-                <TextField
-                  label="Withdrawn Date"
-                  type="date"
-                  value={withdrawForm.withdrawnDate}
-                  onChange={(e) => setWithdrawForm({ ...withdrawForm, withdrawnDate: e.target.value })}
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="Maturity Amount Received"
-                  type="number"
-                  value={withdrawForm.maturityAmount}
-                  onChange={(e) => setWithdrawForm({ ...withdrawForm, maturityAmount: e.target.value })}
-                  fullWidth
-                  inputProps={{ step: "0.01" }}
-                />
+                <TextField label={copy.drawers.withdrawnDate} type="date" value={withdrawForm.withdrawnDate} onChange={(e) => setWithdrawForm({ ...withdrawForm, withdrawnDate: e.target.value })} fullWidth InputLabelProps={{ shrink: true }} />
+                <TextField label={copy.drawers.maturityAmountReceived} type="number" value={withdrawForm.maturityAmount} onChange={(e) => setWithdrawForm({ ...withdrawForm, maturityAmount: e.target.value })} fullWidth inputProps={{ step: "0.01" }} />
               </>
             )}
 
             <Box sx={{ display: "flex", gap: 1, pt: 2 }}>
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => setActionOpen(false)}
-              >
-                Cancel
+              <Button variant="outlined" fullWidth onClick={() => setActionOpen(false)}>
+                {copy.actions.cancel}
               </Button>
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={actionType === "renew" ? handleRenew : handleWithdraw}
-                disabled={submitting}
-              >
-                {submitting ? "Processing..." : actionType === "renew" ? "Renew" : "Withdraw"}
+              <Button variant="contained" fullWidth onClick={actionType === "renew" ? handleRenew : handleWithdraw} disabled={submitting}>
+                {submitting ? copy.actions.processing : actionType === "renew" ? copy.actions.renew : copy.actions.withdraw}
               </Button>
             </Box>
           </Stack>

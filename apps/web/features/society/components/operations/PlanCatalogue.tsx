@@ -26,6 +26,9 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import { SectionHero } from "./SectionHero";
 import { MetricCard } from "./MetricCard";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getPlanCatalogueCopy } from "@/shared/i18n/plan-catalogue-copy";
+import type { AppLocale } from "@/shared/i18n/translations";
 
 export type PlanCatalogueProps = {
   plans: any[];
@@ -53,29 +56,75 @@ export function PlanCatalogue({
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
+  const { locale } = useLanguage();
+  const copy = getPlanCatalogueCopy(locale);
+  const localeTag = locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+
+  function formatLocalizedValue(value: number, options?: Intl.NumberFormatOptions) {
+    return new Intl.NumberFormat(localeTag, options).format(value);
+  }
+
+  function getCategoryLabel(value: string, fallbackLabel: string) {
+    return copy.categories[value] ?? fallbackLabel;
+  }
+
+  function getCategoryAliases(value: string, fallbackLabel: string) {
+    const locales: AppLocale[] = ["en", "hi", "mr"];
+    const aliases = locales
+      .map((entryLocale) => getPlanCatalogueCopy(entryLocale).categories[value])
+      .filter(Boolean);
+
+    if (fallbackLabel) {
+      aliases.push(fallbackLabel);
+    }
+
+    return Array.from(new Set(aliases.map((entry) => entry.trim().toLowerCase())));
+  }
+
+  function getLocalizedPlanName(plan: any) {
+    const localizedCategoryLabel = getCategoryLabel(plan.category, plan.planName);
+    const planName = String(plan.planName ?? "").trim();
+
+    if (!planName) {
+      return localizedCategoryLabel;
+    }
+
+    const knownCategoryLabels = getCategoryAliases(plan.category, planName);
+    if (knownCategoryLabels.includes(planName.toLowerCase())) {
+      return localizedCategoryLabel;
+    }
+
+    return planName;
+  }
 
   const planRows = plans.filter((plan) => {
     const matchesTab = plan.category === planTab;
-    const matchesSearch = 
-      plan.planName.toLowerCase().includes(planSearch.toLowerCase()) || 
-      plan.planCode.toLowerCase().includes(planSearch.toLowerCase());
+    const searchText = planSearch.trim().toLowerCase();
+    const localizedPlanName = getLocalizedPlanName(plan).toLowerCase();
+    const localizedCategory = getCategoryLabel(plan.category, plan.planName).toLowerCase();
+    const matchesSearch =
+      searchText.length === 0 ||
+      localizedPlanName.includes(searchText) ||
+      localizedCategory.includes(searchText) ||
+      String(plan.planName ?? "").toLowerCase().includes(searchText) ||
+      String(plan.planCode ?? "").toLowerCase().includes(searchText);
     return matchesTab && matchesSearch;
   });
 
   const metrics = [
-    { label: "Active Plans", value: String(planRows.length), caption: "Verified institutional products." },
-    { label: "Pending Setup", value: "0", caption: "Draft templates requiring activation." },
-    { label: "Product Yield", value: "12.5%", caption: "Average institutional return." },
-    { label: "Risk Exposure", value: "Low", caption: "Institutional liability healthy." }
+    { label: copy.metrics.activePlans.label, value: formatLocalizedValue(planRows.length), caption: copy.metrics.activePlans.caption },
+    { label: copy.metrics.pendingSetup.label, value: formatLocalizedValue(0), caption: copy.metrics.pendingSetup.caption },
+    { label: copy.metrics.productYield.label, value: `${formatLocalizedValue(12.5, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`, caption: copy.metrics.productYield.caption },
+    { label: copy.metrics.riskExposure.label, value: copy.metrics.riskExposure.value, caption: copy.metrics.riskExposure.caption }
   ];
 
   return (
     <Stack spacing={3}>
       <SectionHero
         icon={<ArticleRoundedIcon />}
-        eyebrow="Plan"
-        title="Plan Catalogue"
-        description="Categorize and manage institutional deposit and loan plans, including interest rates and tenure configurations."
+        eyebrow={copy.hero.eyebrow}
+        title={copy.hero.title}
+        description={copy.hero.description}
         colorScheme="emerald"
         actions={
           <>
@@ -96,7 +145,7 @@ export function PlanCatalogue({
             >
               {planCategoryOptions.map((opt) => (
                 <MenuItem key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {getCategoryLabel(opt.value, opt.label)}
                 </MenuItem>
               ))}
             </TextField>
@@ -104,11 +153,11 @@ export function PlanCatalogue({
               size="small"
               value={planSearch}
               onChange={(event) => setPlanSearch(event.target.value)}
-              placeholder="Search catalogue..."
+              placeholder={copy.hero.searchPlaceholder}
               sx={{
                 minWidth: { xs: "100%", sm: 260 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 3,
+                  borderRadius: 1,
                   bgcolor: surfaces.input,
                   color: "#fff",
                   border: `1px solid ${surfaces.inputBorder}`
@@ -125,7 +174,7 @@ export function PlanCatalogue({
               sx={{
                 bgcolor: "#fff",
                 color: "#0f172a",
-                borderRadius: 3,
+                borderRadius: 1,
                 px: 3,
                 height: 40,
                 fontWeight: 900,
@@ -134,7 +183,7 @@ export function PlanCatalogue({
                 "&:hover": { bgcolor: "#f1f5f9", boxShadow: "0 6px 20px rgba(255,255,255,0.25)" }
               }}
             >
-              Create Plan
+              {copy.hero.createPlan}
             </Button>
           </>
         }
@@ -148,17 +197,17 @@ export function PlanCatalogue({
         ))}
       </Grid>
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+      <Paper elevation={0} sx={{ borderRadius: 1, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
           <Table sx={{ minWidth: 900, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
                 {[
-                  { label: "Plan Details", width: "30%", align: "left" },
-                  { label: "Requirements", width: "15%", align: "right" },
-                  { label: "Tenure Scope", width: "20%", align: "left" },
-                  { label: "Returns (APR)", width: "15%", align: "right" },
-                  { label: "Benefits", width: "15%", align: "left" },
+                  { label: copy.table.planDetails, width: "30%", align: "left" },
+                  { label: copy.table.requirements, width: "15%", align: "right" },
+                  { label: copy.table.tenureScope, width: "20%", align: "left" },
+                  { label: copy.table.returnsApr, width: "15%", align: "right" },
+                  { label: copy.table.benefits, width: "15%", align: "left" },
                   { label: "", width: "5%", align: "right" }
                 ].map((col, idx) => (
                   <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
@@ -172,7 +221,7 @@ export function PlanCatalogue({
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 12 }}>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary", opacity: 0.7 }}>
-                      No plans matched the selected category and search.
+                      {copy.table.emptyState}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -192,7 +241,7 @@ export function PlanCatalogue({
                       <Stack direction="row" spacing={1.5} alignItems="center">
                         <Box sx={{ minWidth: 0 }}>
                           <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary", lineHeight: 1.2 }}>
-                            {plan.planName}
+                            {getLocalizedPlanName(plan)}
                           </Typography>
                           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, display: "block", mt: 0.2 }}>
                             {plan.planCode}
@@ -226,7 +275,9 @@ export function PlanCatalogue({
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: "text.secondary" }}>
-                        {plan.seniorCitizenMargin ? `+${plan.seniorCitizenMargin}% Senior` : "-"}
+                        {plan.seniorCitizenMargin
+                          ? copy.table.seniorBonus.replace("{{value}}", formatLocalizedValue(plan.seniorCitizenMargin))
+                          : "-"}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">

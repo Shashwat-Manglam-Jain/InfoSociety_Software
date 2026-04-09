@@ -21,6 +21,7 @@ import {
   Chip,
   Container,
   Grid,
+  Paper,
   Skeleton,
   Stack,
   Typography

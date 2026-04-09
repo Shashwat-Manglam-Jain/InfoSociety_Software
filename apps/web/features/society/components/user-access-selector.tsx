@@ -60,7 +60,7 @@ export function UserAccessSelector({
     <Box
       sx={{
         p: 2.5,
-        borderRadius: 3,
+        borderRadius: 1,
         border: "1px solid rgba(15, 23, 42, 0.08)",
         bgcolor: "#f8fafc"
       }}
@@ -85,7 +85,7 @@ export function UserAccessSelector({
               onClick={() => toggle(module.slug)}
               variant={active ? "filled" : "outlined"}
               sx={{
-                borderRadius: 2,
+                borderRadius: 1,
                 fontWeight: 800,
                 bgcolor: active ? alpha("#2563eb", 0.12) : "#fff",
                 color: active ? "#1d4ed8" : "#475569",

@@ -40,6 +40,8 @@ import { MetricCard } from "./operations/MetricCard";
 import { SectionHero } from "./operations/SectionHero";
 import { TableEmpty } from "./operations/shared/TableEmpty";
 import { toast } from "@/shared/ui/toast";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getChequeWorkspaceCopy } from "@/shared/i18n/cheque-workspace-copy";
 
 type ChequeWorkspaceProps = {
   token: string;
@@ -55,16 +57,20 @@ type ChequeFormState = {
 
 const statusOptions: Array<InstrumentStatus | ""> = ["", "ENTERED", "CLEARED", "RETURNED", "CANCELLED"];
 
-function formatCurrency(value: number | string | null | undefined) {
+function resolveIntlLocale(locale: "en" | "hi" | "mr") {
+  return locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+}
+
+function formatCurrency(value: number | string | null | undefined, locale: "en" | "hi" | "mr") {
   const numericValue = typeof value === "string" ? Number(value) : value ?? 0;
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat(resolveIntlLocale(locale), {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0
   }).format(Number.isFinite(numericValue) ? numericValue : 0);
 }
 
-function formatDate(value?: string | null) {
+function formatDate(value: string | null | undefined, locale: "en" | "hi" | "mr") {
   if (!value) {
     return "-";
   }
@@ -74,7 +80,7 @@ function formatDate(value?: string | null) {
     return value;
   }
 
-  return parsed.toLocaleDateString("en-IN");
+  return parsed.toLocaleDateString(resolveIntlLocale(locale));
 }
 
 function formatPersonName(firstName?: string | null, lastName?: string | null) {
@@ -92,6 +98,8 @@ function createEmptyChequeForm(): ChequeFormState {
 }
 
 export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
+  const { locale } = useLanguage();
+  const copy = getChequeWorkspaceCopy(locale);
   const [rows, setRows] = useState<ChequeClearingRecord[]>([]);
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,7 +125,7 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
       setRows(chequeResponse.rows);
       setAccounts(accountResponse.rows);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to load cheque clearing workspace.");
+      setError(caught instanceof Error ? caught.message : copy.errors.loadFailed);
     } finally {
       setLoading(false);
     }
@@ -138,13 +146,13 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
     const totalAmount = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
 
     return [
-      { label: "Entries", value: String(rows.length), caption: "Cheque entries visible in this queue." },
-      { label: "Pending", value: String(entered), caption: "Entered cheques waiting for final action." },
-      { label: "Cleared", value: String(cleared), caption: "Cheques already cleared." },
-      { label: "Amount", value: formatCurrency(totalAmount), caption: "Total amount across the filtered queue." },
-      { label: "Returned", value: String(returned), caption: "Cheques sent back or failed to clear." }
+      { label: copy.metrics.entries.label, value: String(rows.length), caption: copy.metrics.entries.caption },
+      { label: copy.metrics.pending.label, value: String(entered), caption: copy.metrics.pending.caption },
+      { label: copy.metrics.cleared.label, value: String(cleared), caption: copy.metrics.cleared.caption },
+      { label: copy.metrics.amount.label, value: formatCurrency(totalAmount, locale), caption: copy.metrics.amount.caption },
+      { label: copy.metrics.returned.label, value: String(returned), caption: copy.metrics.returned.caption }
     ];
-  }, [rows]);
+  }, [rows, copy, locale]);
 
   const selectedAccount = useMemo(
     () => accounts.find((account) => account.id === form.accountId) ?? null,
@@ -198,9 +206,9 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
       setEditingRow(null);
       setForm(createEmptyChequeForm());
       await loadWorkspace();
-      toast.success(editingRow ? "Cheque entry updated." : "Cheque entry created.");
+      toast.success(editingRow ? copy.success.updated : copy.success.created);
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Unable to save cheque entry.";
+      const message = caught instanceof Error ? caught.message : copy.errors.saveFailed;
       setError(message);
       toast.error(message);
     } finally {
@@ -218,9 +226,9 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
       if (editingRow?.id === row.id) {
         setEditingRow({ ...row, status: nextStatus });
       }
-      toast.success(`Cheque marked ${nextStatus.toLowerCase()}.`);
+      toast.success(copy.success.marked.replace("{{status}}", copy.statuses[nextStatus]));
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Unable to update cheque status.";
+      const message = caught instanceof Error ? caught.message : copy.errors.updateStatusFailed;
       setError(message);
       toast.error(message);
     } finally {
@@ -232,9 +240,9 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
     <Stack spacing={3}>
       <SectionHero
         icon={<ReceiptLongRoundedIcon />}
-        eyebrow="Cheque"
-        title="Cheque Clearing Desk"
-        description="Capture cheque entries, correct data before clearing, and update clearing outcomes directly from the society dashboard."
+        eyebrow={copy.hero.eyebrow}
+        title={copy.hero.title}
+        description={copy.hero.description}
         colorScheme="blue"
         actions={
           <>
@@ -245,11 +253,11 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
                 setPage(0);
                 setSearch(event.target.value);
               }}
-              placeholder="Search cheque, bank, account..."
+              placeholder={copy.actions.searchPlaceholder}
               sx={{
                 minWidth: { xs: "100%", sm: 260 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 2.5,
+                  borderRadius: 1,
                   bgcolor: "rgba(255,255,255,0.08)",
                   color: "#fff"
                 }
@@ -269,7 +277,7 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
               sx={{
                 minWidth: { xs: "100%", sm: 180 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 2.5,
+                  borderRadius: 1,
                   bgcolor: "rgba(255,255,255,0.08)",
                   color: "#fff"
                 }
@@ -277,7 +285,7 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
             >
               {statusOptions.map((option) => (
                 <MenuItem key={option || "all"} value={option}>
-                  {option || "All Statuses"}
+                  {option ? copy.statuses[option] : copy.actions.allStatuses}
                 </MenuItem>
               ))}
             </TextField>
@@ -286,9 +294,9 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
               startIcon={<AddRoundedIcon />}
               onClick={openCreateDrawer}
               disabled={!accounts.length}
-              sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2.5, fontWeight: 900, "&:hover": { bgcolor: "#e2e8f0" } }}
+              sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 1, fontWeight: 900, "&:hover": { bgcolor: "#e2e8f0" } }}
             >
-              Add Cheque
+              {copy.actions.addCheque}
             </Button>
           </>
         }
@@ -303,35 +311,35 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
       </Grid>
 
       {!accounts.length ? (
-        <Alert severity="warning" sx={{ borderRadius: 3 }}>
-          No accounts are available for cheque entry yet.
+        <Alert severity="warning" sx={{ borderRadius: 2 }}>
+          {copy.alerts.noAccounts}
         </Alert>
       ) : null}
       {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ borderRadius: 1, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
         <TableContainer>
           <Table sx={{ minWidth: 1080, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: "#f8fafc" }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 900, width: "16%" }}>Cheque No</TableCell>
-                <TableCell sx={{ fontWeight: 900, width: "18%" }}>Account</TableCell>
-                <TableCell sx={{ fontWeight: 900, width: "20%" }}>Bank</TableCell>
-                <TableCell sx={{ fontWeight: 900, width: "14%" }}>Branch</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 900, width: "12%" }}>Amount</TableCell>
-                <TableCell sx={{ fontWeight: 900, width: "10%" }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 900, width: "10%" }}>Entry Date</TableCell>
+                <TableCell sx={{ fontWeight: 900, width: "16%" }}>{copy.table.chequeNo}</TableCell>
+                <TableCell sx={{ fontWeight: 900, width: "18%" }}>{copy.table.account}</TableCell>
+                <TableCell sx={{ fontWeight: 900, width: "20%" }}>{copy.table.bank}</TableCell>
+                <TableCell sx={{ fontWeight: 900, width: "14%" }}>{copy.table.branch}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 900, width: "12%" }}>{copy.table.amount}</TableCell>
+                <TableCell sx={{ fontWeight: 900, width: "10%" }}>{copy.table.status}</TableCell>
+                <TableCell sx={{ fontWeight: 900, width: "10%" }}>{copy.table.entryDate}</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 900, width: "6%" }} />
               </TableRow>
             </TableHead>
             <TableBody>
               {!loading && rows.length === 0 ? (
-                <TableEmpty colSpan={8} label="No cheque entries matched the current filters." />
+                <TableEmpty colSpan={8} label={copy.table.emptyState} />
               ) : loading ? (
                 <TableRow>
                   <TableCell colSpan={8} align="center" sx={{ py: 5 }}>
                     <Typography variant="body2" color="text.secondary">
-                      Loading cheque queue...
+                      {copy.table.loading}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -351,13 +359,13 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
                       <Typography variant="body2" color="text.secondary">{row.branchName}</Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <Typography variant="body2" sx={{ fontWeight: 900 }}>{formatCurrency(row.amount)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 900 }}>{formatCurrency(row.amount, locale)}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip size="small" label={row.status} color={row.status === "CLEARED" ? "success" : "default"} />
+                      <Chip size="small" label={copy.statuses[row.status]} color={row.status === "CLEARED" ? "success" : "default"} />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" color="text.secondary">{formatDate(row.entryDate)}</Typography>
+                      <Typography variant="body2" color="text.secondary">{formatDate(row.entryDate, locale)}</Typography>
                     </TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => openEditDrawer(row)}>
@@ -380,6 +388,11 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
             setRowsPerPage(parseInt(event.target.value, 10));
             setPage(0);
           }}
+          labelRowsPerPage={copy.pagination.rowsPerPage}
+          labelDisplayedRows={({ from, to, count }) =>
+            copy.pagination.displayedRows.replace("{{from}}", String(from)).replace("{{to}}", String(to)).replace("{{count}}", String(count))
+          }
+          getItemAriaLabel={(buttonType) => buttonType === "next" ? copy.pagination.nextPage : copy.pagination.previousPage}
         />
       </Paper>
 
@@ -387,14 +400,14 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
         anchor="right"
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        PaperProps={{ sx: { width: { xs: "100%", md: 540 }, borderRadius: "24px 0 0 24px" } }}
+        PaperProps={{ sx: { width: { xs: "100%", md: 540 }, borderRadius: "20px 0 0 20px" } }}
       >
         <Box sx={{ p: 3, borderBottom: "1px solid rgba(15, 23, 42, 0.08)", position: "relative" }}>
           <IconButton onClick={() => setDrawerOpen(false)} sx={{ position: "absolute", right: 16, top: 16 }}>
             <CloseRoundedIcon />
           </IconButton>
           <Typography variant="h5" sx={{ fontWeight: 900 }}>
-            {editingRow ? "Update Cheque Entry" : "Add Cheque Entry"}
+            {editingRow ? copy.actions.updateChequeEntry : copy.actions.addChequeEntry}
           </Typography>
         </Box>
         <Box sx={{ p: 3 }}>
@@ -402,7 +415,7 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
             <TextField
               select
               fullWidth
-              label="Account"
+              label={copy.drawer.account}
               value={form.accountId}
               onChange={(event) => setForm((previous) => ({ ...previous, accountId: event.target.value }))}
               disabled={Boolean(editingRow)}
@@ -415,27 +428,27 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
             </TextField>
             <TextField
               fullWidth
-              label="Cheque Number"
+              label={copy.drawer.chequeNumber}
               value={form.chequeNumber}
               onChange={(event) => setForm((previous) => ({ ...previous, chequeNumber: event.target.value }))}
               disabled={Boolean(editingRow)}
             />
             <TextField
               fullWidth
-              label="Bank Name"
+              label={copy.drawer.bankName}
               value={form.bankName}
               onChange={(event) => setForm((previous) => ({ ...previous, bankName: event.target.value }))}
             />
             <TextField
               fullWidth
-              label="Branch Name"
+              label={copy.drawer.branchName}
               value={form.branchName}
               onChange={(event) => setForm((previous) => ({ ...previous, branchName: event.target.value }))}
             />
             <TextField
               type="number"
               fullWidth
-              label="Amount"
+              label={copy.drawer.amount}
               value={form.amount}
               onChange={(event) => setForm((previous) => ({ ...previous, amount: Number(event.target.value) }))}
             />
@@ -443,7 +456,7 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
             {selectedAccount ? (
               <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)", bgcolor: "#f8fafc" }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1 }}>
-                  Account Preview
+                  {copy.drawer.accountPreview}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {selectedAccount.accountNumber} - {formatPersonName(selectedAccount.customer?.firstName, selectedAccount.customer?.lastName)}
@@ -464,13 +477,13 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
               }
               sx={{ py: 1.5, borderRadius: 2.5, fontWeight: 900 }}
             >
-              {editingRow ? "Save Changes" : "Create Entry"}
+              {editingRow ? copy.actions.saveChanges : copy.actions.createEntry}
             </Button>
 
             {editingRow ? (
               <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
                 <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
-                  Status Actions
+                  {copy.drawer.statusActions}
                 </Typography>
                 <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                   {(["CLEARED", "RETURNED", "CANCELLED"] as InstrumentStatus[]).map((nextStatus) => (
@@ -482,7 +495,7 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
                       onClick={() => void handleStatusUpdate(editingRow, nextStatus)}
                       sx={{ borderRadius: 2 }}
                     >
-                      {nextStatus}
+                      {copy.statuses[nextStatus]}
                     </Button>
                   ))}
                 </Stack>

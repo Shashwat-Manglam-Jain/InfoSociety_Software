@@ -276,7 +276,7 @@ export async function getSocietyControlCentreData(
     getMe(session.accessToken),
     getMonitoringOverview(session.accessToken),
     getUserDirectory(session.accessToken),
-    listCustomers(session.accessToken, searchQuery)
+    listCustomers(session.accessToken, { q: searchQuery })
   ]);
 
   const profile = profileResult.status === "fulfilled" ? profileResult.value : null;

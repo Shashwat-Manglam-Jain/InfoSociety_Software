@@ -27,6 +27,8 @@ import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import { SectionHero } from "./SectionHero";
 import { TableEmpty } from "./shared/TableEmpty";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getShareRegisterCopy } from "@/shared/i18n/share-register-copy";
 
 export type ShareRegisterProps = {
   shareholdings: any[];
@@ -62,6 +64,8 @@ export function ShareRegister({
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
+  const { locale } = useLanguage();
+  const copy = getShareRegisterCopy(locale);
 
   const filteredShares = shareholdings.filter((share) => {
     const search = shareholdingSearch.toLowerCase();
@@ -75,11 +79,13 @@ export function ShareRegister({
   return (
     <Stack spacing={3}>
       <SectionHero
+       
         icon={<SavingsRoundedIcon />}
-        eyebrow="Share"
-        title="Share Registry"
-        description="Monitor institutional share capital, manage shareholder distributions, and track equity holdings for all members."
+        eyebrow={copy.hero.eyebrow}
+        title={copy.hero.title}
+        description={copy.hero.description}
         colorScheme="rose"
+        borderRadius={1}
         actions={
           <>
             <TextField
@@ -90,25 +96,25 @@ export function ShareRegister({
               sx={{
                 minWidth: { xs: "100%", sm: 160 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 3,
+                  borderRadius: 1,
                   bgcolor: surfaces.input,
                   color: "#fff",
                   border: `1px solid ${surfaces.inputBorder}`
                 }
               }}
             >
-              <MenuItem value="shareholder">Shareholder</MenuItem>
-              <MenuItem value="nominal">Nominal</MenuItem>
+              <MenuItem value="shareholder">{copy.filters.shareholder}</MenuItem>
+              <MenuItem value="nominal">{copy.filters.nominal}</MenuItem>
             </TextField>
             <TextField
               size="small"
               value={shareholdingSearch}
               onChange={(event) => setShareholdingSearch(event.target.value)}
-              placeholder="Search registry..."
+              placeholder={copy.hero.searchPlaceholder}
               sx={{
                 minWidth: { xs: "100%", sm: 260 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 3,
+                  borderRadius: 1,
                   bgcolor: surfaces.input,
                   color: "#fff",
                   border: `1px solid ${surfaces.inputBorder}`
@@ -126,34 +132,37 @@ export function ShareRegister({
               sx={{
                 bgcolor: "#fff",
                 color: "#0f172a",
-                borderRadius: 3,
+                borderRadius: 1,
                 px: 3,
-                height: 40,
-                fontWeight: 900,
+                height: 60,
+                fontWeight: 600,
                 textTransform: "none",
+                width: { xs: "100%", sm: "auto" },
+                justifyContent: "center",
+                ml: { sm: 0 },
                 boxShadow: "0 4px 14px 0 rgba(255,255,255,0.4)",
                 "&:hover": { bgcolor: "#f1f5f9", boxShadow: "0 6px 20px rgba(255,255,255,0.25)" },
                 "&.Mui-disabled": { bgcolor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.3)", boxShadow: "none" }
               }}
             >
-              Issue Shares
+              {copy.hero.issueShares}
             </Button>
           </>
         }
       />
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+      <Paper elevation={0} sx={{ borderRadius: 1, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
           <Table sx={{ minWidth: 1000, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
                 {[
-                  { label: "Member Identity", width: "25%", align: "left" },
-                  { label: "Agent / Employee", width: "20%", align: "left" },
-                  { label: "Share Range", width: "15%", align: "left" },
-                  { label: "Total Shares", width: "12%", align: "right" },
-                  { label: "Nominal Value", width: "13%", align: "right" },
-                  { label: "Registry Status", width: "10%", align: "left" },
+                  { label: copy.table.member, width: "25%", align: "left" },
+                  { label: copy.table.agent, width: "20%", align: "left" },
+                  { label: copy.table.range, width: "15%", align: "left" },
+                  { label: copy.table.shares, width: "12%", align: "right" },
+                  { label: copy.table.nominal, width: "13%", align: "right" },
+                  { label: copy.table.status, width: "10%", align: "left" },
                   { label: "", width: "5%", align: "right" }
                 ].map((col, idx) => (
                   <TableCell key={idx} align={col.align as any} sx={{ fontWeight: 900, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "text.secondary", width: col.width, py: 2.5, borderBottom: `1px solid ${surfaces.tableBorder}` }}>
@@ -164,7 +173,7 @@ export function ShareRegister({
             </TableHead>
             <TableBody>
               {filteredShares.length === 0 ? (
-                <TableEmpty colSpan={7} label="No equity holdings documented for this category." />
+                <TableEmpty colSpan={7} label={copy.table.emptyState} />
               ) : (
                 filteredShares
                   .slice(shareholdingPage * shareholdingRowsPerPage, shareholdingPage * shareholdingRowsPerPage + shareholdingRowsPerPage)
@@ -195,8 +204,8 @@ export function ShareRegister({
                         <Typography variant="body2" sx={{ fontWeight: 900, color: "success.main" }}>{formatCurrency(share.totalShareVal)}</Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="caption" sx={{ fontWeight: 900, bgcolor: alpha(theme.palette.success.main, 0.1), color: theme.palette.success.main, px: 1, py: 0.5, borderRadius: 1.5 }}>
-                          DOCUMENTED
+                        <Typography variant="caption" sx={{ fontWeight: 900, bgcolor: alpha(theme.palette.success.main, 0.1), color: theme.palette.success.main, px: 1, py: 0.5, borderRadius: 1 }}>
+                          {copy.table.documented}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
@@ -222,6 +231,16 @@ export function ShareRegister({
           onPageChange={(_, p) => setShareholdingPage(p)}
           rowsPerPage={shareholdingRowsPerPage}
           onRowsPerPageChange={(e) => setShareholdingRowsPerPage(parseInt(e.target.value, 10))}
+          labelRowsPerPage={copy.pagination.rowsPerPage}
+          labelDisplayedRows={({ from, to, count }) =>
+            copy.pagination.displayedRows
+              .replace("{{from}}", String(from))
+              .replace("{{to}}", String(to))
+              .replace("{{count}}", String(count))
+          }
+          getItemAriaLabel={(buttonType) =>
+            buttonType === "next" ? copy.pagination.nextPage : copy.pagination.previousPage
+          }
         />
       </Paper>
     </Stack>

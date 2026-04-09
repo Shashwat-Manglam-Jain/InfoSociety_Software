@@ -15,9 +15,11 @@ import {
 } from "@mui/material";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { alpha, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import { SectionHero } from "../operations/SectionHero";
 import { MetricCard } from "../operations/MetricCard";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getTreasuryAuditCopy } from "@/shared/i18n/treasury-audit-copy";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
 import type { TreasuryTransactionRow } from "../../lib/society-admin-dashboard";
 
@@ -37,6 +39,8 @@ export function TreasuryAudit({
   formatDate
 }: TreasuryAuditProps) {
   const theme = useTheme();
+  const { locale } = useLanguage();
+  const copy = getTreasuryAuditCopy(locale);
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
 
@@ -63,26 +67,26 @@ export function TreasuryAudit({
     .reduce((total, transaction) => total + transaction.amount, 0);
 
   const metrics = [
-    { label: "Entries", value: String(filteredTransactions.length), caption: "Transactions visible in the current audit view." },
-    { label: "Credits", value: formatCurrency(totalCredits), caption: "Total incoming value." },
-    { label: "Debits", value: formatCurrency(totalDebits), caption: "Total outgoing value." },
-    { label: "Net", value: formatCurrency(totalCredits - totalDebits), caption: "Credit minus debit impact." }
+    { label: copy.metrics.entries.label, value: String(filteredTransactions.length), caption: copy.metrics.entries.caption },
+    { label: copy.metrics.credits.label, value: formatCurrency(totalCredits), caption: copy.metrics.credits.caption },
+    { label: copy.metrics.debits.label, value: formatCurrency(totalDebits), caption: copy.metrics.debits.caption },
+    { label: copy.metrics.net.label, value: formatCurrency(totalCredits - totalDebits), caption: copy.metrics.net.caption }
   ];
 
   return (
     <Stack spacing={3}>
       <SectionHero
         icon={<AccountBalanceWalletRoundedIcon />}
-        eyebrow="Treasury"
-        title="Treasury audit"
-        description="Review live transaction movement across branches, accounts, and users without the placeholder ledger cards."
+        eyebrow={copy.hero.eyebrow}
+        title={copy.hero.title}
+        description={copy.hero.description}
         colorScheme="blue"
         actions={
           <TextField
             size="small"
             value={transactionSearch}
             onChange={(event) => setTransactionSearch(event.target.value)}
-            placeholder="Search transactions"
+            placeholder={copy.hero.searchPlaceholder}
             sx={{
               minWidth: { xs: "100%", sm: 260 },
               "& .MuiOutlinedInput-root": {
@@ -116,14 +120,14 @@ export function TreasuryAudit({
           <Table size="small" sx={{ minWidth: 920, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 800, width: "12%" }}>Date</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "16%" }}>Reference</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "18%" }}>Account</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "18%" }}>Customer</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "16%" }}>Branch</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "10%" }}>Type</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "12%" }}>{copy.table.date}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "16%" }}>{copy.table.reference}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "18%" }}>{copy.table.account}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "18%" }}>{copy.table.customer}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "16%" }}>{copy.table.branch}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "10%" }}>{copy.table.type}</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 800, width: "10%" }}>
-                  Amount
+                  {copy.table.amount}
                 </TableCell>
               </TableRow>
             </TableHead>
@@ -132,7 +136,7 @@ export function TreasuryAudit({
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
                     <Typography variant="body2" color="text.secondary">
-                      No transactions match the current search.
+                      {copy.emptyState}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -181,7 +185,7 @@ export function TreasuryAudit({
                           color: transaction.type === "CREDIT" ? "#15803d" : "#b91c1c"
                         }}
                       >
-                        {transaction.type}
+                        {transaction.type === "CREDIT" ? copy.transactionType.credit : copy.transactionType.debit}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">

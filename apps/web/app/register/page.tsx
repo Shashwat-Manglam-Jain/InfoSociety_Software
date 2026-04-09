@@ -11,6 +11,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Alert, Box, Button, Card, CardContent, Chip, Container, IconButton, Stack, TextField, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid";
+import { alpha, useTheme } from "@mui/material/styles";
 import { getBillingPlans, getPublicSocieties, registerSociety } from "@/shared/api/client";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getRegisterPageCopy } from "@/shared/i18n/register-copy";
@@ -59,8 +60,10 @@ function formatPlanPrice(monthlyPrice: number | null, locale: string, copy: Retu
 
 export default function RegisterPage() {
   const router = useRouter();
+  const theme = useTheme();
   const { locale } = useLanguage();
   const copy = getRegisterPageCopy(locale);
+  const isDark = theme.palette.mode === "dark";
   const [societyName, setSocietyName] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
@@ -74,6 +77,55 @@ export default function RegisterPage() {
 
   const generatedCode = useMemo(() => generateSocietyCode(societyName), [societyName]);
   const generatedUsername = useMemo(() => generateSocietyUsername(fullName), [fullName]);
+  const surfaceBoxSx = {
+    border: `1px solid ${isDark ? alpha("#cbd5e1", 0.18) : "rgba(15, 23, 42, 0.08)"}`,
+    bgcolor: isDark ? alpha("#0f172a", 0.68) : "rgba(255,255,255,0.6)"
+  } as const;
+  const tileBoxSx = {
+    flex: 1,
+    p: 1.8,
+    borderRadius: 2,
+    bgcolor: isDark ? alpha("#0f172a", 0.9) : "#fff",
+    border: `1px solid ${isDark ? alpha("#cbd5e1", 0.16) : "rgba(15, 23, 42, 0.08)"}`
+  } as const;
+  const fieldLabelSx = {
+    mb: 1.2,
+    fontWeight: 700,
+    color: isDark ? "rgba(226, 232, 240, 0.96)" : "#1e293b"
+  } as const;
+  const helperTextSx = {
+    color: isDark ? "rgba(148, 163, 184, 0.96)" : undefined
+  } as const;
+  const inputShellSx = {
+    borderRadius: 2.5,
+    bgcolor: isDark ? alpha("#0f172a", 0.92) : "#fff",
+    color: isDark ? "#e2e8f0" : "#0f172a",
+    "& input": {
+      color: isDark ? "#e2e8f0" : "#0f172a"
+    },
+    "& input::placeholder": {
+      color: isDark ? "rgba(148, 163, 184, 0.82)" : undefined,
+      opacity: 1
+    },
+    "& .MuiSvgIcon-root": {
+      color: isDark ? alpha(theme.palette.primary.light, 0.95) : theme.palette.primary.main
+    },
+    "& .Mui-disabled": {
+      WebkitTextFillColor: isDark ? "rgba(226, 232, 240, 0.9)" : undefined
+    },
+    "& fieldset": {
+      borderColor: isDark ? alpha("#94a3b8", 0.28) : "rgba(15, 23, 42, 0.12)"
+    },
+    "&:hover fieldset": {
+      borderColor: isDark ? alpha("#cbd5e1", 0.45) : "rgba(15, 23, 42, 0.22)"
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: theme.palette.primary.main
+    }
+  } as const;
+  const inputTextFieldSx = {
+    "& .MuiFormHelperText-root": helperTextSx
+  } as const;
 
   useEffect(() => {
     let active = true;
@@ -256,8 +308,7 @@ export default function RegisterPage() {
                   sx={{
                     p: 2.4,
                     borderRadius: 1,
-                    border: "1px solid rgba(15, 23, 42, 0.08)",
-                    bgcolor: "rgba(255,255,255,0.6)"
+                    ...surfaceBoxSx
                   }}
                 >
                   <Stack spacing={1.4}>
@@ -265,19 +316,19 @@ export default function RegisterPage() {
                       {copy.formPanel.snapshotTitle}
                     </Typography>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                      <Box sx={tileBoxSx}>
                         <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
                           {copy.formPanel.approvedSocieties}
                         </Typography>
-                        <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: "#0f172a" }}>
+                        <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: isDark ? "#e2e8f0" : "#0f172a" }}>
                           {approvedSocietyCount == null ? copy.loadingPrice : approvedSocietyCount.toLocaleString(locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN")}
                         </Typography>
                       </Box>
-                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                      <Box sx={tileBoxSx}>
                         <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
                           {copy.formPanel.premiumPlan}
                         </Typography>
-                        <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: "#0f172a" }}>
+                        <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: isDark ? "#e2e8f0" : "#0f172a" }}>
                           {formatPlanPrice(premiumMonthlyPrice, locale, copy)}
                         </Typography>
                       </Box>
@@ -298,8 +349,7 @@ export default function RegisterPage() {
                   sx={{
                     p: 2.4,
                     borderRadius: 1,
-                    border: "1px solid rgba(15, 23, 42, 0.08)",
-                    bgcolor: "rgba(255,255,255,0.6)"
+                    ...surfaceBoxSx
                   }}
                 >
                   <Stack spacing={1.4}>
@@ -307,19 +357,25 @@ export default function RegisterPage() {
                       {copy.formPanel.generatedTitle}
                     </Typography>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                      <Box sx={tileBoxSx}>
                         <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
                           {copy.formPanel.societyCode}
                         </Typography>
-                        <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: "#0f172a", fontFamily: "monospace" }}>
+                        <Typography
+                          variant="h6"
+                          sx={{ mt: 0.4, fontWeight: 900, color: isDark ? "#e2e8f0" : "#0f172a", fontFamily: "monospace" }}
+                        >
                           {generatedCode || copy.formPanel.waitingSociety}
                         </Typography>
                       </Box>
-                      <Box sx={{ flex: 1, p: 1.8, borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                      <Box sx={tileBoxSx}>
                         <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
                           {copy.formPanel.adminUsername}
                         </Typography>
-                        <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: "#0f172a", fontFamily: "monospace" }}>
+                        <Typography
+                          variant="h6"
+                          sx={{ mt: 0.4, fontWeight: 900, color: isDark ? "#e2e8f0" : "#0f172a", fontFamily: "monospace" }}
+                        >
                           {generatedUsername ? `@${generatedUsername}` : copy.formPanel.waitingAdmin}
                         </Typography>
                       </Box>
@@ -336,8 +392,7 @@ export default function RegisterPage() {
                   sx={{
                     p: { xs: 2, md: 3.2 },
                     borderRadius: 1,
-                    border: "1px solid rgba(15, 23, 42, 0.08)",
-                    bgcolor: "rgba(255,255,255,0.45)",
+                    ...surfaceBoxSx,
                     backdropFilter: "blur(12px)"
                   }}
                 >
@@ -347,7 +402,7 @@ export default function RegisterPage() {
                     </Typography>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                      <Typography variant="subtitle2" sx={fieldLabelSx}>
                         {copy.formPanel.societyNameLabel}
                       </Typography>
                       <TextField
@@ -362,15 +417,17 @@ export default function RegisterPage() {
                         fullWidth
                         error={Boolean(formErrors.societyName)}
                         helperText={formErrors.societyName || copy.formPanel.societyNameHelper}
+                        sx={inputTextFieldSx}
+                        FormHelperTextProps={{ sx: helperTextSx }}
                         InputProps={{
-                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          sx: inputShellSx,
                           startAdornment: <ApartmentRoundedIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
                         }}
                       />
                     </Box>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                      <Typography variant="subtitle2" sx={fieldLabelSx}>
                         {copy.formPanel.adminNameLabel}
                       </Typography>
                       <TextField
@@ -385,15 +442,17 @@ export default function RegisterPage() {
                         fullWidth
                         error={Boolean(formErrors.fullName)}
                         helperText={formErrors.fullName || copy.formPanel.adminNameHelper}
+                        sx={inputTextFieldSx}
+                        FormHelperTextProps={{ sx: helperTextSx }}
                         InputProps={{
-                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          sx: inputShellSx,
                           startAdornment: <PersonIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
                         }}
                       />
                     </Box>
 
                     <Box>
-                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                      <Typography variant="subtitle2" sx={fieldLabelSx}>
                         {copy.formPanel.passwordLabel}
                       </Typography>
                       <TextField
@@ -409,8 +468,10 @@ export default function RegisterPage() {
                         fullWidth
                         error={Boolean(formErrors.password)}
                         helperText={formErrors.password || copy.formPanel.passwordHelper}
+                        sx={inputTextFieldSx}
+                        FormHelperTextProps={{ sx: helperTextSx }}
                         InputProps={{
-                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          sx: inputShellSx,
                           startAdornment: <LockIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />,
                           endAdornment: (
                             <IconButton onClick={() => setShowPassword((prev) => !prev)} edge="end" size="small">

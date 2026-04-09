@@ -18,17 +18,17 @@ export function SummaryCard({ item }: { item: SummaryCardItem }) {
       className="surface-glass hover-lift" 
       sx={{ 
         height: "100%", 
-        borderRadius: 2.8,
+        borderRadius: 1,
         overflow: "hidden", 
         position: "relative",
-        border: `2px solid ${alpha("#fff", 0.12)}`,
+        border: (theme) => `2px solid ${alpha(theme.palette.divider, 0.12)}`,
         background: (theme) =>
           `linear-gradient(135deg, 
             ${alpha(theme.palette.background.paper, 0.88)} 0%,
             ${alpha(theme.palette.background.paper, 0.92)} 100%)`,
         transition: "all 220ms ease",
         "&:hover": {
-          boxShadow: `0 20px 40px ${alpha("#000", 0.12)}`,
+          boxShadow: (theme) => `0 20px 40px ${alpha(theme.palette.common.black, 0.12)}`,
           borderColor: (theme) => alpha(theme.palette.primary.main, 0.24)
         }
       }}
@@ -47,7 +47,7 @@ export function SummaryCard({ item }: { item: SummaryCardItem }) {
           <Box
             sx={{
               p: 1.2,
-              borderRadius: 2.2,
+              borderRadius: 1,
               background: (theme) => 
                 `linear-gradient(135deg, 
                   ${alpha(theme.palette.primary.main, 0.12)} 0%, 
@@ -81,7 +81,7 @@ export function SummaryCard({ item }: { item: SummaryCardItem }) {
               sx={{ 
                 lineHeight: 1.1,
                 fontWeight: 900,
-                color: "#102a43"
+                color: "text.primary"
               }}
             >
               {item.value}

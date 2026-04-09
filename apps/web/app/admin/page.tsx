@@ -23,10 +23,14 @@ import {
 } from "@mui/material";
 import { login } from "@/shared/api/client";
 import { getDefaultDashboardPath, getSession, setSession } from "@/shared/auth/session";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getSiteCopy } from "@/shared/i18n/site-copy";
 import { toast } from "@/shared/ui/toast";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { locale } = useLanguage();
+  const copy = getSiteCopy(locale).adminLogin;
 
   useEffect(() => {
     const session = getSession();
@@ -65,10 +69,10 @@ export default function AdminLoginPage() {
         allowedModuleSlugs: response.user.allowedModuleSlugs ?? []
       });
 
-      toast.success("Executive terminal initialized. Accessing Platform Governance Hub.");
+      toast.success(copy.success);
       router.replace(getDefaultDashboardPath("PLATFORM", response.user.requiresPasswordChange));
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Authentication failed.";
+      const message = caught instanceof Error ? caught.message : copy.fallbackError;
       setError(message);
       toast.error(message);
     } finally {
@@ -112,8 +116,8 @@ export default function AdminLoginPage() {
                    <AdminPanelSettingsRoundedIcon sx={{ fontSize: 32 }} />
                 </Box>
                 <Box>
-                   <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: "-0.01em" }}>Governance Hub</Typography>
-                   <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", fontWeight: 700, letterSpacing: 1.5 }}>PLATFORM EXECUTIVE TERMINAL</Typography>
+                   <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: "-0.01em" }}>{copy.heading}</Typography>
+                   <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)", fontWeight: 700, letterSpacing: 1.5 }}>{copy.terminalLabel}</Typography>
                 </Box>
              </Stack>
              <ShieldRoundedIcon sx={{ position: "absolute", right: 30, top: 30, fontSize: 60, opacity: 0.1, color: "#fff" }} />
@@ -122,15 +126,15 @@ export default function AdminLoginPage() {
           <CardContent sx={{ p: 5 }}>
             <Stack spacing={4}>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 800, color: "#1e293b" }}>Secured Initialize</Typography>
-                <Typography variant="body2" color="text.secondary">Provide platform credentials to access governance and monitoring.</Typography>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: "#1e293b" }}>{copy.sectionTitle}</Typography>
+                <Typography variant="body2" color="text.secondary">{copy.sectionDescription}</Typography>
               </Box>
 
               <form onSubmit={onSubmit}>
                 <Stack spacing={3}>
                   <TextField 
                     fullWidth
-                    label="Executive Handle"
+                    label={copy.usernameLabel}
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
@@ -146,7 +150,7 @@ export default function AdminLoginPage() {
 
                   <TextField 
                     fullWidth
-                    label="Access Key"
+                    label={copy.passwordLabel}
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -185,14 +189,13 @@ export default function AdminLoginPage() {
                       boxShadow: "0 10px 20px -5px rgba(15, 23, 42, 0.4)"
                     }}
                   >
-                    {loading ? <CircularProgress size={24} sx={{ color: "#fff" }} /> : "AUTHENTICATE TERMINAL"}
+                    {loading ? <CircularProgress size={24} sx={{ color: "#fff" }} /> : copy.submit}
                   </Button>
                 </Stack>
               </form>
 
               <Typography variant="caption" sx={{ textAlign: "center", color: "text.disabled", display: "block" }}>
-                Unauthorized access to this terminal is strictly monitored. 
-                IP and session logs are transmitted to platform audit system.
+                {copy.footerNote}
               </Typography>
             </Stack>
           </CardContent>

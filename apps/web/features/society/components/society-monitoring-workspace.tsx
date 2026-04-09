@@ -8,12 +8,9 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   CircularProgress,
   Paper,
-  Stack,
   Table,
   TableBody,
   TableCell,
@@ -24,28 +21,22 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { useTheme } from "@mui/material/styles";
-import { getMonitoringOverview, type MonitoringOverview } from "@/shared/api/monitoring";
+import { getMonitoringOverview } from "@/shared/api/monitoring";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getSocietyMonitoringWorkspaceCopy } from "@/shared/i18n/society-monitoring-workspace-copy";
 import { MetricCard } from "./operations/MetricCard";
 import { SectionHero } from "./operations/SectionHero";
 import { toast } from "@/shared/ui/toast";
+import type { MonitoringOverview } from "@/shared/types";
 
 type SocietyMonitoringWorkspaceProps = {
   token: string;
 };
 
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
 export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspaceProps) {
   const theme = useTheme();
+  const { locale } = useLanguage();
+  const copy = getSocietyMonitoringWorkspaceCopy(locale);
   const [data, setData] = useState<MonitoringOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +49,7 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
       const result = await getMonitoringOverview(token);
       setData(result);
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Unable to load monitoring data.";
+      const msg = caught instanceof Error ? caught.message : copy.errors.loadFailed;
       setError(msg);
       toast.error(msg);
     } finally {
@@ -68,22 +59,22 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
 
   useEffect(() => {
     void loadData();
-  }, [token]);
+  }, [token, copy.errors.loadFailed]);
 
   const metrics = useMemo(() => {
     if (!data) return [];
 
     const totalSocieties = data.societies?.length || 0;
-    const activeSocieties = data.societies?.filter((s) => s.isActive).length || 0;
-    const pendingSocieties = data.societies?.filter((s) => s.status === "PENDING").length || 0;
+    const activeSocieties = data.societies?.filter((s: { isActive: boolean }) => s.isActive).length || 0;
+    const pendingSocieties = data.societies?.filter((s: { status: string }) => s.status === "PENDING").length || 0;
 
     return [
-      { label: "Total Societies", value: String(totalSocieties), caption: "Registered societies in system." },
-      { label: "Active", value: String(activeSocieties), caption: "Active societies." },
-      { label: "Pending", value: String(pendingSocieties), caption: "Pending approval." },
-      { label: "Systems", value: String(data.societies?.length || 0), caption: "Live systems." }
+      { label: copy.metrics.totalSocieties.label, value: String(totalSocieties), caption: copy.metrics.totalSocieties.caption },
+      { label: copy.metrics.active.label, value: String(activeSocieties), caption: copy.metrics.active.caption },
+      { label: copy.metrics.pending.label, value: String(pendingSocieties), caption: copy.metrics.pending.caption },
+      { label: copy.metrics.systems.label, value: String(data.societies?.length || 0), caption: copy.metrics.systems.caption }
     ];
-  }, [data]);
+  }, [data, copy]);
 
   const getStatusColor = (status: string): "primary" | "secondary" | "success" | "error" | "warning" | "info" | "default" => {
     switch (status) {
@@ -100,6 +91,15 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
     }
   };
 
+  function localizeStatus(status: string) {
+    return copy.statuses[status] ?? status;
+  }
+
+  function localizeSubscriptionStatus(status?: string | null) {
+    if (!status) return copy.subscriptionStatuses.INACTIVE;
+    return copy.subscriptionStatuses[status] ?? status;
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 8 }}>
@@ -110,12 +110,12 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
 
   return (
     <Box>
-      <SectionHero title="Society Monitoring" description="Monitor all societies and their operational status." />
-      
+      <SectionHero icon={<SecurityRoundedIcon />} eyebrow={copy.hero.eyebrow} title={copy.hero.title} description={copy.hero.description} />
+
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -129,20 +129,15 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
       )}
 
       <Box sx={{ px: 2, mb: 2 }}>
-        <Button
-          variant="outlined"
-          startIcon={<RefreshRoundedIcon />}
-          onClick={() => void loadData()}
-          disabled={loading}
-        >
-          Refresh
+        <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadData()} disabled={loading}>
+          {copy.actions.refresh}
         </Button>
       </Box>
 
       <Paper sx={{ mx: 2, mb: 2 }}>
         <Box sx={{ p: 2 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
-            Societies Overview
+            {copy.sections.societiesOverview}
           </Typography>
 
           {data?.societies && data.societies.length > 0 ? (
@@ -151,26 +146,21 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
                 <TableHead>
                   <TableRow sx={{ backgroundColor: theme.palette.mode === "dark" ? "#1e1e1e" : "#f5f5f5" }}>
                     <TableCell width="5%"></TableCell>
-                    <TableCell>Code</TableCell>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Class</TableCell>
-                    <TableCell>Subscription Plan</TableCell>
-                    <TableCell>Subscription Status</TableCell>
-                    <TableCell>Since</TableCell>
+                    <TableCell>{copy.table.code}</TableCell>
+                    <TableCell>{copy.table.name}</TableCell>
+                    <TableCell>{copy.table.status}</TableCell>
+                    <TableCell>{copy.table.category}</TableCell>
+                    <TableCell>{copy.table.registrationState}</TableCell>
+                    <TableCell>{copy.table.subscriptionPlan}</TableCell>
+                    <TableCell>{copy.table.subscriptionStatus}</TableCell>
+                    <TableCell>{copy.table.digitalPayments}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {data.societies.map((society) => (
                     <TableRow key={society.id} hover>
                       <TableCell>
-                        <CircleIcon
-                          fontSize="small"
-                          sx={{
-                            color: society.isActive ? "success.main" : "action.disabled"
-                          }}
-                        />
+                        <CircleIcon fontSize="small" sx={{ color: society.isActive ? "success.main" : "action.disabled" }} />
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" fontWeight={500}>
@@ -179,34 +169,27 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
                       </TableCell>
                       <TableCell>{society.name}</TableCell>
                       <TableCell>
+                        <Chip label={localizeStatus(society.status)} color={getStatusColor(society.status)} size="small" />
+                      </TableCell>
+                      <TableCell>{society.category || "-"}</TableCell>
+                      <TableCell>{society.registrationState || "-"}</TableCell>
+                      <TableCell>
+                        <Chip label={society.subscriptionPlan || "FREE"} size="small" variant="outlined" />
+                      </TableCell>
+                      <TableCell>
                         <Chip
-                          label={society.status}
-                          color={getStatusColor(society.status)}
+                          label={localizeSubscriptionStatus(society.subscriptionStatus || "INACTIVE")}
+                          color={society.subscriptionStatus === "ACTIVE" ? "success" : "default"}
                           size="small"
                         />
                       </TableCell>
-                      <TableCell>{society.category || "-"}</TableCell>
-                      <TableCell>{society.class || "-"}</TableCell>
                       <TableCell>
                         <Chip
-                          label={society.subscription?.plan || "FREE"}
+                          label={society.acceptsDigitalPayments ? copy.table.enabled : copy.table.disabled}
+                          color={society.acceptsDigitalPayments ? "success" : "default"}
                           size="small"
                           variant="outlined"
                         />
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={society.subscription?.status || "INACTIVE"}
-                          color={
-                            society.subscription?.status === "ACTIVE"
-                              ? "success"
-                              : "default"
-                          }
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(society.createdAt)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -214,129 +197,10 @@ export function SocietyMonitoringWorkspace({ token }: SocietyMonitoringWorkspace
               </Table>
             </TableContainer>
           ) : (
-            <Alert severity="info">No societies found</Alert>
+            <Alert severity="info">{copy.table.noSocieties}</Alert>
           )}
         </Box>
       </Paper>
-
-      {data?.systemHealth && (
-        <Paper sx={{ mx: 2, mb: 2 }}>
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              System Health
-            </Typography>
-
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Stack spacing={1}>
-                      <Typography color="textSecondary" variant="caption">
-                        Uptime
-                      </Typography>
-                      <Typography variant="h5">
-                        {((data.systemHealth.uptime || 0) * 100).toFixed(1)}%
-                      </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Stack spacing={1}>
-                      <Typography color="textSecondary" variant="caption">
-                        API Response Time
-                      </Typography>
-                      <Typography variant="h5">
-                        {data.systemHealth.avgResponseTime || 0}ms
-                      </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Stack spacing={1}>
-                      <Typography color="textSecondary" variant="caption">
-                        Database Status
-                      </Typography>
-                      <Chip
-                        label={data.systemHealth.databaseStatus || "OK"}
-                        color={data.systemHealth.databaseStatus === "OK" ? "success" : "error"}
-                        size="small"
-                      />
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card>
-                  <CardContent>
-                    <Stack spacing={1}>
-                      <Typography color="textSecondary" variant="caption">
-                        Active Sessions
-                      </Typography>
-                      <Typography variant="h5">
-                        {data.systemHealth.activeSessions || 0}
-                      </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          </Box>
-        </Paper>
-      )}
-
-      {data?.provisionedSuperAdmins && data.provisionedSuperAdmins.length > 0 && (
-        <Paper sx={{ mx: 2, mb: 2 }}>
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
-              <SecurityRoundedIcon /> Provisioned Super Admins
-            </Typography>
-
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: theme.palette.mode === "dark" ? "#1e1e1e" : "#f5f5f5" }}>
-                    <TableCell>Username</TableCell>
-                    <TableCell>Full Name</TableCell>
-                    <TableCell>Society</TableCell>
-                    <TableCell>Password Status</TableCell>
-                    <TableCell>Created</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {data.provisionedSuperAdmins.map((admin, idx) => (
-                    <TableRow key={idx} hover>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={500}>
-                          {admin.username}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{admin.fullName}</TableCell>
-                      <TableCell>{admin.society?.name || "-"}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={admin.requiresPasswordChange ? "Change Required" : "Set"}
-                          color={admin.requiresPasswordChange ? "warning" : "success"}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{formatDate(admin.createdAt || "")}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        </Paper>
-      )}
     </Box>
   );
 }

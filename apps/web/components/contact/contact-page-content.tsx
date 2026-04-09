@@ -20,13 +20,13 @@ export function ContactPageContent() {
   const copy = getContactPageCopy(locale);
 
   return (
-    <Box sx={{ py: { xs: 8, md: 12 }, bgcolor: "#f8fafc" }}>
+    <Box sx={{ py: { xs: 8, md: 12 }, bgcolor: "background.default" }}>
       <Container maxWidth="lg">
         <Box sx={{ textAlign: "center", mb: 8 }}>
           <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 3 }}>
             {copy.heroBadge}
           </Typography>
-          <Typography variant="h2" sx={{ fontWeight: 900, color: "#0f172a", mt: 1, letterSpacing: "-0.04em" }}>
+          <Typography variant="h2" sx={{ fontWeight: 900, color: "text.primary", mt: 1, letterSpacing: "-0.04em" }}>
             {copy.heroTitle}
           </Typography>
           <Typography variant="h6" sx={{ color: "text.secondary", mt: 3, maxWidth: 700, mx: "auto", fontWeight: 500 }}>
@@ -41,12 +41,12 @@ export function ContactPageContent() {
                 sx={{
                   p: 4,
                   borderRadius: 2,
-                  bgcolor: "#fff",
+                  bgcolor: "background.paper",
                   height: "100%",
-                  border: "1px solid rgba(148, 163, 184, 0.08)",
-                  boxShadow: "0 12px 24px -10px rgba(15, 23, 42, 0.05)",
+                  border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                  boxShadow: (theme) => theme.shadows[1],
                   transition: "all 300ms ease",
-                  "&:hover": { transform: "translateY(-8px)", boxShadow: "0 32px 64px -16px rgba(15, 23, 42, 0.1)" }
+                  "&:hover": { transform: "translateY(-8px)", boxShadow: (theme) => theme.shadows[4] }
                 }}
               >
                 <Box
@@ -61,7 +61,7 @@ export function ContactPageContent() {
                 >
                   {contactIcons[index].icon}
                 </Box>
-                <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5, color: "#0f172a" }}>
+                <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5, color: "text.primary" }}>
                   {method.title}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mb: 3 }}>
@@ -108,11 +108,11 @@ export function ContactPageContent() {
 
         <Box sx={{ p: 4, borderRadius: 2, bgcolor: alpha("#3b82f6", 0.04), border: "1px solid rgba(59, 130, 246, 0.12)" }}>
           <Stack direction="row" spacing={2.5} alignItems="flex-start">
-            <Box sx={{ p: 1, borderRadius: 6, bgcolor: "#3b82f6", color: "#fff" }}>
+            <Box sx={{ p: 1, borderRadius: 6, bgcolor: "primary.main", color: "primary.contrastText" }}>
               <InfoRoundedIcon />
             </Box>
             <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 900, color: "#0f172a" }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 900, color: "text.primary" }}>
                 {copy.commitmentTitle}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, lineHeight: 1.6 }}>

@@ -18,7 +18,7 @@ import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import SupportAgentRoundedIcon from "@mui/icons-material/SupportAgentRounded";
 import { Box, Button, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import type { WorkspaceDefinition, WorkspaceRoleSlug, WorkspaceUiCopy } from "@/features/roles/workspace-definitions";
 
 type WorkspacePreviewCardProps = {
@@ -184,9 +184,11 @@ export function WorkspacePreviewCard({
   index,
   variant = "home"
 }: WorkspacePreviewCardProps) {
+  const theme = useTheme();
   const config = workspaceVisuals[workspace.slug];
   const Icon = config.icon;
   const isHome = variant === "home";
+  const isDark = theme.palette.mode === "dark";
   
   // For home, we show fewer modules and metrics to keep it compact
   const railModules = isHome ? [] : visibleModules.slice(0, variant === "detailed" ? 6 : 5);
@@ -204,15 +206,19 @@ export function WorkspacePreviewCard({
         overflow: "hidden",
         position: "relative",
         borderRadius: isHome ? 3.5 : 4,
-        border: `1px solid ${alpha(config.accent, 0.16)}`,
-        background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,249,254,0.98) 100%)",
-        boxShadow: `0 18px 38px ${alpha(config.accent, 0.08)}`,
+        border: `1px solid ${isDark ? alpha("#cbd5e1", 0.12) : alpha(config.accent, 0.16)}`,
+        background: isDark
+          ? `linear-gradient(180deg, ${alpha("#0f172a", 0.96)} 0%, ${alpha("#111c2d", 0.96)} 100%)`
+          : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,249,254,0.98) 100%)",
+        boxShadow: isDark ? "0 24px 56px rgba(2,6,23,0.48)" : `0 18px 38px ${alpha(config.accent, 0.08)}`,
         "&::before": {
           content: '""',
           position: "absolute",
           inset: 0,
           pointerEvents: "none",
-          background: `radial-gradient(120% 90% at 100% 0%, ${alpha(config.accent, 0.14)} 0%, rgba(255,255,255,0) 54%)`
+          background: isDark
+            ? `radial-gradient(120% 90% at 100% 0%, ${alpha(config.accent, 0.2)} 0%, rgba(255,255,255,0) 54%)`
+            : `radial-gradient(120% 90% at 100% 0%, ${alpha(config.accent, 0.14)} 0%, rgba(255,255,255,0) 54%)`
         }
       }}
     >
@@ -286,7 +292,7 @@ export function WorkspacePreviewCard({
                     p: 1.5,
                     borderRadius: 3,
                     border: isHome ? `1px solid ${alpha(config.accent, 0.1)}` : "1px solid rgba(148, 163, 184, 0.16)",
-                    background: "rgba(255,255,255,0.94)"
+                    background: isDark ? alpha("#0b1220", 0.88) : "rgba(255,255,255,0.94)"
                   }}
                 >
                   <Stack spacing={1.15}>
@@ -329,8 +335,8 @@ export function WorkspacePreviewCard({
                         sx={{
                           p: 1.15,
                           borderRadius: 2.4,
-                          background: alpha(config.accent, 0.06),
-                          border: `1px solid ${alpha(config.accent, 0.12)}`
+                          background: isDark ? alpha(config.accent, 0.12) : alpha(config.accent, 0.06),
+                          border: `1px solid ${isDark ? alpha(config.accent, 0.22) : alpha(config.accent, 0.12)}`
                         }}
                       >
                         <Typography variant="overline" sx={{ color: alpha(config.accent, 0.88), lineHeight: 1.1 }}>
@@ -363,7 +369,9 @@ export function WorkspacePreviewCard({
                             border: isActive ? `1px solid ${alpha(config.accent, 0.22)}` : "1px solid rgba(148, 163, 184, 0.12)",
                             background: isActive
                               ? `linear-gradient(135deg, ${config.accent} 0%, ${alpha(config.accent, 0.92)} 100%)`
-                              : "rgba(255,255,255,0.84)",
+                              : isDark
+                                ? alpha("#0b1220", 0.84)
+                                : "rgba(255,255,255,0.84)",
                             color: isActive ? "#fff" : "text.primary"
                           }}
                         >
@@ -413,8 +421,8 @@ export function WorkspacePreviewCard({
                           px: 1.4,
                           py: 1.15,
                           borderRadius: 2.6,
-                          border: "1px solid rgba(148, 163, 184, 0.14)",
-                          bgcolor: "rgba(255,255,255,0.9)"
+                          border: isDark ? `1px solid ${alpha("#cbd5e1", 0.12)}` : "1px solid rgba(148, 163, 184, 0.14)",
+                          bgcolor: isDark ? alpha("#0b1220", 0.84) : "rgba(255,255,255,0.9)"
                         }}
                       >
                         <SearchRoundedIcon sx={{ color: alpha(config.accent, 0.78) }} />

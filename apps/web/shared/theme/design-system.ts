@@ -35,7 +35,7 @@ export const DESIGN_SYSTEM = {
   SURFACES: {
     DARK: {
       background: "#0a0f1e",
-      paper: "background.paper",
+      paper: "#0f172a",
       tableHead: "rgba(255,255,255,0.02)",
       border: "rgba(255,255,255,0.08)",
       tableBorder: "rgba(255,255,255,0.05)",
