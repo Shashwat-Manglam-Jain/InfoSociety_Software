@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Box, Chip, Container, Typography, alpha, IconButton, Stack } from "@mui/material";
 import ArrowBackIosNewRoundedIcon from "@mui/icons-material/ArrowBackIosNewRounded";
 import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRounded";
+import { useTheme } from "@mui/material/styles";
 import { WorkspacePreviewCard } from "@/features/roles/components/workspace-preview-card";
 import { getWorkspaceModules } from "@/features/roles/workspace-definitions";
 
@@ -12,10 +13,12 @@ interface WorkspacesSectionProps {
 }
 
 export function WorkspacesSection({ workspaceUi, workspaces, locale }: WorkspacesSectionProps) {
+  const theme = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const totalItems = workspaces.length;
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
+  const isDark = theme.palette.mode === "dark";
 
   const handleNext = () => {
     setActiveIndex((prev) => (prev + 1) % totalItems);
@@ -52,9 +55,24 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
       sx={{
         py: { xs: 8, md: 10 },
         background: (theme) =>
-          `linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(244,247,252,1) 100%)`,
+          isDark
+            ? `radial-gradient(120% 90% at 50% 0%, ${alpha(theme.palette.primary.main, 0.16)} 0%, transparent 58%),
+               linear-gradient(180deg, ${alpha("#08101d", 0.98)} 0%, ${alpha("#0d1728", 0.98)} 100%)`
+            : `linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(244,247,252,1) 100%)`,
         overflow: "hidden",
-        position: "relative"
+        position: "relative",
+        "&::before": isDark
+          ? {
+              content: '""',
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              background: `linear-gradient(90deg, ${alpha("#020617", 0.16)} 0%, transparent 22%, transparent 78%, ${alpha(
+                "#020617",
+                0.16
+              )} 100%)`
+            }
+          : undefined
       }}
     >
       <Container maxWidth="lg" sx={{ mb: { xs: 4, md: 6 } }}>
@@ -78,7 +96,7 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
               fontWeight: 900,
               fontSize: { xs: "2.5rem", md: "3.2rem" },
               letterSpacing: "-0.04em",
-              color: "#0f172a"
+              color: isDark ? "#f8fafc" : "#0f172a"
             }}
           >
             {workspaceUi.homeSectionTitle}
@@ -109,13 +127,16 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
                 top: "50%",
                 transform: "translateY(-50%)",
                 zIndex: 10,
-                color: "#1e293b",
-                bgcolor: "rgba(255,255,255,0.9)",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-                border: "1px solid rgba(0,0,0,0.06)",
+                color: isDark ? "#e2e8f0" : "#1e293b",
+                bgcolor: isDark ? alpha("#0f172a", 0.84) : "rgba(255,255,255,0.9)",
+                boxShadow: isDark ? "0 14px 36px rgba(2,6,23,0.45)" : "0 8px 32px rgba(0,0,0,0.12)",
+                border: isDark ? `1px solid ${alpha("#cbd5e1", 0.14)}` : "1px solid rgba(0,0,0,0.06)",
                 width: 48,
                 height: 48,
-                "&:hover": { bgcolor: "#fff", color: "secondary.main" }
+                "&:hover": {
+                  bgcolor: isDark ? alpha("#111c2d", 0.96) : "#fff",
+                  color: "secondary.main"
+                }
               }}
             >
               <ArrowBackIosNewRoundedIcon />
@@ -129,13 +150,16 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
                 top: "50%",
                 transform: "translateY(-50%)",
                 zIndex: 10,
-                color: "#1e293b",
-                bgcolor: "rgba(255,255,255,0.9)",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-                border: "1px solid rgba(0,0,0,0.06)",
+                color: isDark ? "#e2e8f0" : "#1e293b",
+                bgcolor: isDark ? alpha("#0f172a", 0.84) : "rgba(255,255,255,0.9)",
+                boxShadow: isDark ? "0 14px 36px rgba(2,6,23,0.45)" : "0 8px 32px rgba(0,0,0,0.12)",
+                border: isDark ? `1px solid ${alpha("#cbd5e1", 0.14)}` : "1px solid rgba(0,0,0,0.06)",
                 width: 48,
                 height: 48,
-                "&:hover": { bgcolor: "#fff", color: "secondary.main" }
+                "&:hover": {
+                  bgcolor: isDark ? alpha("#111c2d", 0.96) : "#fff",
+                  color: "secondary.main"
+                }
               }}
             >
               <ArrowForwardIosRoundedIcon />
@@ -203,12 +227,12 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
             sx={{
               width: activeIndex === index ? 24 : 8,
               height: 8,
-              borderRadius: 4,
-              bgcolor: activeIndex === index ? "secondary.main" : alpha("#0f172a", 0.12),
+              borderRadius: 1,
+              bgcolor: activeIndex === index ? "secondary.main" : isDark ? alpha("#e2e8f0", 0.2) : alpha("#0f172a", 0.12),
               cursor: "pointer",
               transition: "all 400ms ease",
               "&:hover": {
-                bgcolor: activeIndex === index ? "secondary.main" : alpha("#0f172a", 0.24)
+                bgcolor: activeIndex === index ? "secondary.main" : isDark ? alpha("#e2e8f0", 0.34) : alpha("#0f172a", 0.24)
               }
             }}
           />

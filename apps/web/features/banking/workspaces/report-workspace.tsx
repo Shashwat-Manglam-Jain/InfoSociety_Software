@@ -22,6 +22,7 @@ import {
   Typography
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
+import { alpha, useTheme } from "@mui/material/styles";
 import { getReportCatalog, listReportJobs, runReport, type ReportCatalog, type ReportJobRecord, type ReportStatus } from "@/shared/api/reports";
 import { SectionHero } from "@/features/society/components/operations/SectionHero";
 import { MetricCard } from "@/features/society/components/operations/MetricCard";
@@ -44,6 +45,7 @@ function formatDateTime(value?: string | null) {
 }
 
 export function ReportWorkspace({ token }: ReportWorkspaceProps) {
+  const theme = useTheme();
   const [catalog, setCatalog] = useState<ReportCatalog>({});
   const [rows, setRows] = useState<ReportJobRecord[]>([]);
   const [total, setTotal] = useState(0);
@@ -178,7 +180,7 @@ export function ReportWorkspace({ token }: ReportWorkspaceProps) {
               minWidth: { xs: "100%", sm: 260 },
               "& .MuiOutlinedInput-root": {
                 borderRadius: 2.5,
-                bgcolor: "rgba(255,255,255,0.08)",
+                bgcolor: alpha(theme.palette.common.white, theme.palette.mode === "dark" ? 0.08 : 0.12),
                 color: "#fff"
               }
             }}
@@ -199,7 +201,7 @@ export function ReportWorkspace({ token }: ReportWorkspaceProps) {
 
       {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
 
-      <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+      <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}` }}>
         <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
           Run Report
         </Typography>
@@ -252,10 +254,10 @@ export function ReportWorkspace({ token }: ReportWorkspaceProps) {
         </Button>
       </Paper>
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, overflow: "hidden" }}>
         <TableContainer>
           <Table sx={{ minWidth: 1080, tableLayout: "fixed" }}>
-            <TableHead sx={{ bgcolor: "#f8fafc" }}>
+            <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 900, width: "18%" }}>Category</TableCell>
                 <TableCell sx={{ fontWeight: 900, width: "26%" }}>Report</TableCell>

@@ -53,6 +53,11 @@ import {
 } from "@/shared/api/deposits";
 import { listHeads, type HeadRecord } from "@/shared/api/heads";
 import { listLoans, type LoanRecord, updateLoanGuarantors } from "@/shared/api/loans";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getGuarantorRegistryCopy } from "@/shared/i18n/guarantor-registry-copy";
+import { getPlanCatalogueCopy } from "@/shared/i18n/plan-catalogue-copy";
+import { getAccountRegistryCopy } from "@/shared/i18n/account-registry-copy";
+import { getClientApprovalDeskCopy } from "@/shared/i18n/client-approval-desk-copy";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
 import { toast } from "@/shared/ui/toast";
 import type { ManagedUserRow, OperationsClientRow } from "../lib/society-admin-dashboard";
@@ -206,8 +211,15 @@ function getAccountTypeLabel(type: BankingAccountRecord["type"]) {
     .join(" ");
 }
 
-function getSchemeTypeLabel(scheme: DepositSchemeRecord) {
-  return scheme.recurring ? "Recurring Deposit" : "Fixed Deposit";
+function getSchemeTypeLabel(
+  scheme: DepositSchemeRecord,
+  labels?: { recurringDeposit: string; fixedDeposit: string }
+) {
+  if (scheme.recurring) {
+    return labels?.recurringDeposit ?? "Recurring Deposit";
+  }
+
+  return labels?.fixedDeposit ?? "Fixed Deposit";
 }
 
 function buildClientProfiles(managedUsers: ManagedUserRow[]) {
@@ -360,9 +372,19 @@ export function SocietyOperationsWorkspace({
   canCreatePlans = true,
   canOpenAccounts = true
 }: SocietyOperationsWorkspaceProps) {
+  const { locale } = useLanguage();
+  const guarantorCopy = getGuarantorRegistryCopy(locale);
+  const planCopy = getPlanCatalogueCopy(locale);
+  const accountCopy = getAccountRegistryCopy(locale);
+  const approvalCopy = getClientApprovalDeskCopy(locale);
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
+  const localeTag = locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+
+  function formatLocalizedNumber(value: number, options?: Intl.NumberFormatOptions) {
+    return new Intl.NumberFormat(localeTag, options).format(value);
+  }
 
   const clientProfiles = useMemo(() => buildClientProfiles(managedUsers), [managedUsers]);
   const shareMembers = useMemo(() => buildShareMembers(clientProfiles), [clientProfiles]);
@@ -661,9 +683,16 @@ export function SocietyOperationsWorkspace({
     }
 
     return schemeRows.filter((scheme) =>
-      [scheme.code, scheme.name, getSchemeTypeLabel(scheme)].some((value) => value.toLowerCase().includes(query))
+      [
+        scheme.code,
+        scheme.name,
+        getSchemeTypeLabel(scheme, {
+          recurringDeposit: planCopy.drawer.recurringDeposit,
+          fixedDeposit: planCopy.drawer.fixedDeposit
+        })
+      ].some((value) => value.toLowerCase().includes(query))
     );
-  }, [schemeRows, schemeSearch]);
+  }, [planCopy.drawer.fixedDeposit, planCopy.drawer.recurringDeposit, schemeRows, schemeSearch]);
 
   const filteredAccounts = useMemo(() => {
     const query = accountSearch.trim().toLowerCase();
@@ -743,12 +772,16 @@ export function SocietyOperationsWorkspace({
         : 0;
 
     return [
-      { label: "Plans", value: String(schemeRows.length), caption: "Deposit plans available for account opening." },
-      { label: "FD Plans", value: String(fixedDeposits), caption: "Fixed deposit options." },
-      { label: "RD Plans", value: String(recurringDeposits), caption: "Recurring deposit options." },
-      { label: "Avg Interest", value: `${averageInterest.toFixed(2)}%`, caption: "Average advertised plan rate." }
+      { label: planCopy.hero.eyebrow, value: formatLocalizedNumber(schemeRows.length), caption: planCopy.metrics.activePlans.caption },
+      { label: planCopy.metrics.fdPlans.label, value: formatLocalizedNumber(fixedDeposits), caption: planCopy.metrics.fdPlans.caption },
+      { label: planCopy.metrics.rdPlans.label, value: formatLocalizedNumber(recurringDeposits), caption: planCopy.metrics.rdPlans.caption },
+      {
+        label: planCopy.metrics.avgInterest.label,
+        value: `${formatLocalizedNumber(averageInterest, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`,
+        caption: planCopy.metrics.avgInterest.caption
+      }
     ];
-  }, [schemeRows]);
+  }, [formatLocalizedNumber, planCopy, schemeRows]);
 
   const accountMetrics = useMemo(() => {
     const totalBalance = filteredAccounts.reduce((sum, account) => sum + Number(account.currentBalance || 0), 0);
@@ -758,12 +791,12 @@ export function SocietyOperationsWorkspace({
     ).length;
 
     return [
-      { label: "Accounts", value: String(filteredAccounts.length), caption: "Visible account registry rows." },
-      { label: "Active", value: String(activeAccounts), caption: "Currently active accounts." },
-      { label: "Deposits", value: String(depositAccounts), caption: "FD and RD accounts opened under plans." },
-      { label: "Balance", value: formatCurrency(totalBalance), caption: "Outstanding balance across visible accounts." }
+      { label: accountCopy.metrics.accounts.label, value: formatLocalizedNumber(filteredAccounts.length), caption: accountCopy.metrics.accounts.caption },
+      { label: accountCopy.metrics.active.label, value: formatLocalizedNumber(activeAccounts), caption: accountCopy.metrics.active.caption },
+      { label: accountCopy.metrics.deposits.label, value: formatLocalizedNumber(depositAccounts), caption: accountCopy.metrics.deposits.caption },
+      { label: accountCopy.metrics.balance.label, value: formatCurrency(totalBalance), caption: accountCopy.metrics.balance.caption }
     ];
-  }, [filteredAccounts]);
+  }, [accountCopy.metrics.accounts.caption, accountCopy.metrics.accounts.label, accountCopy.metrics.active.caption, accountCopy.metrics.active.label, accountCopy.metrics.balance.caption, accountCopy.metrics.balance.label, accountCopy.metrics.deposits.caption, accountCopy.metrics.deposits.label, filteredAccounts, formatCurrency]);
 
   const canCreateDepositAccounts = canOpenAccounts && clientProfiles.length > 0 && schemeRows.length > 0 && headRows.length > 0;
 
@@ -794,9 +827,9 @@ export function SocietyOperationsWorkspace({
         <Stack spacing={3}>
           <SectionHero
             icon={<ArticleRoundedIcon />}
-            eyebrow="Plans"
-            title="Deposit Plan Catalogue"
-            description="Create the deposit plans first, then use them while opening deposit accounts for society clients."
+            eyebrow={planCopy.hero.eyebrow}
+            title={planCopy.hero.title}
+            description={planCopy.hero.description}
             colorScheme="emerald"
             actions={
               <>
@@ -804,7 +837,7 @@ export function SocietyOperationsWorkspace({
                   size="small"
                   value={schemeSearch}
                   onChange={(event) => setSchemeSearch(event.target.value)}
-                  placeholder="Search plans..."
+                  placeholder={planCopy.hero.searchPlaceholder}
                   sx={{
                     minWidth: { xs: "100%", sm: 260 },
                     "& .MuiOutlinedInput-root": {
@@ -825,7 +858,7 @@ export function SocietyOperationsWorkspace({
                   disabled={!canCreatePlans}
                   sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 3, fontWeight: 900, "&:hover": { bgcolor: "#f8fafc" } }}
                 >
-                  Create Plan
+                  {planCopy.hero.createPlan}
                 </Button>
               </>
             }
@@ -842,7 +875,7 @@ export function SocietyOperationsWorkspace({
           {schemeError ? <Alert severity="error" sx={{ borderRadius: 3 }}>{schemeError}</Alert> : null}
           {!canCreatePlans ? (
             <Alert severity="info" sx={{ borderRadius: 3 }}>
-              This workspace is available in view mode for your account. Plan creation is reserved for staff with deposit setup access.
+              {planCopy.info.viewOnly}
             </Alert>
           ) : null}
 
@@ -851,16 +884,16 @@ export function SocietyOperationsWorkspace({
               <Table sx={{ minWidth: 860, tableLayout: "fixed" }}>
                 <TableHead sx={{ bgcolor: surfaces.tableHead }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Plan Code</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "28%" }}>Plan Name</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Type</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Tenure</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 900, width: "18%" }}>Interest</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>{planCopy.table.planCode}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "28%" }}>{planCopy.table.planName}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>{planCopy.table.type}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>{planCopy.table.tenure}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 900, width: "18%" }}>{planCopy.table.interest}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {!schemeLoading && filteredSchemes.length === 0 ? (
-                    <TableEmpty colSpan={5} label="No plans matched the current search." />
+                    <TableEmpty colSpan={5} label={planCopy.table.emptyState} />
                   ) : schemeLoading ? (
                     <TableRow>
                       <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
@@ -877,18 +910,25 @@ export function SocietyOperationsWorkspace({
                           <Typography variant="body2" sx={{ fontWeight: 700 }}>{scheme.name}</Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip size="small" label={getSchemeTypeLabel(scheme)} sx={{ fontWeight: 800 }} />
+                          <Chip
+                            size="small"
+                            label={getSchemeTypeLabel(scheme, {
+                              recurringDeposit: planCopy.drawer.recurringDeposit,
+                              fixedDeposit: planCopy.drawer.fixedDeposit
+                            })}
+                            sx={{ fontWeight: 800 }}
+                          />
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" color="text.secondary">
                             {scheme.minMonths === scheme.maxMonths
-                              ? `${scheme.minMonths} months`
-                              : `${scheme.minMonths} - ${scheme.maxMonths} months`}
+                              ? `${formatLocalizedNumber(scheme.minMonths)} ${planCopy.table.months}`
+                              : `${formatLocalizedNumber(scheme.minMonths)} - ${formatLocalizedNumber(scheme.maxMonths)} ${planCopy.table.months}`}
                           </Typography>
                         </TableCell>
                         <TableCell align="right">
                           <Typography variant="body2" sx={{ fontWeight: 900 }}>
-                            {Number(scheme.interestRate).toFixed(2)}%
+                            {formatLocalizedNumber(Number(scheme.interestRate), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                           </Typography>
                         </TableCell>
                       </TableRow>
@@ -905,9 +945,9 @@ export function SocietyOperationsWorkspace({
         <Stack spacing={3}>
           <SectionHero
             icon={<PaymentsRoundedIcon />}
-            eyebrow="Accounts"
-            title="Deposit Account Registry"
-            description="Accounts can be opened only after a plan exists. This workspace uses live deposit plans, client profiles, and banking heads."
+            eyebrow={accountCopy.hero.eyebrow}
+            title={accountCopy.hero.title}
+            description={accountCopy.hero.description}
             colorScheme="violet"
             actions={
               <>
@@ -918,7 +958,7 @@ export function SocietyOperationsWorkspace({
                     setAccountPage(0);
                     setAccountSearch(event.target.value);
                   }}
-                  placeholder="Search accounts..."
+                  placeholder={accountCopy.hero.searchPlaceholder}
                   sx={{
                     minWidth: { xs: "100%", sm: 260 },
                     "& .MuiOutlinedInput-root": {
@@ -939,7 +979,7 @@ export function SocietyOperationsWorkspace({
                   disabled={!canCreateDepositAccounts}
                   sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 3, fontWeight: 900, "&:hover": { bgcolor: "#f8fafc" } }}
                 >
-                  Open Account
+                  {accountCopy.hero.openAccount}
                 </Button>
               </>
             }
@@ -955,22 +995,22 @@ export function SocietyOperationsWorkspace({
 
           {!schemeRows.length ? (
             <Alert severity="warning" sx={{ borderRadius: 3 }}>
-              Create at least one deposit plan first. Once a plan exists, the Open Account action becomes available.
+              {accountCopy.alerts.createPlanFirst}
             </Alert>
           ) : null}
           {!canOpenAccounts ? (
             <Alert severity="info" sx={{ borderRadius: 3 }}>
-              Your access for this screen is read-only. Account opening is available only to staff or agents with account setup privileges.
+              {accountCopy.alerts.readOnly}
             </Alert>
           ) : null}
           {!headRows.length ? (
             <Alert severity="warning" sx={{ borderRadius: 3 }}>
-              No banking heads are configured yet, so account numbers cannot be generated for new deposit accounts.
+              {accountCopy.alerts.noHeads}
             </Alert>
           ) : null}
           {!clientProfiles.length ? (
             <Alert severity="info" sx={{ borderRadius: 3 }}>
-              No client portal accounts are available yet. Create a client from User Access first.
+              {accountCopy.alerts.noClients}
             </Alert>
           ) : null}
           {accountError ? <Alert severity="error" sx={{ borderRadius: 3 }}>{accountError}</Alert> : null}
@@ -980,17 +1020,17 @@ export function SocietyOperationsWorkspace({
               <Table sx={{ minWidth: 980, tableLayout: "fixed" }}>
                 <TableHead sx={{ bgcolor: surfaces.tableHead }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Account No</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "24%" }}>Client</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Type</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "16%" }}>Maturity</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "12%" }}>Status</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 900, width: "12%" }}>Balance</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>{accountCopy.table.accountNo}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "24%" }}>{accountCopy.table.client}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>{accountCopy.table.type}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "16%" }}>{accountCopy.table.maturity}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "12%" }}>{accountCopy.table.status}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 900, width: "12%" }}>{accountCopy.table.balance}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {!accountLoading && filteredAccounts.length === 0 ? (
-                    <TableEmpty colSpan={6} label="No accounts matched the current search." />
+                    <TableEmpty colSpan={6} label={accountCopy.table.emptyState} />
                   ) : accountLoading ? (
                     <TableRow>
                       <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
@@ -1024,7 +1064,7 @@ export function SocietyOperationsWorkspace({
                           <TableCell>
                             <Chip
                               size="small"
-                              label={account.status}
+                              label={account.status === "ACTIVE" ? accountCopy.table.active : account.status}
                               color={account.status === "ACTIVE" ? "success" : "default"}
                               variant={account.status === "ACTIVE" ? "filled" : "outlined"}
                             />
@@ -1050,6 +1090,16 @@ export function SocietyOperationsWorkspace({
                 setAccountRowsPerPage(parseInt(event.target.value, 10));
                 setAccountPage(0);
               }}
+              labelRowsPerPage={accountCopy.pagination.rowsPerPage}
+              labelDisplayedRows={({ from, to, count }) =>
+                accountCopy.pagination.displayedRows
+                  .replace("{{from}}", formatLocalizedNumber(from))
+                  .replace("{{to}}", formatLocalizedNumber(to))
+                  .replace("{{count}}", formatLocalizedNumber(count))
+              }
+              getItemAriaLabel={(buttonType) =>
+                buttonType === "next" ? accountCopy.pagination.nextPage : accountCopy.pagination.previousPage
+              }
             />
           </Paper>
         </Stack>
@@ -1086,9 +1136,9 @@ export function SocietyOperationsWorkspace({
         <Stack spacing={3}>
           <SectionHero
             icon={<ShieldRoundedIcon />}
-            eyebrow="Guarantors"
-            title="Loan Responsibility Desk"
-            description="See exactly which guarantor is taking responsibility for each loan account created in the society."
+            eyebrow={guarantorCopy.guarantor.eyebrow}
+            title={guarantorCopy.guarantor.title}
+            description={guarantorCopy.guarantor.description}
             colorScheme="sky"
             actions={
               <>
@@ -1099,7 +1149,7 @@ export function SocietyOperationsWorkspace({
                     setGuarantorPage(0);
                     setGuarantorSearch(event.target.value);
                   }}
-                  placeholder="Search guarantors..."
+                  placeholder={guarantorCopy.common.searchPlaceholder}
                   sx={{
                     minWidth: { xs: "100%", sm: 260 },
                     "& .MuiOutlinedInput-root": {
@@ -1120,7 +1170,7 @@ export function SocietyOperationsWorkspace({
                   disabled={branchScopedLoanRows.length === 0}
                   sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 3, fontWeight: 900, "&:hover": { bgcolor: "#f8fafc" } }}
                 >
-                  Assign Guarantor
+                  {locale === "hi" ? "गारंटर असाइन करें" : locale === "mr" ? "हमीदार नेमा" : "Assign Guarantor"}
                 </Button>
               </>
             }
@@ -1216,19 +1266,19 @@ export function SocietyOperationsWorkspace({
         <Stack spacing={3}>
           <SectionHero
             icon={<VerifiedUserRoundedIcon />}
-            eyebrow="Approvals"
-            title="Client Access Approval Desk"
-            description="This view shows the client records that were created from User Access and their society-admin approval trail for portal login."
+            eyebrow={approvalCopy.hero.eyebrow}
+            title={approvalCopy.hero.title}
+            description={approvalCopy.hero.description}
             colorScheme="violet"
             actions={
               <TextField
                 size="small"
                 value={approvalSearch}
-                onChange={(event) => {
-                  setApprovalPage(0);
-                  setApprovalSearch(event.target.value);
-                }}
-                placeholder="Search approvals..."
+                  onChange={(event) => {
+                    setApprovalPage(0);
+                    setApprovalSearch(event.target.value);
+                  }}
+                placeholder={approvalCopy.hero.searchPlaceholder}
                 sx={{
                   minWidth: { xs: "100%", sm: 260 },
                   "& .MuiOutlinedInput-root": {
@@ -1250,17 +1300,17 @@ export function SocietyOperationsWorkspace({
               <Table sx={{ minWidth: 1040, tableLayout: "fixed" }}>
                 <TableHead sx={{ bgcolor: surfaces.tableHead }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 900, width: "24%" }}>Client</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>Customer Code</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "16%" }}>Login Username</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Approved By</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>Created On</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "24%" }}>{approvalCopy.table.client}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>{approvalCopy.table.customerCode}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "16%" }}>{approvalCopy.table.loginUsername}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>{approvalCopy.table.approvedBy}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>{approvalCopy.table.createdOn}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>{approvalCopy.table.status}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredApprovals.length === 0 ? (
-                    <TableEmpty colSpan={6} label="No client approval records matched the current search." />
+                    <TableEmpty colSpan={6} label={approvalCopy.table.emptyState} />
                   ) : (
                     filteredApprovals
                       .slice(approvalPage * approvalRowsPerPage, approvalPage * approvalRowsPerPage + approvalRowsPerPage)
@@ -1283,7 +1333,11 @@ export function SocietyOperationsWorkspace({
                             <Typography variant="body2" color="text.secondary">{formatDate(row.createdAt)}</Typography>
                           </TableCell>
                           <TableCell>
-                            <Chip size="small" label={row.status} color={row.status === "Approved" ? "success" : "default"} />
+                            <Chip
+                              size="small"
+                              label={row.status === "Approved" ? approvalCopy.table.approved : row.status}
+                              color={row.status === "Approved" ? "success" : "default"}
+                            />
                           </TableCell>
                         </TableRow>
                       ))
@@ -1301,6 +1355,16 @@ export function SocietyOperationsWorkspace({
                 setApprovalRowsPerPage(parseInt(event.target.value, 10));
                 setApprovalPage(0);
               }}
+              labelRowsPerPage={approvalCopy.pagination.rowsPerPage}
+              labelDisplayedRows={({ from, to, count }) =>
+                approvalCopy.pagination.displayedRows
+                  .replace("{{from}}", formatLocalizedNumber(from))
+                  .replace("{{to}}", formatLocalizedNumber(to))
+                  .replace("{{count}}", formatLocalizedNumber(count))
+              }
+              getItemAriaLabel={(buttonType) =>
+                buttonType === "next" ? approvalCopy.pagination.nextPage : approvalCopy.pagination.previousPage
+              }
             />
           </Paper>
         </Stack>
@@ -1318,38 +1382,38 @@ export function SocietyOperationsWorkspace({
               <CloseRoundedIcon />
             </IconButton>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Create Deposit Plan
+              {planCopy.drawer.createDepositPlan}
             </Typography>
           </Box>
           <Stack spacing={2} sx={{ px: 3, py: 3 }}>
             <TextField
               fullWidth
-              label="Plan Code"
+              label={planCopy.drawer.planCode}
               value={schemeForm.code}
               onChange={(event) => setSchemeForm((previous) => ({ ...previous, code: event.target.value.toUpperCase() }))}
             />
             <TextField
               fullWidth
-              label="Plan Name"
+              label={planCopy.drawer.planName}
               value={schemeForm.name}
               onChange={(event) => setSchemeForm((previous) => ({ ...previous, name: event.target.value }))}
             />
             <TextField
               select
               fullWidth
-              label="Plan Type"
+              label={planCopy.drawer.planType}
               value={schemeForm.recurring ? "RD" : "FD"}
               onChange={(event) => setSchemeForm((previous) => ({ ...previous, recurring: event.target.value === "RD" }))}
             >
-              <MenuItem value="FD">Fixed Deposit</MenuItem>
-              <MenuItem value="RD">Recurring Deposit</MenuItem>
+              <MenuItem value="FD">{planCopy.drawer.fixedDeposit}</MenuItem>
+              <MenuItem value="RD">{planCopy.drawer.recurringDeposit}</MenuItem>
             </TextField>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   type="number"
                   fullWidth
-                  label="Min Months"
+                  label={planCopy.drawer.minMonths}
                   value={schemeForm.minMonths}
                   onChange={(event) => setSchemeForm((previous) => ({ ...previous, minMonths: Number(event.target.value) }))}
                 />
@@ -1358,7 +1422,7 @@ export function SocietyOperationsWorkspace({
                 <TextField
                   type="number"
                   fullWidth
-                  label="Max Months"
+                  label={planCopy.drawer.maxMonths}
                   value={schemeForm.maxMonths}
                   onChange={(event) => setSchemeForm((previous) => ({ ...previous, maxMonths: Number(event.target.value) }))}
                 />
@@ -1367,7 +1431,7 @@ export function SocietyOperationsWorkspace({
             <TextField
               type="number"
               fullWidth
-              label="Interest Rate"
+              label={planCopy.drawer.interestRate}
               value={schemeForm.interestRate}
               onChange={(event) => setSchemeForm((previous) => ({ ...previous, interestRate: Number(event.target.value) }))}
             />
@@ -1377,7 +1441,7 @@ export function SocietyOperationsWorkspace({
               disabled={schemeSubmitting || !schemeForm.code.trim() || !schemeForm.name.trim()}
               sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
             >
-              Create Plan
+              {planCopy.drawer.submitCreatePlan}
             </Button>
           </Stack>
         </Box>
@@ -1395,10 +1459,10 @@ export function SocietyOperationsWorkspace({
               <CloseRoundedIcon />
             </IconButton>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Open Deposit Account
+              {accountCopy.drawer.title}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              A plan is required before an account can be opened.
+              {accountCopy.drawer.subtitle}
             </Typography>
           </Box>
 
@@ -1406,7 +1470,7 @@ export function SocietyOperationsWorkspace({
             <TextField
               select
               fullWidth
-              label="Client"
+              label={accountCopy.drawer.client}
               value={accountForm.customerId}
               onChange={(event) => setAccountForm((previous) => ({ ...previous, customerId: event.target.value }))}
             >
@@ -1419,7 +1483,7 @@ export function SocietyOperationsWorkspace({
             <TextField
               select
               fullWidth
-              label="Plan"
+              label={accountCopy.drawer.plan}
               value={accountForm.schemeId}
               onChange={(event) => setAccountForm((previous) => ({ ...previous, schemeId: event.target.value }))}
             >
@@ -1434,7 +1498,7 @@ export function SocietyOperationsWorkspace({
                 <TextField
                   type="number"
                   fullWidth
-                  label="Deposit Amount"
+                  label={accountCopy.drawer.depositAmount}
                   value={accountForm.openingBalance}
                   onChange={(event) =>
                     setAccountForm((previous) => ({ ...previous, openingBalance: Number(event.target.value) }))
@@ -1445,7 +1509,7 @@ export function SocietyOperationsWorkspace({
                 <TextField
                   type="date"
                   fullWidth
-                  label="Opening Date"
+                  label={accountCopy.drawer.openingDate}
                   value={accountForm.openDate}
                   onChange={(event) => setAccountForm((previous) => ({ ...previous, openDate: event.target.value }))}
                   InputLabelProps={{ shrink: true }}
@@ -1456,10 +1520,10 @@ export function SocietyOperationsWorkspace({
               <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-                    Passbook Enabled
+                    {accountCopy.drawer.passbookEnabled}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Turn this off for accounts that should remain statement-only.
+                    {accountCopy.drawer.passbookDescription}
                   </Typography>
                 </Box>
                 <Switch
@@ -1474,16 +1538,19 @@ export function SocietyOperationsWorkspace({
             {selectedClient && selectedScheme ? (
               <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)", bgcolor: "#f8fafc" }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
-                  Opening Preview
+                  {accountCopy.drawer.openingPreview}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Client: {selectedClient.fullName} ({selectedClient.customerCode})
+                  {accountCopy.drawer.previewClient}: {selectedClient.fullName} ({selectedClient.customerCode})
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Plan: {selectedScheme.name} ({getSchemeTypeLabel(selectedScheme)})
+                  {accountCopy.drawer.previewPlan}: {selectedScheme.name} ({getSchemeTypeLabel(selectedScheme, {
+                    recurringDeposit: planCopy.drawer.recurringDeposit,
+                    fixedDeposit: planCopy.drawer.fixedDeposit
+                  })})
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Branch: {selectedClient.branchName}
+                  {accountCopy.drawer.previewBranch}: {selectedClient.branchName}
                 </Typography>
               </Paper>
             ) : null}
@@ -1499,7 +1566,7 @@ export function SocietyOperationsWorkspace({
               }
               sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
             >
-              Open Account
+              {accountCopy.drawer.submitOpenAccount}
             </Button>
           </Stack>
         </Box>

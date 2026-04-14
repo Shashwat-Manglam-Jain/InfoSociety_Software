@@ -64,7 +64,7 @@ export function HeroSection({ homeCopy, handleAction }: HeroSectionProps) {
                   bgcolor: "rgba(255,255,255,0.1)",
                   px: 2,
                   py: 0.8,
-                  borderRadius: 5,
+                  borderRadius: 4,
                   display: "inline-block"
                 }}
               >
@@ -81,10 +81,10 @@ export function HeroSection({ homeCopy, handleAction }: HeroSectionProps) {
                 letterSpacing: "-0.04em",
                 textShadow: "0 4px 12px rgba(0,0,0,0.15)"
               }}
-            >
+            > 
               {homeCopy.heroTitle}
             </Typography>
-            <Typography sx={{ fontSize: { xs: "1.05rem", md: "1.25rem" }, mb: 4.5, color: "rgba(255,255,255,0.9)", maxWidth: 580, lineHeight: 1.7 }}>
+            <Typography sx={{ fontSize: { xs: "1.05rem", md: "1.25rem" }, mb: 4.5, color: "rgba(255,255,255,0.9)", maxWidth: 580, lineHeight: 1.7 }}> 
               {homeCopy.heroDescription}
             </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2.5}>
@@ -126,7 +126,7 @@ export function HeroSection({ homeCopy, handleAction }: HeroSectionProps) {
                   "&:hover": { borderColor: "white", borderWidth: 2, bgcolor: "rgba(255,255,255,0.1)" }
                 }}
                 onClick={() => handleAction(homeCopy.loginToast)}
-              >
+              > 
                 {homeCopy.heroSecondaryAction}
               </Button>
             </Stack>
@@ -135,7 +135,7 @@ export function HeroSection({ homeCopy, handleAction }: HeroSectionProps) {
             <Box sx={{ 
               background: "rgba(255,255,255,0.12)", 
               backdropFilter: "blur(12px)", 
-              borderRadius: 5, 
+              borderRadius: 2.5, 
               p: 4.5, 
               border: "1px solid rgba(255,255,255,0.25)",
               boxShadow: "0 40px 100px -20px rgba(15, 23, 42, 0.25)"

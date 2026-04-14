@@ -30,6 +30,8 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { alpha, useTheme } from "@mui/material/styles";
 import { SectionHero } from "../operations/SectionHero";
 import { MetricCard } from "../operations/MetricCard";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getTeamOperationsCopy } from "@/shared/i18n/team-operations-copy";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
 import type { ManagedUserRow } from "../../lib/society-admin-dashboard";
 
@@ -55,8 +57,13 @@ export function TeamOperations({
   handleDeleteUser
 }: TeamOperationsProps) {
   const theme = useTheme();
+  const { locale } = useLanguage();
+  const copy = getTeamOperationsCopy(locale);
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
+  const actionButtonBg = isDark ? alpha("#ffffff", 0.04) : alpha(theme.palette.primary.main, 0.06);
+  const actionButtonHover = isDark ? alpha(theme.palette.primary.main, 0.18) : alpha(theme.palette.primary.main, 0.12);
+  const deleteButtonHover = isDark ? alpha(theme.palette.error.main, 0.2) : alpha(theme.palette.error.main, 0.1);
 
   const [accountTypeFilter, setAccountTypeFilter] = useState("all");
 
@@ -76,21 +83,21 @@ export function TeamOperations({
   });
 
   const metrics = [
-    { label: "Accounts", value: String(managedUsers.length), caption: "All login-enabled society accounts." },
+    { label: copy.metrics.accounts.label, value: String(managedUsers.length), caption: copy.metrics.accounts.caption },
     {
-      label: "Staff",
+      label: copy.metrics.staff.label,
       value: String(managedUsers.filter((user) => user.role === "SUPER_USER").length),
-      caption: "Internal operational accounts."
+      caption: copy.metrics.staff.caption
     },
     {
-      label: "Agents",
+      label: copy.metrics.agents.label,
       value: String(managedUsers.filter((user) => user.role === "AGENT").length),
-      caption: "Field agents and collections staff."
+      caption: copy.metrics.agents.caption
     },
     {
-      label: "Clients",
+      label: copy.metrics.clients.label,
       value: String(managedUsers.filter((user) => user.role === "CLIENT").length),
-      caption: "Client member portal accounts."
+      caption: copy.metrics.clients.caption
     }
   ];
 
@@ -98,9 +105,9 @@ export function TeamOperations({
     <Stack spacing={3}>
       <SectionHero
         icon={<BadgeRoundedIcon />}
-        eyebrow="Users"
-        title="User management"
-        description="Create, activate, and manage staff, agent, and client accounts with clear role labels and module access."
+        eyebrow={copy.hero.eyebrow}
+        title={copy.hero.title}
+        description={copy.hero.description}
         colorScheme="blue"
         actions={
           <>
@@ -108,11 +115,11 @@ export function TeamOperations({
               size="small"
               value={userSearch}
               onChange={(event) => setUserSearch(event.target.value)}
-              placeholder="Search users"
+              placeholder={copy.hero.searchPlaceholder}
               sx={{
                 minWidth: { xs: "100%", sm: 240 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 2.5,
+                  borderRadius: 1,
                   bgcolor: surfaces.input,
                   color: "#fff",
                   border: `1px solid ${surfaces.inputBorder}`
@@ -130,25 +137,25 @@ export function TeamOperations({
               sx={{
                 minWidth: { xs: "100%", sm: 160 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 2.5,
+                  borderRadius: 1,
                   bgcolor: surfaces.input,
                   color: "#fff",
                   border: `1px solid ${surfaces.inputBorder}`
                 }
               }}
             >
-              <MenuItem value="all">All Accounts</MenuItem>
-              <MenuItem value="SUPER_USER">Staff</MenuItem>
-              <MenuItem value="CLIENT">Client</MenuItem>
-              <MenuItem value="AGENT">Agent</MenuItem>
+              <MenuItem value="all">{copy.filters.allAccounts}</MenuItem>
+              <MenuItem value="SUPER_USER">{copy.filters.staff}</MenuItem>
+              <MenuItem value="CLIENT">{copy.filters.client}</MenuItem>
+              <MenuItem value="AGENT">{copy.filters.agent}</MenuItem>
             </TextField>
             <Button
               variant="contained"
               startIcon={<PersonAddAlt1RoundedIcon />}
               onClick={() => handleOpenDrawer("staff")}
-              sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2.5, fontWeight: 800, "&:hover": { bgcolor: "#f8fafc" } }}
+              sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2, fontWeight: 800, "&:hover": { bgcolor: "#f8fafc" } }}
             >
-              Add account
+              {copy.hero.addStaffUser}
             </Button>
           </>
         }
@@ -166,18 +173,18 @@ export function TeamOperations({
         ))}
       </Box>
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
+      <Paper elevation={0} sx={{ borderRadius: 1, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
           <Table size="small" sx={{ minWidth: 860, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 800, width: "28%" }}>User</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "18%" }}>Account type</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "18%" }}>Branch</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "18%" }}>Modules</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "10%" }}>Status</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 800, width: "12%" }}>
-                  Actions
+                <TableCell sx={{ fontWeight: 800, width: "28%" }}>{copy.table.user}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "18%" }}>{copy.table.accountType}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "18%" }}>{copy.table.branch}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "18%" }}>{copy.table.modules}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "10%" }}>{copy.table.status}</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 800, width: "14%" }}>
+                  {copy.table.actions}
                 </TableCell>
               </TableRow>
             </TableHead>
@@ -186,7 +193,7 @@ export function TeamOperations({
                 <TableRow>
                   <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
                     <Typography variant="body2" color="text.secondary">
-                      No matching users found.
+                      {copy.emptyState}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -196,7 +203,7 @@ export function TeamOperations({
                     <TableCell>
                       <Stack direction="row" spacing={1.5} alignItems="center">
                         <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main }}>
-                          {user.fullName?.[0] ?? "U"}
+                          {user.fullName?.[0] ?? copy.fallback.defaultAvatar}
                         </Avatar>
                         <Box>
                           <Typography variant="body2" sx={{ fontWeight: 700 }}>
@@ -223,48 +230,85 @@ export function TeamOperations({
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {user.branch?.name ?? "Head office"}
+                        {user.branch?.name ?? copy.fallback.headOffice}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {user.branch?.code ?? "No branch code"}
+                        {user.branch?.code ?? copy.fallback.noBranchCode}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {user.allowedModuleSlugs?.length ?? 0} modules
+                        {copy.modulesCount.replace("{{count}}", String(user.allowedModuleSlugs?.length ?? 0))}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Controlled from access settings
+                        {copy.fallback.controlledFromAccessSettings}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction="row" spacing={1.5} alignItems="center">
                         <Switch checked={user.isActive} onChange={() => handleToggleUserStatus(user.id, user.isActive)} />
                         <Typography variant="caption" sx={{ fontWeight: 700, color: user.isActive ? "#15803d" : "#475569" }}>
-                          {user.isActive ? "Active" : "Inactive"}
+                          {user.isActive ? copy.status.active : copy.status.inactive}
                         </Typography>
                       </Stack>
                     </TableCell>
                     <TableCell align="right">
-                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="Edit account">
-                          <Button
+                      <Stack direction="row" spacing={1.1} justifyContent="flex-end" alignItems="center">
+                        <Tooltip title={copy.actions.editAccount}>
+                          <IconButton
                             size="small"
-                            startIcon={<EditRoundedIcon fontSize="small" />}
                             onClick={() => handleEditUser(user)}
-                            sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700, minWidth: 0 }}
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 1.5,
+                              color: isDark ? "#e2e8f0" : theme.palette.primary.main,
+                              bgcolor: actionButtonBg,
+                              border: `1px solid ${alpha(theme.palette.primary.main, isDark ? 0.2 : 0.12)}`,
+                              "&:hover": {
+                                bgcolor: actionButtonHover
+                              }
+                            }}
                           >
-                            Edit
-                          </Button>
+                            <EditRoundedIcon fontSize="small" />
+                          </IconButton>
                         </Tooltip>
-                        <Tooltip title="Manage access">
-                          <IconButton size="small" onClick={() => setSelectedUserAccess(user)}>
+                        <Tooltip title={copy.actions.manageAccess}>
+                          <IconButton
+                            size="small"
+                            onClick={() => setSelectedUserAccess(user)}
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 1.5,
+                              color: isDark ? "#cbd5e1" : theme.palette.primary.main,
+                              bgcolor: actionButtonBg,
+                              border: `1px solid ${alpha(theme.palette.primary.main, isDark ? 0.2 : 0.12)}`,
+                              "&:hover": {
+                                bgcolor: actionButtonHover
+                              }
+                            }}
+                          >
                             <ManageAccountsRoundedIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         {user.role !== "SUPER_USER" && (
-                          <Tooltip title="Remove account">
-                            <IconButton size="small" color="error" onClick={() => handleDeleteUser(user)}>
+                          <Tooltip title={copy.actions.removeAccount}>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteUser(user)}
+                              sx={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 1.5,
+                                bgcolor: isDark ? alpha(theme.palette.error.main, 0.12) : alpha(theme.palette.error.main, 0.06),
+                                border: `1px solid ${alpha(theme.palette.error.main, isDark ? 0.24 : 0.12)}`,
+                                "&:hover": {
+                                  bgcolor: deleteButtonHover
+                                }
+                              }}
+                            >
                               <DeleteRoundedIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>

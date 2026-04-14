@@ -38,7 +38,6 @@ import { getMe } from "@/shared/api/client";
 import { listCustomers, type CustomerListRecord } from "@/shared/api/customers";
 import { listBranches } from "@/shared/api/branches";
 import { clearSession, getSession } from "@/shared/auth/session";
-import { useLanguage } from "@/shared/i18n/language-provider";
 import type { AuthUser, Branch } from "@/shared/types";
 import { ChequeWorkspace } from "@/features/society/components/cheque-workspace";
 import { LedgerWorkspace } from "@/features/society/components/ledger-workspace";
@@ -128,7 +127,6 @@ function buildLockerClients(customers: CustomerListRecord[], branchId?: string |
 export default function AgentDashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useLanguage();
   const requestedView = searchParams.get("view");
   const currentView: AgentView =
     requestedView && AGENT_VIEWS.has(requestedView as AgentView) ? (requestedView as AgentView) : "overview";
@@ -320,10 +318,9 @@ export default function AgentDashboardPage() {
         clearSession();
         router.replace("/");
       }}
-      t={t as any}
       accessibleModules={sidebarGroups}
     >
-      <Box sx={{ minHeight: "100vh", bgcolor: "#f8fafc", px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 } }}>
+      <Box sx={{ minHeight: "100vh", bgcolor: "background.default", px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 } }}>
         {currentView === "customer_workspace" ? (
           <CustomerWorkspace token={getSession()?.accessToken ?? ""} />
         ) : currentView === "plan_catalogue" ? (
@@ -365,9 +362,9 @@ export default function AgentDashboardPage() {
             <Stack spacing={3}>
               <Card
                 sx={{
-                  borderRadius: 5,
-                  border: "1px solid rgba(15, 23, 42, 0.06)",
-                  background: "linear-gradient(135deg, #065f46 0%, #064e3b 100%)",
+                  borderRadius: 1,
+                  border: (theme) => `1px solid ${alpha(theme.palette.common.white, theme.palette.mode === "dark" ? 0.08 : 0.12)}`,
+                  background: "var(--hero-gradient)",
                   color: "#fff"
                 }}
               >
@@ -389,7 +386,7 @@ export default function AgentDashboardPage() {
                         </Typography>
                       </Box>
 
-                      <Card sx={{ minWidth: 250, borderRadius: 4, bgcolor: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.12)" }}>
+                      <Card sx={{ minWidth: 250, borderRadius: 2, bgcolor: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.12)" }}>
                         <CardContent>
                           <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.65)", fontWeight: 900 }}>
                             SESSION BRANCH
@@ -415,15 +412,15 @@ export default function AgentDashboardPage() {
                   { label: "Status", value: user.isActive === false ? "Inactive" : "Active", icon: <FactCheckRoundedIcon /> }
                 ].map((item) => (
                   <Grid key={item.label} size={{ xs: 12, sm: 6, xl: 3 }}>
-                    <Card sx={{ borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.06)", height: "100%" }}>
+                    <Card sx={{ borderRadius: 1.5, border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, height: "100%" }}>
                       <CardContent>
                         <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Avatar sx={{ bgcolor: alpha("#10b981", 0.12), color: "#059669" }}>{item.icon}</Avatar>
+                          <Avatar sx={{ bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14), color: "primary.main" }}>{item.icon}</Avatar>
                           <Box>
                             <Typography variant="caption" sx={{ fontWeight: 900, color: "text.secondary", letterSpacing: 0.8 }}>
                               {item.label.toUpperCase()}
                             </Typography>
-                            <Typography variant="h6" sx={{ mt: 0.6, fontWeight: 900, color: "#0f172a" }}>
+                            <Typography variant="h6" sx={{ mt: 0.6, fontWeight: 900, color: "text.primary" }}>
                               {item.value}
                             </Typography>
                           </Box>
@@ -440,14 +437,14 @@ export default function AgentDashboardPage() {
                   .filter((item) => item.href !== "/dashboard/agent")
                   .map((item) => (
                     <Grid key={item.href} size={{ xs: 12, md: 6, xl: 4 }}>
-                      <Card sx={{ borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.06)", height: "100%" }}>
+                      <Card sx={{ borderRadius: 1, border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, height: "100%" }}>
                         <CardContent sx={{ p: 2.5 }}>
                           <Stack spacing={2}>
-                            <Avatar sx={{ bgcolor: alpha("#10b981", 0.12), color: "#059669", width: 48, height: 48 }}>
+                            <Avatar sx={{ bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14), color: "primary.main", width: 48, height: 48 }}>
                               {item.icon}
                             </Avatar>
                             <Box>
-                              <Typography variant="h6" sx={{ fontWeight: 900, color: "#0f172a" }}>
+                              <Typography variant="h6" sx={{ fontWeight: 900, color: "text.primary" }}>
                                 {item.label}
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
@@ -464,7 +461,7 @@ export default function AgentDashboardPage() {
                   ))}
               </Grid>
 
-              <Alert severity="success" sx={{ borderRadius: 4 }}>
+              <Alert severity="success" sx={{ borderRadius: 2 }}>
                 The old module wrapper has been removed from the agent dashboard. Every sidebar item now opens a real working component.
               </Alert>
             </Stack>
