@@ -5,19 +5,19 @@ import {
   Box,
   Button,
   Drawer,
+  Grid,
   IconButton,
   MenuItem,
   Stack,
   TextField,
-  Typography,
-  Grid,
+  Typography
 } from "@mui/material";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { alpha } from "@mui/material/styles";
-import { 
-  ShareholdingRecord, 
-  MemberRecord, 
-  ShareholdingType 
+import {
+  ShareholdingRecord,
+  MemberRecord,
+  ShareholdingType
 } from "../../../lib/society-operations-data";
 
 type ShareholdingDrawerProps = {
@@ -67,7 +67,7 @@ export function ShareholdingDrawer({
       PaperProps={{
         sx: {
           width: { xs: "100%", sm: 600 },
-          borderRadius: "24px 0 0 24px",
+          borderRadius: "14px 0 0 14px",
           bgcolor: "background.paper"
         },
       }}
@@ -89,23 +89,23 @@ export function ShareholdingDrawer({
             <CloseRoundedIcon />
           </IconButton>
           <Typography variant="h5" sx={{ fontWeight: 900, color: "#0f172a" }}>
-            {editingShareId ? "Update Share Ledger" : "Allot Institutional Equity"}
+            {editingShareId ? "Edit shareholding" : "New shareholding"}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Manage member shareholdings and equity distribution certificates.
+            Capture the allotment details for this member's shareholding record.
           </Typography>
         </Box>
 
         <Box sx={{ p: 4, flex: 1, overflowY: "auto" }}>
           <Stack spacing={4}>
             <Box>
-              <FieldLabel>Equity Beneficiary</FieldLabel>
+              <FieldLabel>Beneficiary</FieldLabel>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12 }}>
                   <TextField
                     select
                     fullWidth
-                    label="Select Member"
+                    label="Select member"
                     value={shareForm.memberId}
                     onChange={(e) => syncMemberData(e.target.value)}
                   >
@@ -120,54 +120,77 @@ export function ShareholdingDrawer({
             </Box>
 
             <Box>
-              <FieldLabel color="secondary.main">Allotment Details</FieldLabel>
+              <FieldLabel color="secondary.main">Share details</FieldLabel>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField 
+                  <TextField
                     type="number"
                     fullWidth
-                    label="Share Quantity"
+                    label="Quantity"
                     value={shareForm.totalShareHold}
-                    onChange={(e) => setShareForm((prev: ShareholdingRecord) => ({ ...prev, totalShareHold: Number(e.target.value), totalShareVal: Number(e.target.value) * prev.nominalVal }))}
+                    onChange={(e) =>
+                      setShareForm((prev: ShareholdingRecord) => ({
+                        ...prev,
+                        totalShareHold: Number(e.target.value),
+                        totalShareVal: Number(e.target.value) * prev.nominalVal
+                      }))
+                    }
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField 
+                  <TextField
                     type="number"
                     fullWidth
-                    label="Nominal Value (₹)"
+                    label="Nominal value"
                     value={shareForm.nominalVal}
-                    onChange={(e) => setShareForm((prev: ShareholdingRecord) => ({ ...prev, nominalVal: Number(e.target.value), totalShareVal: Number(e.target.value) * prev.totalShareHold }))}
+                    onChange={(e) =>
+                      setShareForm((prev: ShareholdingRecord) => ({
+                        ...prev,
+                        nominalVal: Number(e.target.value),
+                        totalShareVal: Number(e.target.value) * prev.totalShareHold
+                      }))
+                    }
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField 
+                  <TextField
                     select
                     fullWidth
-                    label="Shareholder Type"
+                    label="Type"
                     value={shareForm.shareholderType}
-                    onChange={(e) => setShareForm((prev: ShareholdingRecord) => ({ ...prev, shareholderType: e.target.value as ShareholdingType }))}
+                    onChange={(e) =>
+                      setShareForm((prev: ShareholdingRecord) => ({
+                        ...prev,
+                        shareholderType: e.target.value as ShareholdingType
+                      }))
+                    }
                   >
-                    <MenuItem value="shareholder">Regular Shareholder</MenuItem>
-                    <MenuItem value="shareTransferee">Share Transferee</MenuItem>
+                    <MenuItem value="shareholder">Regular shareholder</MenuItem>
+                    <MenuItem value="shareTransferee">Share transferee</MenuItem>
                   </TextField>
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField 
+                  <TextField
                     type="date"
                     fullWidth
-                    label="Allotment Date"
+                    label="Allotted date"
                     value={shareForm.allottedDate}
-                    onChange={(e) => setShareForm((prev: ShareholdingRecord) => ({ ...prev, allottedDate: e.target.value }))}
+                    onChange={(e) =>
+                      setShareForm((prev: ShareholdingRecord) => ({ ...prev, allottedDate: e.target.value }))
+                    }
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
               </Grid>
             </Box>
 
-            <Box sx={{ p: 4, bgcolor: alpha("#0f172a", 0.03), borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.05)" }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: "text.secondary", letterSpacing: "0.1em", display: "block", mb: 1 }}>COMPUTED EQUITY VALUE</Typography>
-              <Typography variant="h3" sx={{ fontWeight: 1000, color: "#0f172a", letterSpacing: "-0.04em" }}>₹{(shareForm.totalShareHold * shareForm.nominalVal).toLocaleString()}</Typography>
+            <Box sx={{ p: 4, bgcolor: alpha("#0f172a", 0.03), borderRadius: 1, border: "1px solid rgba(15, 23, 42, 0.05)" }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: "text.secondary", letterSpacing: "0.1em", display: "block", mb: 1 }}>
+                COMPUTED VALUE
+              </Typography>
+              <Typography variant="h3" sx={{ fontWeight: 1000, color: "#0f172a", letterSpacing: "-0.04em" }}>
+                Rs {((shareForm.totalShareHold || 0) * (shareForm.nominalVal || 0)).toLocaleString("en-IN")}
+              </Typography>
             </Box>
 
             <Button
@@ -176,9 +199,9 @@ export function ShareholdingDrawer({
               size="large"
               disabled={isInvalid}
               onClick={onSave}
-              sx={{ py: 2, borderRadius: 3, fontWeight: 900, bgcolor: "#0f172a" }}
+              sx={{ py: 2, borderRadius: 2, fontWeight: 900, bgcolor: "#0f172a", textTransform: "none" }}
             >
-              {editingShareId ? "Commit Share Update" : "Confirm Equity Allotment"}
+              {editingShareId ? "Update shareholding" : "Create shareholding"}
             </Button>
           </Stack>
         </Box>

@@ -21,7 +21,7 @@ export function FeaturesSection({ homeCopy, features }: FeaturesSectionProps) {
       <Grid container spacing={3}>
         {features.map((feature, idx) => (
           <Grid size={{ xs: 12, sm: 6, md: 3 }} key={idx}>
-            <Card className="surface-glass hover-lift" sx={{ height: "100%", textAlign: "center", borderRadius: 3 }}>
+            <Card className="surface-glass hover-lift" sx={{ height: "100%", textAlign: "center", borderRadius: 1.5 }}>
               <CardContent sx={{ py: 3 }}>
                 {feature.icon}
                 <Typography variant="h6" sx={{ mt: 2, mb: 1, fontWeight: 700 }}>

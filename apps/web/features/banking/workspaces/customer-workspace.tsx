@@ -27,6 +27,7 @@ import {
   Typography
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
+import { alpha, useTheme } from "@mui/material/styles";
 import { createCustomer, listCustomers, updateCustomer, type CustomerListRecord } from "@/shared/api/customers";
 import { SectionHero } from "@/features/society/components/operations/SectionHero";
 import { MetricCard } from "@/features/society/components/operations/MetricCard";
@@ -83,6 +84,7 @@ export function CustomerWorkspace({
   description = "Work with live customer records, onboarding data, contact details, and KYC state from one banking workspace.",
   scopeCustomerIds = null
 }: CustomerWorkspaceProps) {
+  const theme = useTheme();
   const [rows, setRows] = useState<CustomerListRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -223,8 +225,8 @@ export function CustomerWorkspace({
               sx={{
                 minWidth: { xs: "100%", sm: 260 },
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: 2.5,
-                  bgcolor: "rgba(255,255,255,0.08)",
+                  borderRadius: 1,
+                  bgcolor: alpha(theme.palette.common.white, theme.palette.mode === "dark" ? 0.08 : 0.12),
                   color: "#fff"
                 }
               }}
@@ -237,7 +239,13 @@ export function CustomerWorkspace({
                 variant="contained"
                 startIcon={<AddRoundedIcon />}
                 onClick={openCreateDrawer}
-                sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2.5, fontWeight: 900, "&:hover": { bgcolor: "#e2e8f0" } }}
+                sx={{
+                  bgcolor: alpha(theme.palette.common.white, 0.96),
+                  color: theme.palette.primary.dark,
+                  borderRadius: 1,
+                  fontWeight: 900,
+                  "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.88) }
+                }}
               >
                 New Customer
               </Button>
@@ -255,16 +263,16 @@ export function CustomerWorkspace({
       </Grid>
 
       {!canCreate && !canEdit ? (
-        <Alert severity="info" sx={{ borderRadius: 3 }}>
+        <Alert severity="info" sx={{ borderRadius: 1 }}>
           This customer desk is visible in read-only mode for your login.
         </Alert>
       ) : null}
-      {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
+      {error ? <Alert severity="error" sx={{ borderRadius: 1 }}>{error}</Alert> : null}
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ borderRadius: 1, border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, overflow: "hidden" }}>
         <TableContainer>
           <Table sx={{ minWidth: 1040, tableLayout: "fixed" }}>
-            <TableHead sx={{ bgcolor: "#f8fafc" }}>
+            <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 900, width: "16%" }}>Customer Code</TableCell>
                 <TableCell sx={{ fontWeight: 900, width: "22%" }}>Name</TableCell>
@@ -362,7 +370,7 @@ export function CustomerWorkspace({
         onClose={() => setDrawerOpen(false)}
         PaperProps={{ sx: { width: { xs: "100%", md: 480 }, borderRadius: "24px 0 0 24px" } }}
       >
-        <Box sx={{ p: 3, borderBottom: "1px solid rgba(15, 23, 42, 0.08)", position: "relative" }}>
+        <Box sx={{ p: 3, borderBottom: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, position: "relative" }}>
           <IconButton onClick={() => setDrawerOpen(false)} sx={{ position: "absolute", right: 16, top: 16 }}>
             <CloseRoundedIcon />
           </IconButton>
@@ -404,7 +412,15 @@ export function CustomerWorkspace({
               value={form.address}
               onChange={(event) => setForm((previous) => ({ ...previous, address: event.target.value }))}
             />
-            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)", bgcolor: "#f8fafc" }}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 1,
+                border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                bgcolor: "background.default"
+              }}
+            >
               <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
@@ -424,7 +440,7 @@ export function CustomerWorkspace({
               variant="contained"
               onClick={() => void handleSaveCustomer()}
               disabled={submitting || !form.firstName.trim()}
-              sx={{ py: 1.5, borderRadius: 2.5, fontWeight: 900 }}
+              sx={{ py: 1.5, borderRadius: 1, fontWeight: 900 }}
             >
               {editingRow ? "Save Customer" : "Create Customer"}
             </Button>

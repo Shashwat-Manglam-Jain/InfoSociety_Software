@@ -28,6 +28,7 @@ import {
   Typography
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
+import { alpha, useTheme } from "@mui/material/styles";
 import { listAccounts, type AccountRecord } from "@/shared/api/accounts";
 import {
   cancelTransaction,
@@ -111,6 +112,7 @@ export function TransactionWorkspace({
   title = "Transaction Desk",
   description = "Capture live credit and debit entries, pass pending transactions, update transaction metadata, and reverse cancelled activity."
 }: TransactionWorkspaceProps) {
+  const theme = useTheme();
   const [rows, setRows] = useState<TransactionRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [accounts, setAccounts] = useState<AccountRecord[]>([]);
@@ -305,7 +307,7 @@ export function TransactionWorkspace({
                 minWidth: { xs: "100%", sm: 240 },
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 2.5,
-                  bgcolor: "rgba(255,255,255,0.08)",
+                  bgcolor: alpha(theme.palette.common.white, theme.palette.mode === "dark" ? 0.08 : 0.12),
                   color: "#fff"
                 }
               }}
@@ -325,7 +327,7 @@ export function TransactionWorkspace({
                 minWidth: { xs: "100%", sm: 150 },
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 2.5,
-                  bgcolor: "rgba(255,255,255,0.08)",
+                  bgcolor: alpha(theme.palette.common.white, theme.palette.mode === "dark" ? 0.08 : 0.12),
                   color: "#fff"
                 }
               }}
@@ -346,7 +348,7 @@ export function TransactionWorkspace({
                 minWidth: { xs: "100%", sm: 150 },
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 2.5,
-                  bgcolor: "rgba(255,255,255,0.08)",
+                  bgcolor: alpha(theme.palette.common.white, theme.palette.mode === "dark" ? 0.08 : 0.12),
                   color: "#fff"
                 }
               }}
@@ -363,7 +365,13 @@ export function TransactionWorkspace({
                 variant="contained"
                 startIcon={<AddRoundedIcon />}
                 onClick={openCreateDrawer}
-                sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 2.5, fontWeight: 900, "&:hover": { bgcolor: "#e2e8f0" } }}
+                sx={{
+                  bgcolor: alpha(theme.palette.common.white, 0.96),
+                  color: theme.palette.primary.dark,
+                  borderRadius: 2.5,
+                  fontWeight: 900,
+                  "&:hover": { bgcolor: alpha(theme.palette.common.white, 0.88) }
+                }}
               >
                 New Entry
               </Button>
@@ -387,10 +395,10 @@ export function TransactionWorkspace({
       ) : null}
       {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
 
-      <Paper elevation={0} sx={{ borderRadius: 1.5, border: "1px solid rgba(15, 23, 42, 0.08)", overflow: "hidden" }}>
+      <Paper elevation={0} sx={{ borderRadius: 1.5, border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, overflow: "hidden" }}>
         <TableContainer>
           <Table sx={{ minWidth: 1100, tableLayout: "fixed" }}>
-            <TableHead sx={{ bgcolor: "#f8fafc" }}>
+            <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 900, width: "14%" }}>Reference</TableCell>
                 <TableCell sx={{ fontWeight: 900, width: "16%" }}>Account</TableCell>
@@ -498,7 +506,7 @@ export function TransactionWorkspace({
         onClose={() => setDrawerOpen(false)}
         PaperProps={{ sx: { width: { xs: "100%", md: 480 }, borderRadius: "24px 0 0 24px" } }}
       >
-        <Box sx={{ p: 3, borderBottom: "1px solid rgba(15, 23, 42, 0.08)", position: "relative" }}>
+        <Box sx={{ p: 3, borderBottom: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, position: "relative" }}>
           <IconButton onClick={() => setDrawerOpen(false)} sx={{ position: "absolute", right: 16, top: 16 }}>
             <CloseRoundedIcon />
           </IconButton>
@@ -584,7 +592,7 @@ export function TransactionWorkspace({
             />
 
             {selectedAccount ? (
-              <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: "#f8fafc", border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+              <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: "background.default", border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}` }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 900, mb: 1 }}>
                   Posting Preview
                 </Typography>

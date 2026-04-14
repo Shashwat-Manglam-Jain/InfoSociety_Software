@@ -24,26 +24,31 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { useTheme } from "@mui/material/styles";
-import {
-  getUserDirectory,
-  type UserDirectoryEntry
-} from "@/shared/api/users";
+import { getUserDirectory, type UserDirectoryEntry } from "@/shared/api/users";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { getUserDirectoryWorkspaceCopy } from "@/shared/i18n/user-directory-workspace-copy";
+import { toast } from "@/shared/ui/toast";
 import { MetricCard } from "./operations/MetricCard";
 import { SectionHero } from "./operations/SectionHero";
 import { TableEmpty } from "./operations/shared/TableEmpty";
-import { toast } from "@/shared/ui/toast";
 
 type UserDirectoryWorkspaceProps = {
   token: string;
 };
 
-function formatDate(dateStr: string): string {
+function resolveIntlLocale(locale: "en" | "hi" | "mr") {
+  return locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN";
+}
+
+function formatDate(dateStr: string, locale: "en" | "hi" | "mr"): string {
   if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleDateString("en-IN");
+  return new Date(dateStr).toLocaleDateString(resolveIntlLocale(locale));
 }
 
 export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
   const theme = useTheme();
+  const { locale } = useLanguage();
+  const copy = getUserDirectoryWorkspaceCopy(locale);
   const [rows, setRows] = useState<UserDirectoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +64,7 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
       const data = await getUserDirectory(token);
       setRows(data);
     } catch (caught) {
-      const msg = caught instanceof Error ? caught.message : "Unable to load user directory.";
+      const msg = caught instanceof Error ? caught.message : copy.errors.loadFailed;
       setError(msg);
       toast.error(msg);
     } finally {
@@ -69,7 +74,7 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
 
   useEffect(() => {
     void loadRows();
-  }, [token]);
+  }, [token, copy.errors.loadFailed]);
 
   const filteredRows = useMemo(() => {
     if (!search.trim()) return rows;
@@ -94,12 +99,12 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
     const roles = new Set(rows.map((r) => r.role)).size;
 
     return [
-      { label: "Total Users", value: String(total), caption: "All users in the system." },
-      { label: "Active", value: String(active), caption: "Active user accounts." },
-      { label: "Inactive", value: String(inactive), caption: "Inactive accounts." },
-      { label: "Roles", value: String(roles), caption: "Number of different roles." }
+      { label: copy.metrics.totalUsers.label, value: String(total), caption: copy.metrics.totalUsers.caption },
+      { label: copy.metrics.active.label, value: String(active), caption: copy.metrics.active.caption },
+      { label: copy.metrics.inactive.label, value: String(inactive), caption: copy.metrics.inactive.caption },
+      { label: copy.metrics.roles.label, value: String(roles), caption: copy.metrics.roles.caption }
     ];
-  }, [rows]);
+  }, [rows, copy]);
 
   const getRoleColor = (role: string): "primary" | "secondary" | "success" | "error" | "warning" | "info" | "default" => {
     switch (role) {
@@ -116,14 +121,18 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
     }
   };
 
+  function localizeRole(role: string) {
+    return copy.roles[role] ?? role;
+  }
+
   return (
     <Box>
-      <SectionHero title="User Directory" description="View all users and their roles with detailed information." />
-      
+      <SectionHero icon={<CircleIcon />} eyebrow={copy.hero.eyebrow} title={copy.hero.title} description={copy.hero.description} />
+
       <Box sx={{ px: 2, py: 3 }}>
         <Grid container spacing={2}>
           {metrics.map((metric) => (
-            <Grid item xs={12} sm={6} md={3} key={metric.label}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={metric.label}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -139,7 +148,7 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
       <Paper sx={{ mx: 2, mb: 2 }}>
         <Box sx={{ p: 2, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
           <TextField
-            placeholder="Search by username, name, or role..."
+            placeholder={copy.actions.searchPlaceholder}
             variant="outlined"
             size="small"
             value={search}
@@ -150,13 +159,8 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
             InputProps={{ startAdornment: <SearchRoundedIcon sx={{ mr: 1, color: "text.secondary" }} /> }}
             sx={{ flex: 1, minWidth: 250 }}
           />
-          <Button
-            variant="outlined"
-            startIcon={<RefreshRoundedIcon />}
-            onClick={() => void loadRows()}
-            disabled={loading}
-          >
-            Refresh
+          <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void loadRows()} disabled={loading}>
+            {copy.actions.refresh}
           </Button>
         </Box>
 
@@ -165,7 +169,11 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
             <CircularProgress />
           </Box>
         ) : paginatedRows.length === 0 ? (
-          <TableEmpty message={search ? "No users found matching your search" : "No users found"} />
+          <Table>
+            <TableBody>
+              <TableEmpty colSpan={8} label={search ? copy.table.emptySearch : copy.table.emptyDefault} />
+            </TableBody>
+          </Table>
         ) : (
           <>
             <TableContainer>
@@ -173,25 +181,20 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
                 <TableHead>
                   <TableRow sx={{ backgroundColor: theme.palette.mode === "dark" ? "#1e1e1e" : "#f5f5f5" }}>
                     <TableCell width="5%"></TableCell>
-                    <TableCell>Username</TableCell>
-                    <TableCell>Full Name</TableCell>
-                    <TableCell>Role</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Branch</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell>Modules</TableCell>
+                    <TableCell>{copy.table.username}</TableCell>
+                    <TableCell>{copy.table.fullName}</TableCell>
+                    <TableCell>{copy.table.role}</TableCell>
+                    <TableCell>{copy.table.status}</TableCell>
+                    <TableCell>{copy.table.branch}</TableCell>
+                    <TableCell>{copy.table.created}</TableCell>
+                    <TableCell>{copy.table.modules}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {paginatedRows.map((row) => (
                     <TableRow key={row.id} hover>
                       <TableCell>
-                        <CircleIcon
-                          fontSize="small"
-                          sx={{
-                            color: row.isActive ? "success.main" : "action.disabled"
-                          }}
-                        />
+                        <CircleIcon fontSize="small" sx={{ color: row.isActive ? "success.main" : "action.disabled" }} />
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" fontWeight={500}>
@@ -200,19 +203,10 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
                       </TableCell>
                       <TableCell>{row.fullName}</TableCell>
                       <TableCell>
-                        <Chip
-                          label={row.role}
-                          color={getRoleColor(row.role)}
-                          size="small"
-                          variant="outlined"
-                        />
+                        <Chip label={localizeRole(row.role)} color={getRoleColor(row.role)} size="small" variant="outlined" />
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          label={row.isActive ? "Active" : "Inactive"}
-                          color={row.isActive ? "success" : "default"}
-                          size="small"
-                        />
+                        <Chip label={row.isActive ? copy.table.active : copy.table.inactive} color={row.isActive ? "success" : "default"} size="small" />
                       </TableCell>
                       <TableCell>
                         {row.society ? (
@@ -223,17 +217,13 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
                           "-"
                         )}
                       </TableCell>
-                      <TableCell>{formatDate(row.createdAt)}</TableCell>
+                      <TableCell>{formatDate(row.createdAt, locale)}</TableCell>
                       <TableCell>
                         {row.allowedModuleSlugs && row.allowedModuleSlugs.length > 0 ? (
-                          <Chip
-                            label={`${row.allowedModuleSlugs.length} modules`}
-                            size="small"
-                            variant="outlined"
-                          />
+                          <Chip label={copy.table.modulesCount.replace("{{count}}", String(row.allowedModuleSlugs.length))} size="small" variant="outlined" />
                         ) : (
                           <Typography variant="caption" color="textSecondary">
-                            None
+                            {copy.table.none}
                           </Typography>
                         )}
                       </TableCell>
@@ -250,6 +240,11 @@ export function UserDirectoryWorkspace({ token }: UserDirectoryWorkspaceProps) {
               page={page}
               onPageChange={(_, newPage) => setPage(newPage)}
               onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+              labelRowsPerPage={copy.pagination.rowsPerPage}
+              labelDisplayedRows={({ from, to, count }) =>
+                copy.pagination.displayedRows.replace("{{from}}", String(from)).replace("{{to}}", String(to)).replace("{{count}}", String(count))
+              }
+              getItemAriaLabel={(buttonType) => buttonType === "next" ? copy.pagination.nextPage : copy.pagination.previousPage}
             />
           </>
         )}

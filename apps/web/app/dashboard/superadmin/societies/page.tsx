@@ -39,16 +39,17 @@ import { getMe } from "@/shared/api/client";
 import { getMonitoringOverview, updateSocietyAccess } from "@/shared/api/monitoring";
 import { clearSession, getSession } from "@/shared/auth/session";
 import { useLanguage } from "@/shared/i18n/language-provider";
+import { getSuperadminNetworkExplorerCopy } from "@/shared/i18n/superadmin-network-explorer-copy";
 import { toast } from "@/shared/ui/toast";
 import type { AuthUser, MonitoringOverview } from "@/shared/types";
 
 type OverviewSociety = MonitoringOverview["societies"][number];
 
-function fmt(value: number) {
-  return value.toLocaleString("en-IN");
+function fmt(value: number, localeTag = "en-IN") {
+  return value.toLocaleString(localeTag);
 }
 
-function fmtCurrency(value: number) {
+function fmtCurrency(value: number, localeTag: string) {
   if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
   if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
   return `₹${fmt(value)}`;
@@ -81,7 +82,9 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 export default function SuperadminSocietiesExplorer() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const copy = getSuperadminNetworkExplorerCopy(locale);
+  const localeTag = copy.localeTag;
   const [user, setUser] = useState<AuthUser | null>(null);
   const [overview, setOverview] = useState<MonitoringOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,7 +112,7 @@ export default function SuperadminSocietiesExplorer() {
       setOverview(monitoringOverview);
     } catch (caught) {
       const status = (caught as { status?: number })?.status;
-      const message = caught instanceof Error ? caught.message : "Unable to load the live society network.";
+      const message = caught instanceof Error ? caught.message : copy.page.messages.loadError;
 
       if (status === 401 || status === 403) {
         clearSession();
@@ -135,29 +138,29 @@ export default function SuperadminSocietiesExplorer() {
   const customAccessibleModules = useMemo(
     () => [
       {
-        heading: "EXECUTIVE SUITE",
+        heading: copy.nav.executiveSuite,
         items: [
-          { label: "Portfolio Snapshot", href: "/dashboard/superadmin", slug: "dashboard", icon: <InsightsRoundedIcon /> }
+          { label: copy.nav.portfolioSnapshot, href: "/dashboard/superadmin", slug: "dashboard", icon: <InsightsRoundedIcon /> }
         ]
       },
       {
-        heading: "PLATFORM GOVERNANCE",
+        heading: copy.nav.platformGovernance,
         items: [
           {
-            label: "Approvals & Requests",
+            label: copy.nav.approvalsRequests,
             href: "/dashboard/superadmin/approvals",
             slug: "approvals",
             badge: pendingCount > 0 ? String(pendingCount) : undefined,
             icon: <VerifiedUserRoundedIcon />
           },
-          { label: "Platform Analytics", href: "/dashboard/superadmin/analytics", slug: "analytics", icon: <BarChartRoundedIcon /> },
-          { label: "Network Explorer", href: "/dashboard/superadmin/societies", slug: "societies", active: true, icon: <BusinessCenterRoundedIcon /> },
-          { label: "Report Generation", href: "/dashboard/superadmin/reports", slug: "reports", icon: <AnalyticsRoundedIcon /> },
-          { label: "System UI Settings", href: "/dashboard/superadmin/settings", slug: "settings", icon: <SettingsSuggestRoundedIcon /> }
+          { label: copy.nav.platformAnalytics, href: "/dashboard/superadmin/analytics", slug: "analytics", icon: <BarChartRoundedIcon /> },
+          { label: copy.nav.networkExplorer, href: "/dashboard/superadmin/societies", slug: "societies", active: true, icon: <BusinessCenterRoundedIcon /> },
+          { label: copy.nav.reportGeneration, href: "/dashboard/superadmin/reports", slug: "reports", icon: <AnalyticsRoundedIcon /> },
+          { label: copy.nav.systemUiSettings, href: "/dashboard/superadmin/settings", slug: "settings", icon: <SettingsSuggestRoundedIcon /> }
         ]
       }
     ],
-    [pendingCount]
+    [copy, pendingCount]
   );
 
   const allSocieties = overview?.societies ?? [];
@@ -187,15 +190,20 @@ export default function SuperadminSocietiesExplorer() {
       const response = await updateSocietyAccess(session.accessToken, society.id, { status, isActive });
       if (status === "ACTIVE" && response.provisionedSuperAdmin) {
         toast.success(
-          `${society.name} is now approved. Recovery admin @${response.provisionedSuperAdmin.username} was created with temporary password ${response.provisionedSuperAdmin.temporaryPassword}.`
+          copy.page.messages.recoveryAdminCreated
+            .replace("{{name}}", society.name)
+            .replace("{{username}}", response.provisionedSuperAdmin.username)
+            .replace("{{password}}", response.provisionedSuperAdmin.temporaryPassword)
         );
       } else {
-        toast.success(status === "ACTIVE" ? `${society.name} is now approved.` : `${society.name} has been suspended.`);
+        toast.success(
+          (status === "ACTIVE" ? copy.page.messages.approveSuccess : copy.page.messages.suspendSuccess).replace("{{name}}", society.name)
+        );
       }
       await loadData();
       setSelectedSocietyId(society.id);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to update society access.");
+      toast.error(caught instanceof Error ? caught.message : copy.page.messages.updateAccessError);
     } finally {
       setProcessingSocietyId(null);
     }
@@ -231,7 +239,7 @@ export default function SuperadminSocietiesExplorer() {
                   void loadData();
                 }}
               >
-                Retry
+                {copy.page.retry}
               </Button>
             }
           >
@@ -241,19 +249,19 @@ export default function SuperadminSocietiesExplorer() {
 
         <Box sx={{ mb: 6 }}>
           <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 2 }}>
-            LIVE NETWORK DATA
+            {copy.page.eyebrow}
           </Typography>
           <Typography variant="h3" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.03em" }}>
-            Network Explorer
+            {copy.page.title}
           </Typography>
           <Typography variant="subtitle1" sx={{ color: "text.secondary", mt: 1, maxWidth: 840 }}>
-            This view is driven by the monitoring API. Search societies, inspect approval state, and review live operational totals without any mock hierarchy.
+            {copy.page.description}
           </Typography>
         </Box>
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 4 }}>
-          <Chip label={`${fmt(allSocieties.length)} societies in monitoring scope`} sx={{ fontWeight: 900, width: "fit-content" }} />
-          <Chip label={`${fmt(pendingCount)} pending approvals`} color={pendingCount > 0 ? "warning" : "default"} sx={{ fontWeight: 900, width: "fit-content" }} />
+          <Chip label={copy.page.societiesInScope.replace("{{count}}", fmt(allSocieties.length, localeTag))} sx={{ fontWeight: 900, width: "fit-content" }} />
+          <Chip label={copy.page.pendingApprovals.replace("{{count}}", fmt(pendingCount, localeTag))} color={pendingCount > 0 ? "warning" : "default"} sx={{ fontWeight: 900, width: "fit-content" }} />
         </Stack>
 
         <Paper elevation={0} sx={{ p: 3, borderRadius: 5, border: "1px solid rgba(148,163,184,0.2)", bgcolor: "#fff" }}>
@@ -261,7 +269,7 @@ export default function SuperadminSocietiesExplorer() {
             <Box sx={{ maxWidth: 440, width: "100%" }}>
               <TextField
                 fullWidth
-                placeholder="Search societies by name or code..."
+                placeholder={copy.page.searchPlaceholder}
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 InputProps={{
@@ -272,7 +280,7 @@ export default function SuperadminSocietiesExplorer() {
               />
             </Box>
             <Button variant="outlined" sx={{ borderRadius: 3, fontWeight: 800 }} onClick={() => setSearchQuery("")}>
-              Clear Search
+              {copy.page.clearSearch}
             </Button>
           </Box>
 
@@ -280,15 +288,15 @@ export default function SuperadminSocietiesExplorer() {
             <Table sx={{ minWidth: 780 }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: "rgba(15,23,42,0.02)" }}>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>Society</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>Code</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>Users</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>Customers</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>Accounts</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>Balance</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.society}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.code}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.status}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.users}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.customers}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.accounts}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.balance}</TableCell>
                   <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }} align="right">
-                    Actions
+                    {copy.page.table.actions}
                   </TableCell>
                 </TableRow>
               </TableHead>
@@ -310,7 +318,7 @@ export default function SuperadminSocietiesExplorer() {
                             {society.name}
                           </Typography>
                           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
-                            {society.registrationState ?? "Region not provided"}
+                            {society.registrationState ?? copy.page.table.regionNotProvided}
                           </Typography>
                         </Box>
                       </Stack>
@@ -324,20 +332,20 @@ export default function SuperadminSocietiesExplorer() {
                       <Chip label={society.status} size="small" sx={{ height: 24, fontSize: "0.7rem", fontWeight: 900, ...statusStyles(society.status) }} />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 800 }}>{fmt(society.activeUsers)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 800 }}>{fmt(society.activeUsers, localeTag)}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 800 }}>{fmt(society.customers)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 800 }}>{fmt(society.customers, localeTag)}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 800 }}>{fmt(society.accounts)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 800 }}>{fmt(society.accounts, localeTag)}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 800 }}>{fmtCurrency(society.totalBalance)}</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 800 }}>{fmtCurrency(society.totalBalance, localeTag)}</Typography>
                     </TableCell>
                     <TableCell align="right">
                       <Button variant="text" size="small" sx={{ fontWeight: 800, textTransform: "none" }}>
-                        Inspect
+                        {copy.page.table.inspect}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -346,7 +354,7 @@ export default function SuperadminSocietiesExplorer() {
                   <TableRow>
                     <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
                       <Typography variant="body2" color="text.secondary">
-                        No societies found matching your search.
+                        {copy.page.table.noResults}
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -368,14 +376,14 @@ export default function SuperadminSocietiesExplorer() {
             <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 4 }}>
               <Box>
                 <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 3 }}>
-                  SOCIETY ID: {selectedSociety.code}
+                  {copy.page.drawer.societyId}: {selectedSociety.code}
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a", mt: 1, letterSpacing: "-0.03em" }}>
                   {selectedSociety.name}
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} flexWrap="wrap" useFlexGap>
                   <Chip label={selectedSociety.status} sx={{ fontWeight: 900, ...statusStyles(selectedSociety.status) }} />
-                  <Chip label={`${selectedSociety.subscriptionPlan} Plan`} sx={{ fontWeight: 900 }} />
+                  <Chip label={`${selectedSociety.subscriptionPlan} ${copy.page.drawer.planSuffix}`} sx={{ fontWeight: 900 }} />
                   <Chip label={selectedSociety.subscriptionStatus} sx={{ fontWeight: 900 }} />
                 </Stack>
               </Box>
@@ -387,8 +395,8 @@ export default function SuperadminSocietiesExplorer() {
             {selectedSociety.status !== "ACTIVE" ? (
               <Alert severity={selectedSociety.status === "SUSPENDED" ? "error" : "warning"} sx={{ mb: 3, borderRadius: 3 }}>
                 {selectedSociety.status === "PENDING"
-                  ? "This society is still waiting for platform approval."
-                  : "This society is currently suspended and its users should not be able to log in."}
+                  ? copy.page.drawer.pendingAlert
+                  : copy.page.drawer.suspendedAlert}
               </Alert>
             ) : null}
 
@@ -403,7 +411,7 @@ export default function SuperadminSocietiesExplorer() {
                     sx={{ flex: 1, fontWeight: 900, borderRadius: 3, boxShadow: "none" }}
                     startIcon={<WarningAmberRoundedIcon />}
                   >
-                    {processingSocietyId === selectedSociety.id ? "Updating..." : "Suspend Society"}
+                    {processingSocietyId === selectedSociety.id ? copy.page.drawer.updating : copy.page.drawer.suspendSociety}
                   </Button>
                 ) : (
                   <Button
@@ -413,7 +421,7 @@ export default function SuperadminSocietiesExplorer() {
                     sx={{ flex: 1, fontWeight: 900, borderRadius: 3, boxShadow: "none", bgcolor: "#10b981", "&:hover": { bgcolor: "#059669" } }}
                     startIcon={<VerifiedUserRoundedIcon />}
                   >
-                    {processingSocietyId === selectedSociety.id ? "Updating..." : "Approve Society"}
+                    {processingSocietyId === selectedSociety.id ? copy.page.drawer.updating : copy.page.drawer.approveSociety}
                   </Button>
                 )}
                 <Button
@@ -421,22 +429,22 @@ export default function SuperadminSocietiesExplorer() {
                   sx={{ flex: 1, fontWeight: 900, borderRadius: 3 }}
                   onClick={() => router.push(selectedSociety.status === "PENDING" ? "/dashboard/superadmin/approvals" : "/dashboard/superadmin/analytics")}
                 >
-                  {selectedSociety.status === "PENDING" ? "Open Approval Queue" : "Open Analytics"}
+                  {selectedSociety.status === "PENDING" ? copy.page.drawer.openApprovalQueue : copy.page.drawer.openAnalytics}
                 </Button>
               </Stack>
             </Box>
 
             <Typography variant="h6" sx={{ fontWeight: 900, color: "#0f172a", mb: 2 }}>
-              Live Metrics
+              {copy.page.drawer.liveMetrics}
             </Typography>
             <Grid container spacing={2} sx={{ mb: 4 }}>
               {[
-                { label: "Users", value: fmt(selectedSociety.activeUsers) },
-                { label: "Customers", value: fmt(selectedSociety.customers) },
-                { label: "Accounts", value: fmt(selectedSociety.accounts) },
-                { label: "Transactions", value: fmt(selectedSociety.transactions) },
-                { label: "Total Balance", value: fmtCurrency(selectedSociety.totalBalance) },
-                { label: "Payment Volume", value: fmtCurrency(selectedSociety.successfulPaymentVolume) }
+                { label: copy.page.table.users, value: fmt(selectedSociety.activeUsers, localeTag) },
+                { label: copy.page.table.customers, value: fmt(selectedSociety.customers, localeTag) },
+                { label: copy.page.table.accounts, value: fmt(selectedSociety.accounts, localeTag) },
+                { label: copy.page.drawer.transactions, value: fmt(selectedSociety.transactions, localeTag) },
+                { label: copy.page.drawer.totalBalance, value: fmtCurrency(selectedSociety.totalBalance, localeTag) },
+                { label: copy.page.drawer.paymentVolume, value: fmtCurrency(selectedSociety.successfulPaymentVolume, localeTag) }
               ].map((metric) => (
                 <Grid size={{ xs: 12, sm: 6 }} key={metric.label}>
                   <Box sx={{ p: 2.5, borderRadius: 4, bgcolor: "#fff", border: "1px solid rgba(148,163,184,0.15)" }}>
@@ -452,42 +460,42 @@ export default function SuperadminSocietiesExplorer() {
             </Grid>
 
             <Typography variant="h6" sx={{ fontWeight: 900, color: "#0f172a", mb: 2 }}>
-              API-backed Details
+              {copy.page.drawer.apiBackedDetails}
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label="Registration State" value={selectedSociety.registrationState ?? "Not provided"} />
+                <DetailItem label={copy.page.drawer.registrationState} value={selectedSociety.registrationState ?? copy.page.drawer.notProvided} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label="Registration Number" value={selectedSociety.registrationNumber ?? "Not provided"} />
+                <DetailItem label={copy.page.drawer.registrationNumber} value={selectedSociety.registrationNumber ?? copy.page.drawer.notProvided} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label="Registration Authority" value={selectedSociety.registrationAuthority ?? "Not provided"} />
+                <DetailItem label={copy.page.drawer.registrationAuthority} value={selectedSociety.registrationAuthority ?? copy.page.drawer.notProvided} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label="Category" value={selectedSociety.category ?? "Not provided"} />
+                <DetailItem label={copy.page.drawer.category} value={selectedSociety.category ?? copy.page.drawer.notProvided} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label="Billing Email" value={selectedSociety.billingEmail ?? "Not provided"} />
+                <DetailItem label={copy.page.drawer.billingEmail} value={selectedSociety.billingEmail ?? copy.page.drawer.notProvided} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label="Billing Phone" value={selectedSociety.billingPhone ?? "Not provided"} />
+                <DetailItem label={copy.page.drawer.billingPhone} value={selectedSociety.billingPhone ?? copy.page.drawer.notProvided} />
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <DetailItem label="Billing Address" value={selectedSociety.billingAddress ?? "Not provided"} />
+                <DetailItem label={copy.page.drawer.billingAddress} value={selectedSociety.billingAddress ?? copy.page.drawer.notProvided} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label="Digital Payments" value={selectedSociety.acceptsDigitalPayments ? "Enabled" : "Disabled"} />
+                <DetailItem label={copy.page.drawer.digitalPayments} value={selectedSociety.acceptsDigitalPayments ? copy.page.drawer.enabled : copy.page.drawer.disabled} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label="UPI ID" value={selectedSociety.upiId ?? "Not provided"} />
+                <DetailItem label={copy.page.drawer.upiId} value={selectedSociety.upiId ?? copy.page.drawer.notProvided} />
               </Grid>
             </Grid>
 
             <Divider sx={{ my: 4 }} />
 
             <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 700 }}>
-              This drawer now shows only values returned by the monitoring API. Branches, agents, and account trees are intentionally not mocked here anymore.
+              {copy.page.drawer.footer}
             </Typography>
           </Box>
         ) : null}
