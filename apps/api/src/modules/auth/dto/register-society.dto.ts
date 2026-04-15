@@ -12,8 +12,9 @@ export class RegisterSocietyDto {
   @IsString()
   fullName!: string;
 
+  @IsOptional()
   @IsString()
-  societyCode!: string;
+  societyCode?: string;
 
   @IsString()
   societyName!: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,35 +15,8 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { getBillingPlans, getPublicSocieties, registerSociety } from "@/shared/api/client";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getRegisterPageCopy } from "@/shared/i18n/register-copy";
+import { getCachedBillingPlans, getCachedPublicSocieties, setCachedBillingPlans, setCachedPublicSocieties } from "@/shared/public/public-data-cache";
 import { toast } from "@/shared/ui/toast";
-
-function generateSocietyCode(societyName: string) {
-  const base = societyName
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  if (!base) {
-    return "";
-  }
-
-  return base.length > 12 ? base.slice(0, 12) : base;
-}
-
-function generateSocietyUsername(fullName: string) {
-  const slug = fullName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "")
-    .slice(0, 20);
-
-  if (!slug) {
-    return "";
-  }
-
-  return slug;
-}
 
 function formatPlanPrice(monthlyPrice: number | null, locale: string, copy: ReturnType<typeof getRegisterPageCopy>) {
   if (monthlyPrice == null) {
@@ -71,12 +44,13 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [approvedSocietyCount, setApprovedSocietyCount] = useState<number | null>(null);
-  const [premiumMonthlyPrice, setPremiumMonthlyPrice] = useState<number | null>(null);
+  const cachedSocieties = getCachedPublicSocieties();
+  const cachedBillingPlans = getCachedBillingPlans();
+  const [approvedSocietyCount, setApprovedSocietyCount] = useState<number | null>(cachedSocieties?.length ?? null);
+  const [premiumMonthlyPrice, setPremiumMonthlyPrice] = useState<number | null>(
+    cachedBillingPlans?.find((plan) => plan.id === "PREMIUM")?.monthlyPrice ?? null
+  );
   const [platformSnapshotError, setPlatformSnapshotError] = useState<string | null>(null);
-
-  const generatedCode = useMemo(() => generateSocietyCode(societyName), [societyName]);
-  const generatedUsername = useMemo(() => generateSocietyUsername(fullName), [fullName]);
   const surfaceBoxSx = {
     border: `1px solid ${isDark ? alpha("#cbd5e1", 0.18) : "rgba(15, 23, 42, 0.08)"}`,
     bgcolor: isDark ? alpha("#0f172a", 0.68) : "rgba(255,255,255,0.6)"
@@ -140,6 +114,8 @@ export default function RegisterPage() {
 
         setApprovedSocietyCount(societies.length);
         setPremiumMonthlyPrice(billing.plans.find((plan) => plan.id === "PREMIUM")?.monthlyPrice ?? null);
+        setCachedPublicSocieties(societies);
+        setCachedBillingPlans(billing.plans);
         setPlatformSnapshotError(null);
       } catch (caught) {
         if (!active) {
@@ -186,24 +162,20 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!generatedCode || !generatedUsername) {
-      setError(copy.validations.missingGeneratedDetails);
-      return;
-    }
-
     setLoading(true);
 
     try {
-      await registerSociety({
-        username: generatedUsername,
+      const response = await registerSociety({
         password,
         fullName: fullName.trim(),
-        societyCode: generatedCode,
         societyName: societyName.trim()
       });
 
+      const generatedCode = response.user.society?.code ?? "";
+      const generatedUsername = response.user.username;
+
       toast.success(copy.submitSuccess.replace("{{code}}", generatedCode).replace("{{username}}", generatedUsername));
-      router.push("/login?from=register");
+      router.push(`/login?from=register&societyCode=${encodeURIComponent(generatedCode)}&username=${encodeURIComponent(generatedUsername)}`);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : copy.submitError;
       setError(message);
@@ -342,47 +314,6 @@ export default function RegisterPage() {
                         {copy.formPanel.snapshotLiveNote}
                       </Typography>
                     )}
-                  </Stack>
-                </Box>
-
-                <Box
-                  sx={{
-                    p: 2.4,
-                    borderRadius: 1,
-                    ...surfaceBoxSx
-                  }}
-                >
-                  <Stack spacing={1.4}>
-                    <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 1.5 }}>
-                      {copy.formPanel.generatedTitle}
-                    </Typography>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                      <Box sx={tileBoxSx}>
-                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
-                          {copy.formPanel.societyCode}
-                        </Typography>
-                        <Typography
-                          variant="h6"
-                          sx={{ mt: 0.4, fontWeight: 900, color: isDark ? "#e2e8f0" : "#0f172a", fontFamily: "monospace" }}
-                        >
-                          {generatedCode || copy.formPanel.waitingSociety}
-                        </Typography>
-                      </Box>
-                      <Box sx={tileBoxSx}>
-                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
-                          {copy.formPanel.adminUsername}
-                        </Typography>
-                        <Typography
-                          variant="h6"
-                          sx={{ mt: 0.4, fontWeight: 900, color: isDark ? "#e2e8f0" : "#0f172a", fontFamily: "monospace" }}
-                        >
-                          {generatedUsername ? `@${generatedUsername}` : copy.formPanel.waitingAdmin}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                    <Typography variant="body2" color="text.secondary">
-                      {copy.formPanel.generatedNote}
-                    </Typography>
                   </Stack>
                 </Box>
 

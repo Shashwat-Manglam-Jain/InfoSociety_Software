@@ -24,13 +24,14 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import { getPublicSocieties as listSocieties } from "@/shared/api/auth";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getSiteCopy } from "@/shared/i18n/site-copy";
+import { getCachedPublicSocieties, setCachedPublicSocieties } from "@/shared/public/public-data-cache";
 import type { Society } from "@/shared/types";
 
 export function SocietiesSection() {
   const { locale } = useLanguage();
   const copy = getSiteCopy(locale).societyDirectory;
-  const [societies, setSocieties] = useState<Society[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [societies, setSocieties] = useState<Society[]>(() => getCachedPublicSocieties() ?? []);
+  const [loading, setLoading] = useState(societies.length === 0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export function SocietiesSection() {
       try {
         const data = await listSocieties();
         setSocieties(data);
+        setCachedPublicSocieties(data);
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : copy.loadError);
       } finally {

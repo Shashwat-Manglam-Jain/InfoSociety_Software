@@ -2,10 +2,9 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { PaymentMethod, PaymentRequestStatus, PaymentTransactionStatus, Prisma, SocietyStatus, UserRole } from "@prisma/client";
 import { RequestUser } from "../../common/auth/request-user.interface";
 import { PrismaService } from "../../common/database/prisma.service";
+import { cashOnlyPaymentMethods, isCashPaymentMethod, paymentMethodCatalog } from "../shared/payment-methods";
 import { CreatePaymentRequestDto } from "./dto/create-payment-request.dto";
 import { PayPaymentRequestDto } from "./dto/pay-payment-request.dto";
-
-const paymentMethodCatalog = [PaymentMethod.UPI, PaymentMethod.DEBIT_CARD, PaymentMethod.CREDIT_CARD, PaymentMethod.NET_BANKING];
 
 @Injectable()
 export class PaymentsService {
@@ -17,7 +16,7 @@ export class PaymentsService {
       description: "Digital collection workflows for society billing, member dues, and in-app payment tracking.",
       workflows: [
         "Create service payment requests for members",
-        "Collect payments through UPI, debit card, credit card, or net banking",
+        "Collect payments through cash, UPI, debit card, credit card, or net banking",
         "Track successful and pending collections",
         "Review society or platform payment activity"
       ]
@@ -192,8 +191,14 @@ export class PaymentsService {
       throw new BadRequestException("This payment request has expired");
     }
 
-    if (!request.society.acceptsDigitalPayments) {
-      throw new BadRequestException("Digital payments are not enabled for this society");
+    const acceptedMethods = this.getAcceptedMethods(Boolean(request.society.acceptsDigitalPayments));
+
+    if (!acceptedMethods.includes(dto.method)) {
+      throw new BadRequestException("This payment method is not enabled for the selected society");
+    }
+
+    if (isCashPaymentMethod(dto.method) && currentUser.role === UserRole.CLIENT) {
+      throw new ForbiddenException("Cash collection must be recorded by an agent or staff user");
     }
 
     const now = new Date();
@@ -258,7 +263,7 @@ export class PaymentsService {
       paymentInstructions: {
         acceptsDigitalPayments: request.society.acceptsDigitalPayments,
         upiId: request.society.upiId,
-        acceptedMethods: paymentMethodCatalog
+        acceptedMethods
       }
     };
   }
@@ -395,7 +400,7 @@ export class PaymentsService {
       scope: "society",
       society,
       acceptsDigitalPayments: society.acceptsDigitalPayments,
-      acceptedMethods: society.acceptsDigitalPayments ? paymentMethodCatalog : [],
+      acceptedMethods: this.getAcceptedMethods(society.acceptsDigitalPayments),
       totals: {
         pendingRequests,
         completedPayments: successfulTransactions,
@@ -483,7 +488,7 @@ export class PaymentsService {
       scope: "customer",
       society,
       acceptsDigitalPayments: Boolean(society?.acceptsDigitalPayments),
-      acceptedMethods: society?.acceptsDigitalPayments ? paymentMethodCatalog : [],
+      acceptedMethods: this.getAcceptedMethods(Boolean(society?.acceptsDigitalPayments)),
       totals: {
         pendingRequests,
         completedPayments: successfulTransactions,
@@ -613,5 +618,11 @@ export class PaymentsService {
 
   private buildGatewayReference(prefix: string) {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  }
+
+  private getAcceptedMethods(acceptsDigitalPayments: boolean) {
+    return acceptsDigitalPayments
+      ? paymentMethodCatalog
+      : cashOnlyPaymentMethods;
   }
 }

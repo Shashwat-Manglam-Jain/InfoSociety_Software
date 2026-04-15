@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { AccountType, Prisma, UserRole } from "@prisma/client";
 import { bankingFeatureMap } from "../../shared/banking-feature-map";
 import { RequestUser } from "../../../common/auth/request-user.interface";
+import { ensureDefaultDepositSchemes } from "../../../common/database/default-product-plans";
 import { PrismaService } from "../../../common/database/prisma.service";
 import { CreateDepositSchemeDto } from "./dto/create-deposit-scheme.dto";
 import { ListDepositsQueryDto } from "./dto/list-deposits-query.dto";
@@ -24,7 +25,8 @@ export class DepositsService {
     return bankingFeatureMap["deposits"].workflows;
   }
 
-  getSchemes() {
+  async getSchemes() {
+    await ensureDefaultDepositSchemes(this.prisma);
     return this.prisma.depositScheme.findMany({
       orderBy: [{ recurring: "asc" }, { minMonths: "asc" }]
     });
@@ -39,9 +41,11 @@ export class DepositsService {
       throw new BadRequestException("maxMonths must be greater than or equal to minMonths");
     }
 
+    const code = dto.code?.trim().toUpperCase() || (await this.generateSchemeCode(dto.recurring));
+
     return this.prisma.depositScheme.create({
       data: {
-        code: dto.code.trim().toUpperCase(),
+        code,
         name: dto.name.trim(),
         minMonths: dto.minMonths,
         maxMonths: dto.maxMonths,
@@ -49,6 +53,71 @@ export class DepositsService {
         recurring: dto.recurring
       }
     });
+  }
+
+  async updateScheme(currentUser: RequestUser, id: string, dto: CreateDepositSchemeDto) {
+    if (currentUser.role === UserRole.CLIENT) {
+      throw new ForbiddenException("Client users cannot modify schemes");
+    }
+
+    if (dto.maxMonths < dto.minMonths) {
+      throw new BadRequestException("maxMonths must be greater than or equal to minMonths");
+    }
+
+    const scheme = await this.prisma.depositScheme.findUnique({
+      where: { id },
+      select: {
+        id: true
+      }
+    });
+
+    if (!scheme) {
+      throw new NotFoundException("Deposit scheme not found");
+    }
+
+    return this.prisma.depositScheme.update({
+      where: { id },
+      data: {
+        name: dto.name.trim(),
+        minMonths: dto.minMonths,
+        maxMonths: dto.maxMonths,
+        interestRate: dto.interestRate,
+        recurring: dto.recurring
+      }
+    });
+  }
+
+  async deleteScheme(currentUser: RequestUser, id: string) {
+    if (currentUser.role === UserRole.CLIENT) {
+      throw new ForbiddenException("Client users cannot remove schemes");
+    }
+
+    const scheme = await this.prisma.depositScheme.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            deposits: true
+          }
+        }
+      }
+    });
+
+    if (!scheme) {
+      throw new NotFoundException("Deposit scheme not found");
+    }
+
+    if (scheme._count.deposits > 0) {
+      throw new BadRequestException("Scheme is already linked to deposit accounts and cannot be removed");
+    }
+
+    await this.prisma.depositScheme.delete({
+      where: { id }
+    });
+
+    return {
+      success: true
+    };
   }
 
   async list(currentUser: RequestUser, query: ListDepositsQueryDto) {
@@ -316,5 +385,26 @@ export class DepositsService {
   private computeMaturityAmount(principal: number, annualRate: number, months: number): number {
     const factor = 1 + (annualRate * months) / 1200;
     return Number((principal * factor).toFixed(2));
+  }
+
+  private async generateSchemeCode(recurring: boolean) {
+    const prefix = recurring ? "RD" : "FD";
+    const schemes = await this.prisma.depositScheme.findMany({
+      where: {
+        recurring
+      },
+      select: {
+        code: true
+      }
+    });
+
+    const nextSequence =
+      schemes.reduce((largest, scheme) => {
+        const match = scheme.code.match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
+        const sequence = match ? Number(match[1]) : 0;
+        return sequence > largest ? sequence : largest;
+      }, 0) + 1;
+
+    return `${prefix}-${String(nextSequence).padStart(3, "0")}`;
   }
 }

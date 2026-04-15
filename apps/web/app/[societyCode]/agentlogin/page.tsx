@@ -14,6 +14,7 @@ import { getPublicSocieties, getPublicSocietyBranches, login } from "@/shared/ap
 import { getDefaultDashboardPath, setSession } from "@/shared/auth/session";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getSiteCopy, interpolateCopy } from "@/shared/i18n/site-copy";
+import { getCachedPublicSocieties, setCachedPublicSocieties } from "@/shared/public/public-data-cache";
 import { toast } from "@/shared/ui/toast";
 import type { Society } from "@/shared/types";
 
@@ -42,9 +43,14 @@ export default function AgentLoginPage() {
   useEffect(() => {
     async function fetchSociety() {
       try {
-        const [societies, branches] = await Promise.all([getPublicSocieties(), getPublicSocietyBranches(normalizedSocietyCode).catch(() => [])]);
+        const cachedSocieties = getCachedPublicSocieties();
+        const [societies, branches] = await Promise.all([
+          cachedSocieties ? Promise.resolve(cachedSocieties) : getPublicSocieties(),
+          getPublicSocietyBranches(normalizedSocietyCode).catch(() => [])
+        ]);
         const found = societies.find((entry) => entry.code.toUpperCase() === normalizedSocietyCode);
         if (found) setSociety(found);
+        setCachedPublicSocieties(societies);
         const nextOptions = branches.length > 0 ? [headOfficeOption, ...branches] : [headOfficeOption];
         setBranchOptions(nextOptions);
         setSelectedBranchId(nextOptions[0]?.id ?? headOfficeOption.id);

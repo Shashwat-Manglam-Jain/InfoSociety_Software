@@ -27,6 +27,7 @@ import {
   Typography
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
+import { listAccounts, type AccountRecord } from "@/shared/api/accounts";
 import {
   applyLoan,
   disburseLoan,
@@ -63,6 +64,12 @@ type LoanApplicationForm = {
   remarks: string;
 };
 
+type CustomerAccountSummary = {
+  activeNonLoanBalance: number;
+  activeNonLoanCount: number;
+  accountTypes: string[];
+};
+
 const statusOptions: Array<LoanStatus | ""> = ["", "APPLIED", "SANCTIONED", "DISBURSED", "OVERDUE", "CLOSED"];
 
 function resolveIntlLocale(locale: "en" | "hi" | "mr") {
@@ -93,6 +100,13 @@ function formatDate(value: string | null | undefined, locale: "en" | "hi" | "mr"
 
 function formatPersonName(firstName?: string | null, lastName?: string | null) {
   return [firstName, lastName].filter(Boolean).join(" ").trim() || "-";
+}
+
+function getAccountTypeLabel(type: AccountRecord["type"]) {
+  return type
+    .split("_")
+    .map((entry) => entry.charAt(0) + entry.slice(1).toLowerCase())
+    .join(" ");
 }
 
 function createEmptyLoanApplicationForm(): LoanApplicationForm {
@@ -132,6 +146,7 @@ export function LoanWorkspace({
   );
 
   const [rows, setRows] = useState<LoanRecord[]>([]);
+  const [accountRows, setAccountRows] = useState<AccountRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -154,8 +169,12 @@ export function LoanWorkspace({
     setError(null);
 
     try {
-      const response = await listLoans(token, { q: search, status, page: 1, limit: 100 });
+      const [response, accountResponse] = await Promise.all([
+        listLoans(token, { q: search, status, page: 1, limit: 100 }),
+        listAccounts(token, { page: 1, limit: 300 })
+      ]);
       setRows(response.rows);
+      setAccountRows(accountResponse.rows);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : copy.errors.loadFailed);
     } finally {
@@ -206,13 +225,59 @@ export function LoanWorkspace({
     () => clientProfiles.find((client) => client.customerId === form.customerId) ?? null,
     [clientProfiles, form.customerId]
   );
+  const customerAccountSummaries = useMemo(() => {
+    return accountRows.reduce<Map<string, CustomerAccountSummary>>((summaryMap, account) => {
+      if (!account.customerId || account.status !== "ACTIVE" || account.type === "LOAN") {
+        return summaryMap;
+      }
+
+      const existing = summaryMap.get(account.customerId) ?? {
+        activeNonLoanBalance: 0,
+        activeNonLoanCount: 0,
+        accountTypes: []
+      };
+
+      existing.activeNonLoanBalance += Number(account.currentBalance ?? 0);
+      existing.activeNonLoanCount += 1;
+      existing.accountTypes = Array.from(new Set([...existing.accountTypes, getAccountTypeLabel(account.type)]));
+      summaryMap.set(account.customerId, existing);
+      return summaryMap;
+    }, new Map<string, CustomerAccountSummary>());
+  }, [accountRows]);
+  const selectedBorrowerSummary = useMemo(
+    () => (form.customerId ? customerAccountSummaries.get(form.customerId) ?? null : null),
+    [customerAccountSummaries, form.customerId]
+  );
   const guarantorOptions = useMemo(
-    () => clientProfiles.filter((client) => client.customerId !== form.customerId && client.isActive),
-    [clientProfiles, form.customerId]
+    () =>
+      clientProfiles.filter((client) => {
+        if (client.customerId === form.customerId || !client.isActive) {
+          return false;
+        }
+
+        const summary = customerAccountSummaries.get(client.customerId);
+        return Boolean(summary && summary.activeNonLoanBalance > 0);
+      }),
+    [clientProfiles, customerAccountSummaries, form.customerId]
   );
 
   async function handleApplyLoan() {
     if (!form.customerId || Number(form.applicationAmount) <= 0) {
+      return;
+    }
+
+    const selectedGuarantorIds = [form.guarantor1Id, form.guarantor2Id, form.guarantor3Id].filter(Boolean);
+    if (!selectedBorrowerSummary?.activeNonLoanCount) {
+      const message = "Loan applicant must have an active society account or share-linked member account before applying.";
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
+    if (selectedGuarantorIds.length === 0) {
+      const message = "Assign at least one guarantor with a positive active balance.";
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -372,6 +437,10 @@ export function LoanWorkspace({
       ) : !canManageLoanActions ? (
         <Alert severity="info" sx={{ borderRadius: 3 }}>
           {copy.alerts.restrictedActions}
+        </Alert>
+      ) : accountRows.length === 0 ? (
+        <Alert severity="warning" sx={{ borderRadius: 3 }}>
+          Active member account details are required before loan eligibility can be evaluated.
         </Alert>
       ) : null}
       {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
@@ -547,7 +616,7 @@ export function LoanWorkspace({
                 <MenuItem value="">{copy.drawer.notAssigned}</MenuItem>
                 {guarantorOptions.map((client) => (
                   <MenuItem key={client.customerId} value={client.customerId}>
-                    {client.fullName} ({client.customerCode})
+                    {client.fullName} ({client.customerCode}) · {formatCurrency(customerAccountSummaries.get(client.customerId)?.activeNonLoanBalance ?? 0, locale)}
                   </MenuItem>
                 ))}
               </TextField>
@@ -561,7 +630,7 @@ export function LoanWorkspace({
                 <MenuItem value="">{copy.drawer.notAssigned}</MenuItem>
                 {guarantorOptions.map((client) => (
                   <MenuItem key={client.customerId} value={client.customerId}>
-                    {client.fullName} ({client.customerCode})
+                    {client.fullName} ({client.customerCode}) · {formatCurrency(customerAccountSummaries.get(client.customerId)?.activeNonLoanBalance ?? 0, locale)}
                   </MenuItem>
                 ))}
               </TextField>
@@ -575,7 +644,7 @@ export function LoanWorkspace({
                 <MenuItem value="">{copy.drawer.notAssigned}</MenuItem>
                 {guarantorOptions.map((client) => (
                   <MenuItem key={client.customerId} value={client.customerId}>
-                    {client.fullName} ({client.customerCode})
+                    {client.fullName} ({client.customerCode}) · {formatCurrency(customerAccountSummaries.get(client.customerId)?.activeNonLoanBalance ?? 0, locale)}
                   </MenuItem>
                 ))}
               </TextField>
@@ -600,8 +669,18 @@ export function LoanWorkspace({
                   <Typography variant="body2" color="text.secondary">
                     {copy.drawer.branch.replace("{{branch}}", selectedBorrower.branchName)}
                   </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Active member balance: {formatCurrency(selectedBorrowerSummary?.activeNonLoanBalance ?? 0, locale)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Account types: {selectedBorrowerSummary?.accountTypes?.join(", ") || "No active member account"}
+                  </Typography>
                 </Paper>
               ) : null}
+
+              <Alert severity="info" sx={{ borderRadius: 3 }}>
+                Loan applications need at least one guarantor with a positive active balance. Borrowers also need an active society-linked account before the loan can be applied.
+              </Alert>
 
               <Button
                 variant="contained"

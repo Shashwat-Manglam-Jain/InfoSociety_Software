@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import LockIcon from "@mui/icons-material/Lock";
@@ -32,6 +32,7 @@ import { getPublicSocieties, login } from "@/shared/api/client";
 import { getDefaultDashboardPath, getSession, setSession } from "@/shared/auth/session";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getLoginPageCopy } from "@/shared/i18n/login-copy";
+import { getCachedPublicSocieties, setCachedPublicSocieties } from "@/shared/public/public-data-cache";
 import { toast } from "@/shared/ui/toast";
 import type { Society, UserRole } from "@/shared/types";
 
@@ -65,6 +66,7 @@ function findExactSocietyMatch(societies: Society[], query: string) {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const theme = useTheme();
   const { locale } = useLanguage();
   const copy = getLoginPageCopy(locale);
@@ -74,12 +76,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [societyCode, setSocietyCode] = useState("");
   const [societySearch, setSocietySearch] = useState("");
-  const [societies, setSocieties] = useState<Society[]>([]);
+  const [societies, setSocieties] = useState<Society[]>(() => getCachedPublicSocieties() ?? []);
   const [selectedSociety, setSelectedSociety] = useState<Society | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRole>("SUPER_USER");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [societiesLoading, setSocietiesLoading] = useState(true);
+  const [societiesLoading, setSocietiesLoading] = useState(societies.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [societyLookupError, setSocietyLookupError] = useState<string | null>(null);
   const [usernameError, setUsernameError] = useState("");
@@ -111,6 +113,7 @@ export default function LoginPage() {
         }
 
         setSocieties([...response].sort((left, right) => left.name.localeCompare(right.name)));
+        setCachedPublicSocieties(response);
         setSocietyLookupError(null);
       } catch (caught) {
         console.error("Failed to load public societies", caught);
@@ -133,6 +136,20 @@ export default function LoginPage() {
       active = false;
     };
   }, [copy.lookupError]);
+
+  useEffect(() => {
+    const nextUsername = searchParams.get("username")?.trim();
+    const nextSocietyCode = searchParams.get("societyCode")?.trim().toUpperCase();
+
+    if (nextUsername) {
+      setUsername(nextUsername);
+    }
+
+    if (nextSocietyCode) {
+      setSocietyCode(nextSocietyCode);
+      syncSocietyFromCode(nextSocietyCode);
+    }
+  }, [searchParams, societies]);
 
   function applySocietySelection(society: Society | null) {
     setSelectedSociety(society);

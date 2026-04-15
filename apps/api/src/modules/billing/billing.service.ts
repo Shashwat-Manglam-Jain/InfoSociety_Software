@@ -11,42 +11,47 @@ import {
   UserRole
 } from "@prisma/client";
 import { RequestUser } from "../../common/auth/request-user.interface";
+import { MemoryCacheService } from "../../common/cache/memory-cache.service";
 import { PrismaService } from "../../common/database/prisma.service";
 import { UpgradeSubscriptionDto } from "./dto/upgrade-subscription.dto";
 
 const DEFAULT_PREMIUM_MONTHLY_PRICE = 299;
 const BILLING_DAYS = 30;
+const BILLING_PLAN_CACHE_TTL_MS = 60_000;
 
 @Injectable()
 export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly cache: MemoryCacheService
   ) {}
 
   getPlans() {
-    const premiumPrice = this.getPremiumMonthlyPrice();
+    return this.cache.getOrSet("public:billing:plans", BILLING_PLAN_CACHE_TTL_MS, async () => {
+      const premiumPrice = this.getPremiumMonthlyPrice();
 
-    return {
-      currency: "INR",
-      scope: "SOCIETY",
-      plans: [
-        {
-          id: SubscriptionPlan.FREE,
-          name: "Common",
-          monthlyPrice: 0,
-          adsEnabled: true,
-          description: "Free society plan with core workflows and sponsored dashboard placements."
-        },
-        {
-          id: SubscriptionPlan.PREMIUM,
-          name: "Premium",
-          monthlyPrice: premiumPrice,
-          adsEnabled: false,
-          description: "Society-wide premium access with ad-free dashboards, digital collections, and better visibility."
-        }
-      ]
-    };
+      return {
+        currency: "INR",
+        scope: "SOCIETY",
+        plans: [
+          {
+            id: SubscriptionPlan.FREE,
+            name: "Common",
+            monthlyPrice: 0,
+            adsEnabled: true,
+            description: "Free society plan with core workflows and sponsored dashboard placements."
+          },
+          {
+            id: SubscriptionPlan.PREMIUM,
+            name: "Premium",
+            monthlyPrice: premiumPrice,
+            adsEnabled: false,
+            description: "Society-wide premium access with ad-free dashboards, digital collections, and better visibility."
+          }
+        ]
+      };
+    });
   }
 
   async getMySubscription(currentUser: RequestUser) {

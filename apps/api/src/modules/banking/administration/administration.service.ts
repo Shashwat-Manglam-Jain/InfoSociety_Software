@@ -1,11 +1,13 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, SubscriptionPlan, SubscriptionStatus, TransactionType, UserRole } from "@prisma/client";
+import { AccountStatus, AccountType, Prisma, SubscriptionPlan, SubscriptionStatus, TransactionType, UserRole } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { bankingFeatureMap } from "../../shared/banking-feature-map";
 import { getDefaultAllowedModules, sanitizeAllowedModules } from "../shared/module-access";
 import { RequestUser } from "../../../common/auth/request-user.interface";
 import { PrismaService } from "../../../common/database/prisma.service";
+import { UserExtraFieldAvailability, loadUserExtraFieldAvailability } from "../../../common/database/user-extra-fields";
 import { getUserAllowedModuleMap, updateUserAllowedModules } from "../../../common/database/user-module-access";
+import { isCashPaymentMethod } from "../../shared/payment-methods";
 import { CreateBranchDto } from "./dto/create-branch.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { ListWorkingDaysQueryDto } from "./dto/list-working-days-query.dto";
@@ -15,8 +17,13 @@ import { UpdateUserDto } from "./dto/update-user.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 import { WorkingDayDto } from "./dto/working-day.dto";
 
+const DEFAULT_HEAD_OFFICE_NAME = "Head Office";
+const DEFAULT_HEAD_OFFICE_CODE = "HO-001";
+
 @Injectable()
 export class AdministrationService {
+  private userExtraFieldAvailability?: Promise<UserExtraFieldAvailability>;
+
   constructor(private readonly prisma: PrismaService) {}
 
   async mapAgentClient(currentUser: RequestUser, dto: MapAgentClientDto) {
@@ -89,34 +96,108 @@ export class AdministrationService {
     }
 
     const { id: _id, societyId: _sid, ...rest } = dto as any;
-    return this.prisma.branch.create({
-      data: {
-        ...rest,
-        openingDate: dto.openingDate ? new Date(dto.openingDate) : undefined,
-        code: branchCode,
-        societyId
+
+    return this.prisma.$transaction(async (tx) => {
+      if (dto.isHead) {
+        await tx.branch.updateMany({
+          where: {
+            societyId,
+            isHead: true
+          },
+          data: {
+            isHead: false
+          }
+        });
       }
+
+      return tx.branch.create({
+        data: {
+          ...rest,
+          openingDate: dto.openingDate ? new Date(dto.openingDate) : undefined,
+          code: branchCode,
+          societyId
+        }
+      });
     });
   }
 
   async updateBranch(currentUser: RequestUser, id: string, dto: any) {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
-    const { id: _id, societyId: _sid, ...rest } = dto;
-    return this.prisma.branch.update({
-      where: { id, societyId },
-      data: {
-        ...rest,
-        openingDate: dto.openingDate ? new Date(dto.openingDate) : undefined,
+    const existingBranch = await this.prisma.branch.findFirst({
+      where: {
+        id,
+        societyId
+      },
+      select: {
+        id: true,
+        isHead: true
       }
+    });
+
+    if (!existingBranch) {
+      throw new NotFoundException("Branch not found");
+    }
+
+    if (existingBranch.isHead && dto.isActive === false) {
+      throw new ForbiddenException("Head office cannot be disabled");
+    }
+
+    const { id: _id, societyId: _sid, ...rest } = dto;
+    return this.prisma.$transaction(async (tx) => {
+      if (dto.isHead) {
+        await tx.branch.updateMany({
+          where: {
+            societyId,
+            isHead: true,
+            id: {
+              not: id
+            }
+          },
+          data: {
+            isHead: false
+          }
+        });
+      }
+
+      return tx.branch.update({
+        where: { id },
+        data: {
+          ...rest,
+          openingDate: dto.openingDate ? new Date(dto.openingDate) : undefined,
+        }
+      });
     });
   }
 
   async deleteBranch(currentUser: RequestUser, id: string) {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
-    return this.prisma.branch.delete({
-      where: { id, societyId }
+    const targetBranch = await this.prisma.branch.findFirst({
+      where: {
+        id,
+        societyId
+      },
+      select: {
+        id: true,
+        isHead: true,
+        isActive: true
+      }
+    });
+
+    if (!targetBranch) {
+      throw new NotFoundException("Branch not found");
+    }
+
+    if (targetBranch.isHead) {
+      throw new ForbiddenException("Head office cannot be disabled");
+    }
+
+    return this.prisma.branch.update({
+      where: { id },
+      data: {
+        isActive: false
+      }
     });
   }
 
@@ -124,6 +205,7 @@ export class AdministrationService {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
     const normalizedUsername = this.normalizeUsername(dto.username);
+    const normalizedAadhaarNumber = this.normalizeAadhaarNumber(dto.aadhaarNumber);
 
     if (currentUser.role === UserRole.AGENT && dto.role !== UserRole.CLIENT) {
       throw new ForbiddenException("Agents can provision client identities only");
@@ -137,19 +219,7 @@ export class AdministrationService {
       throw new ConflictException("Username already taken");
     }
 
-    if (dto.branchId) {
-      const branch = await this.prisma.branch.findFirst({
-        where: {
-          id: dto.branchId,
-          societyId
-        },
-        select: { id: true }
-      });
-
-      if (!branch) {
-        throw new NotFoundException("Selected branch does not belong to your society");
-      }
-    }
+    await this.assertAadhaarAvailable(normalizedAadhaarNumber);
 
     const society = await this.prisma.society.findUnique({
       where: { id: societyId },
@@ -162,12 +232,10 @@ export class AdministrationService {
 
     const passwordHash = await hash(dto.password, 10);
     const allowedModuleSlugs = sanitizeAllowedModules(dto.role, dto.allowedModuleSlugs);
-    const normalizedFullName = this.normalizeFullName(dto.fullName);
+    const normalizedFullName = this.buildProvisionedFullName(dto.role, normalizedAadhaarNumber);
     const { firstName, lastName } = this.splitFullName(normalizedFullName);
     const needsCustomerProfile = dto.role === UserRole.CLIENT || dto.role === UserRole.AGENT;
-    const normalizedPhone = this.normalizeOptionalText(dto.phone);
-    const normalizedEmail = this.normalizeOptionalText(dto.email);
-    const normalizedAddress = this.normalizeOptionalText(dto.address);
+    const targetBranchId = await this.resolveManagedUserBranchId(societyId, dto.branchId);
 
     return this.prisma.$transaction(async (tx) => {
       let customerId: string | undefined;
@@ -179,9 +247,7 @@ export class AdministrationService {
           role: dto.role,
           firstName,
           lastName,
-          phone: normalizedPhone ?? undefined,
-          email: normalizedEmail ?? undefined,
-          address: normalizedAddress ?? undefined
+          aadhaarNumber: normalizedAadhaarNumber
         });
       }
 
@@ -193,7 +259,7 @@ export class AdministrationService {
           role: dto.role,
           isActive: dto.isActive ?? true,
           societyId,
-          branchId: dto.branchId,
+          branchId: targetBranchId,
           customerId,
           requiresPasswordChange: true
         },
@@ -208,8 +274,19 @@ export class AdministrationService {
           requiresPasswordChange: true
         }
       });
+      await this.updateUserAadhaarNumber(tx, user.id, normalizedAadhaarNumber);
+      await this.updateUserAdminFlag(tx, user.id, false);
 
       await this.updateAllowedModules(tx, user.id, allowedModuleSlugs);
+
+      if (customerId) {
+        await this.createProvisionedZeroBalanceAccount(tx, {
+          societyId,
+          customerId,
+          branchId: user.branchId ?? targetBranchId ?? null,
+          role: dto.role
+        });
+      }
 
       await tx.subscription.create({
         data: {
@@ -227,8 +304,13 @@ export class AdministrationService {
   async listBranches(currentUser: RequestUser) {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
+    await this.ensureHeadOfficeBranch(this.prisma, societyId);
     return this.prisma.branch.findMany({
-      where: { societyId }
+      where: { societyId },
+      orderBy: [
+        { isHead: "desc" },
+        { name: "asc" }
+      ]
     });
   }
 
@@ -279,8 +361,27 @@ export class AdministrationService {
       totalCollected
     ] = await Promise.all([
       this.prisma.branch.count({ where: { societyId } }),
-      this.prisma.user.count({ where: { societyId, role: { in: [UserRole.AGENT, UserRole.SUPER_USER] } } }),
-      this.prisma.customer.count({ where: { societyId } }),
+      this.prisma.user.count({
+        where: {
+          societyId,
+          role: { in: [UserRole.AGENT, UserRole.SUPER_USER] },
+          ...(branchId ? { branchId } : {})
+        }
+      }),
+      branchId
+        ? this.prisma.user.count({
+            where: {
+              societyId,
+              role: UserRole.CLIENT,
+              branchId
+            }
+          })
+        : this.prisma.customer.count({
+            where: {
+              societyId,
+              OR: [{ user: null }, { user: { role: UserRole.CLIENT } }]
+            }
+          }),
       
       this.prisma.account.aggregate({
         where: { ...baseWhere, type: { not: "LOAN" } },
@@ -414,17 +515,341 @@ export class AdministrationService {
   async listSocietyTransactions(currentUser: RequestUser, query: any) {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
-    const where: any = { account: { societyId } };
-    if (query.search) {
-       where.OR = [
-         { transactionNumber: { contains: query.search, mode: "insensitive" } },
-         { account: { customer: { firstName: { contains: query.search, mode: "insensitive" } } } }
-       ];
-    }
-    return this.prisma.transaction.findMany({
-      where, take: 50, orderBy: { createdAt: "desc" },
-      include: { account: { include: { customer: true } }, createdBy: true }
-    });
+    const search = query.search?.trim().toLowerCase() ?? "";
+
+    const [transactions, cashbookEntries, paymentTransactions, loans, cheques, lockerVisits] = await Promise.all([
+      this.prisma.transaction.findMany({
+        where: {
+          account: {
+            societyId
+          }
+        },
+        include: {
+          account: {
+            select: {
+              id: true,
+              accountNumber: true,
+              branchId: true,
+              branchCode: true,
+              customer: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  customerCode: true
+                }
+              }
+            }
+          },
+          createdBy: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              branchId: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 120
+      }),
+      this.prisma.cashBookEntry.findMany({
+        where: {
+          createdBy: {
+            societyId
+          }
+        },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              branchId: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 80
+      }),
+      this.prisma.paymentTransaction.findMany({
+        where: {
+          societyId
+        },
+        include: {
+          customer: {
+            select: {
+              firstName: true,
+              lastName: true,
+              customerCode: true
+            }
+          },
+          initiatedBy: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              branchId: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 80
+      }),
+      this.prisma.loanAccount.findMany({
+        where: {
+          account: {
+            societyId
+          }
+        },
+        include: {
+          account: {
+            select: {
+              id: true,
+              accountNumber: true,
+              branchId: true,
+              branchCode: true
+            }
+          },
+          customer: {
+            select: {
+              firstName: true,
+              lastName: true,
+              customerCode: true
+            }
+          }
+        },
+        orderBy: {
+          updatedAt: "desc"
+        },
+        take: 80
+      }),
+      this.prisma.chequeClearing.findMany({
+        where: {
+          account: {
+            societyId
+          }
+        },
+        include: {
+          account: {
+            select: {
+              id: true,
+              accountNumber: true,
+              branchId: true,
+              branchCode: true,
+              customer: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  customerCode: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          entryDate: "desc"
+        },
+        take: 80
+      }),
+      this.prisma.lockerVisit.findMany({
+        where: {
+          locker: {
+            customer: {
+              societyId
+            }
+          }
+        },
+        include: {
+          locker: {
+            select: {
+              lockerNumber: true,
+              customer: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  customerCode: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          visitedAt: "desc"
+        },
+        take: 60
+      })
+    ]);
+
+    const activityRows = [
+      ...transactions.map((transaction) => ({
+        id: transaction.id,
+        valueDate: transaction.valueDate,
+        transactionNumber: transaction.transactionNumber,
+        amount: Number(transaction.amount),
+        type: transaction.type,
+        mode: transaction.mode,
+        remark: transaction.remark,
+        isPassed: transaction.isPassed,
+        status: transaction.isPassed ? "PASSED" : "PENDING",
+        sourceModule: "transactions",
+        sourceAction: transaction.type === TransactionType.CREDIT ? "Credit entry" : "Debit entry",
+        account: {
+          id: transaction.account.id,
+          accountNumber: transaction.account.accountNumber,
+          branchId: transaction.account.branchId,
+          branchCode: transaction.account.branchCode,
+          customer: transaction.account.customer
+        },
+        createdBy: transaction.createdBy
+      })),
+      ...cashbookEntries.map((entry) => ({
+        id: entry.id,
+        valueDate: entry.entryDate,
+        transactionNumber: `${entry.headCode}-${entry.id.slice(0, 6).toUpperCase()}`,
+        amount: Number(entry.amount),
+        type: entry.type,
+        mode: entry.mode,
+        remark: entry.remark ?? entry.headName,
+        isPassed: entry.isPosted,
+        status: entry.isPosted ? "POSTED" : "PENDING",
+        sourceModule: "cashbook",
+        sourceAction: `Cashbook ${entry.type.toLowerCase()}`,
+        account: {
+          id: null,
+          accountNumber: entry.headCode,
+          branchId: entry.createdBy?.branchId ?? null,
+          branchCode: null,
+          customer: null
+        },
+        createdBy: entry.createdBy
+      })),
+      ...paymentTransactions.map((entry) => ({
+        id: entry.id,
+        valueDate: entry.processedAt ?? entry.createdAt,
+        transactionNumber: entry.gatewayReference,
+        amount: Number(entry.amount),
+        type: isCashPaymentMethod(entry.method) ? TransactionType.CREDIT : null,
+        mode: entry.method,
+        remark: entry.remark,
+        isPassed: entry.status === "SUCCESS",
+        status: entry.status,
+        sourceModule: "payments",
+        sourceAction: isCashPaymentMethod(entry.method) ? "Cash collection" : "Payment received",
+        account: {
+          id: null,
+          accountNumber: "-",
+          branchId: entry.initiatedBy?.branchId ?? null,
+          branchCode: null,
+          customer: entry.customer
+        },
+        createdBy: entry.initiatedBy
+      })),
+      ...loans.map((loan) => ({
+        id: loan.id,
+        valueDate: loan.updatedAt,
+        transactionNumber: loan.account.accountNumber,
+        amount: Number(loan.disbursedAmount ?? loan.sanctionedAmount ?? loan.applicationAmount),
+        type: loan.status === "DISBURSED" ? TransactionType.DEBIT : null,
+        mode: "LOAN",
+        remark: loan.remarks,
+        isPassed: loan.status !== "APPLIED",
+        status: loan.status,
+        sourceModule: "loans",
+        sourceAction:
+          loan.status === "SANCTIONED"
+            ? "Loan sanctioned"
+            : loan.status === "DISBURSED"
+              ? "Loan disbursed"
+              : loan.status === "CLOSED"
+                ? "Loan closed"
+                : loan.status === "OVERDUE"
+                  ? "Loan overdue"
+                  : "Loan applied",
+        account: {
+          id: loan.account.id,
+          accountNumber: loan.account.accountNumber,
+          branchId: loan.account.branchId,
+          branchCode: loan.account.branchCode,
+          customer: loan.customer
+        },
+        createdBy: null
+      })),
+      ...cheques.map((entry) => ({
+        id: entry.id,
+        valueDate: entry.clearedDate ?? entry.entryDate,
+        transactionNumber: entry.chequeNumber,
+        amount: Number(entry.amount),
+        type: entry.status === "CLEARED" ? TransactionType.CREDIT : entry.status === "RETURNED" ? TransactionType.DEBIT : null,
+        mode: "CHEQUE",
+        remark: `${entry.bankName} / ${entry.branchName}`,
+        isPassed: entry.status !== "ENTERED",
+        status: entry.status,
+        sourceModule: "cheque-clearing",
+        sourceAction: entry.status === "RETURNED" ? "Cheque rejected" : entry.status === "CLEARED" ? "Cheque approved" : "Cheque entered",
+        account: {
+          id: entry.account?.id ?? null,
+          accountNumber: entry.account?.accountNumber ?? "-",
+          branchId: entry.account?.branchId ?? null,
+          branchCode: entry.account?.branchCode ?? null,
+          customer: entry.account?.customer ?? null
+        },
+        createdBy: null
+      })),
+      ...lockerVisits.map((visit) => ({
+        id: visit.id,
+        valueDate: visit.visitedAt,
+        transactionNumber: visit.locker.lockerNumber,
+        amount: 0,
+        type: null,
+        mode: "LOCKER",
+        remark: visit.remarks,
+        isPassed: true,
+        status: "VISITED",
+        sourceModule: "locker",
+        sourceAction: "Locker visit",
+        account: {
+          id: null,
+          accountNumber: visit.locker.lockerNumber,
+          branchId: null,
+          branchCode: null,
+          customer: visit.locker.customer
+        },
+        createdBy: null
+      }))
+    ];
+
+    return activityRows
+      .filter((row) => {
+        if (!search) {
+          return true;
+        }
+
+        return [
+          row.transactionNumber,
+          row.account.accountNumber,
+          row.account.customer?.customerCode ?? "",
+          row.account.customer?.firstName ?? "",
+          row.account.customer?.lastName ?? "",
+          row.mode,
+          row.status,
+          row.sourceModule,
+          row.sourceAction,
+          row.remark ?? "",
+          row.createdBy?.fullName ?? "",
+          row.createdBy?.username ?? ""
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(search);
+      })
+      .sort((left, right) => new Date(right.valueDate).getTime() - new Date(left.valueDate).getTime())
+      .slice(0, 250);
   }
 
   async getAgentPerformance(currentUser: RequestUser) {
@@ -604,7 +1029,12 @@ export class AdministrationService {
     const rows = await this.prisma.user.findMany({
       where: currentUser.role === UserRole.SUPER_ADMIN ? {} : { societyId: currentUser.societyId ?? "" },
       select: {
-        id: true, username: true, fullName: true, role: true, isActive: true, branchId: true,
+        id: true,
+        username: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+        branchId: true,
         customerProfile: {
           select: {
             id: true,
@@ -623,10 +1053,29 @@ export class AdministrationService {
     });
 
     const accessMap = await this.getAllowedModuleMap(rows.map((entry) => entry.id));
-    return rows.map((entry) => ({
-      ...entry,
-      allowedModuleSlugs: accessMap.get(entry.id) ?? getDefaultAllowedModules(entry.role)
-    }));
+    const userExtraFieldMap = await this.getUserExtraFieldMap(rows.map((entry) => entry.id));
+
+    return rows
+      .map((entry) => {
+        const extras = userExtraFieldMap.get(entry.id) ?? {
+          aadhaarNumber: null,
+          isSocietyAdmin: false
+        };
+
+        return {
+          ...entry,
+          aadhaarNumber: extras.aadhaarNumber,
+          isSocietyAdmin: extras.isSocietyAdmin,
+          allowedModuleSlugs: accessMap.get(entry.id) ?? getDefaultAllowedModules(entry.role)
+        };
+      })
+      .sort((left, right) => {
+        if (left.isSocietyAdmin !== right.isSocietyAdmin) {
+          return left.isSocietyAdmin ? -1 : 1;
+        }
+
+        return right.createdAt.getTime() - left.createdAt.getTime();
+      });
   }
 
   async updateUser(currentUser: RequestUser, id: string, dto: UpdateUserDto) {
@@ -651,19 +1100,15 @@ export class AdministrationService {
     }
 
     this.assertCanManageUser(currentUser, target);
+    const targetExtras = await this.getUserExtraFieldMap([target.id]);
+    const targetExtra = targetExtras.get(target.id) ?? { aadhaarNumber: null, isSocietyAdmin: false };
 
     const normalizedUsername =
       dto.username === undefined ? undefined : this.normalizeUsername(dto.username);
     const normalizedFullName =
       dto.fullName === undefined ? undefined : this.normalizeFullName(dto.fullName);
-    const normalizedBranchId =
-      dto.branchId === undefined ? undefined : this.normalizeOptionalText(dto.branchId);
-    const normalizedPhone =
-      dto.phone === undefined ? undefined : this.normalizeOptionalText(dto.phone);
-    const normalizedEmail =
-      dto.email === undefined ? undefined : this.normalizeOptionalText(dto.email);
-    const normalizedAddress =
-      dto.address === undefined ? undefined : this.normalizeOptionalText(dto.address);
+    const normalizedAadhaarNumber =
+      dto.aadhaarNumber === undefined ? undefined : this.normalizeAadhaarNumber(dto.aadhaarNumber);
 
     if (normalizedUsername !== undefined && !normalizedUsername) {
       throw new BadRequestException("Username cannot be empty");
@@ -684,19 +1129,8 @@ export class AdministrationService {
       }
     }
 
-    if (normalizedBranchId) {
-      const societyId = target.societyId ?? this.resolveOperatingSocietyId(currentUser);
-      const branch = await this.prisma.branch.findFirst({
-        where: {
-          id: normalizedBranchId,
-          societyId
-        },
-        select: { id: true }
-      });
-
-      if (!branch) {
-        throw new NotFoundException("Selected branch does not belong to your society");
-      }
+    if (normalizedAadhaarNumber && normalizedAadhaarNumber !== targetExtra.aadhaarNumber) {
+      await this.assertAadhaarAvailable(normalizedAadhaarNumber, target.id);
     }
 
     const hasPasswordUpdate = Boolean(dto.password?.trim());
@@ -707,6 +1141,10 @@ export class AdministrationService {
 
     return this.prisma.$transaction(async (tx) => {
       let nextCustomerId = target.customerId;
+      const nextBranchId =
+        dto.branchId === undefined
+          ? undefined
+          : await this.resolveManagedUserBranchId(target.societyId ?? this.resolveOperatingSocietyId(currentUser), dto.branchId, tx);
 
       if (requiresCustomerProfile && !nextCustomerId) {
         const societyId = target.societyId ?? this.resolveOperatingSocietyId(currentUser);
@@ -728,21 +1166,23 @@ export class AdministrationService {
           role: target.role,
           firstName,
           lastName,
-          phone: normalizedPhone ?? undefined,
-          email: normalizedEmail ?? undefined,
-          address: normalizedAddress ?? undefined
+          aadhaarNumber: normalizedAadhaarNumber ?? targetExtra.aadhaarNumber ?? undefined
         });
-      } else if (requiresCustomerProfile && nextCustomerId) {
+      }
+
+      if (requiresCustomerProfile && nextCustomerId && normalizedAadhaarNumber !== undefined) {
+        await this.syncCustomerAadhaar(tx, nextCustomerId, normalizedAadhaarNumber);
+      }
+
+      if (requiresCustomerProfile && nextCustomerId && normalizedFullName !== undefined) {
         const identityName = normalizedFullName ?? target.fullName;
         const { firstName, lastName } = this.splitFullName(identityName);
 
         await tx.customer.update({
           where: { id: nextCustomerId },
           data: {
-            ...(normalizedFullName !== undefined ? { firstName, lastName: lastName ?? null } : {}),
-            ...(normalizedPhone !== undefined ? { phone: normalizedPhone } : {}),
-            ...(normalizedEmail !== undefined ? { email: normalizedEmail } : {}),
-            ...(normalizedAddress !== undefined ? { address: normalizedAddress } : {})
+            firstName,
+            lastName: lastName ?? null
           }
         });
       }
@@ -754,7 +1194,7 @@ export class AdministrationService {
           ...(normalizedFullName !== undefined ? { fullName: normalizedFullName } : {}),
           ...(nextPasswordHash ? { passwordHash: nextPasswordHash, requiresPasswordChange: true } : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-          ...(normalizedBranchId !== undefined ? { branchId: normalizedBranchId } : {}),
+          ...(nextBranchId !== undefined ? { branchId: nextBranchId } : {}),
           ...(nextCustomerId && nextCustomerId !== target.customerId ? { customerId: nextCustomerId } : {})
         },
         select: {
@@ -780,12 +1220,18 @@ export class AdministrationService {
         }
       });
 
+      if (normalizedAadhaarNumber !== undefined) {
+        await this.updateUserAadhaarNumber(tx, id, normalizedAadhaarNumber);
+      }
+
       if (allowedModuleSlugs) {
         await this.updateAllowedModules(tx, id, allowedModuleSlugs);
       }
 
       return {
         ...updated,
+        aadhaarNumber: normalizedAadhaarNumber ?? targetExtra.aadhaarNumber,
+        isSocietyAdmin: targetExtra.isSocietyAdmin,
         allowedModuleSlugs: allowedModuleSlugs ?? (await this.getAllowedModuleMap([id])).get(id) ?? getDefaultAllowedModules(updated.role)
       };
     });
@@ -798,6 +1244,8 @@ export class AdministrationService {
     if (currentUser.role !== UserRole.SUPER_ADMIN && target.societyId !== currentUser.societyId) throw new ForbiddenException("User belongs to another society");
     if (target.role === UserRole.SUPER_ADMIN && currentUser.role !== UserRole.SUPER_ADMIN) throw new ForbiddenException("Only platform administrators can modify superadmin users");
     if (currentUser.role === UserRole.AGENT && target.role === UserRole.SUPER_USER) throw new ForbiddenException("Agent cannot modify this user");
+    const targetExtra = (await this.getUserExtraFieldMap([id])).get(id) ?? { aadhaarNumber: null, isSocietyAdmin: false };
+    if (targetExtra.isSocietyAdmin && dto.isActive === false) throw new ForbiddenException("Society administrator account cannot be disabled");
 
     return this.prisma.user.update({
       where: { id },
@@ -1036,6 +1484,72 @@ export class AdministrationService {
     await updateUserAllowedModules(tx, userId, allowedModuleSlugs);
   }
 
+  private async updateUserAadhaarNumber(tx: Prisma.TransactionClient | PrismaService, userId: string, aadhaarNumber: string) {
+    const { aadhaarNumber: supportsAadhaarNumber } = await this.getUserExtraFieldAvailability();
+
+    if (!supportsAadhaarNumber) {
+      return;
+    }
+
+    await tx.$executeRaw`
+      UPDATE "User"
+      SET "aadhaarNumber" = ${aadhaarNumber}
+      WHERE "id" = ${userId}
+    `;
+  }
+
+  private async updateUserAdminFlag(tx: Prisma.TransactionClient | PrismaService, userId: string, isSocietyAdmin: boolean) {
+    const { isSocietyAdmin: supportsSocietyAdmin } = await this.getUserExtraFieldAvailability();
+
+    if (!supportsSocietyAdmin) {
+      return;
+    }
+
+    await tx.$executeRaw`
+      UPDATE "User"
+      SET "isSocietyAdmin" = ${isSocietyAdmin}
+      WHERE "id" = ${userId}
+    `;
+  }
+
+  private async getUserExtraFieldMap(userIds: string[]) {
+    if (userIds.length === 0) {
+      return new Map<string, { aadhaarNumber: string | null; isSocietyAdmin: boolean }>();
+    }
+
+    const columnAvailability = await this.getUserExtraFieldAvailability();
+    const defaultExtras: { aadhaarNumber: string | null; isSocietyAdmin: boolean } = {
+      aadhaarNumber: null,
+      isSocietyAdmin: false
+    };
+
+    if (!columnAvailability.aadhaarNumber && !columnAvailability.isSocietyAdmin) {
+      return new Map(userIds.map((userId) => [userId, defaultExtras]));
+    }
+
+    const userIdValues = userIds.map((userId) => Prisma.sql`${userId}`);
+    const aadhaarNumberSelect = columnAvailability.aadhaarNumber
+      ? Prisma.sql`"aadhaarNumber"`
+      : Prisma.sql`NULL::TEXT AS "aadhaarNumber"`;
+    const societyAdminSelect = columnAvailability.isSocietyAdmin
+      ? Prisma.sql`"isSocietyAdmin"`
+      : Prisma.sql`FALSE AS "isSocietyAdmin"`;
+    const rows = await this.prisma.$queryRaw<Array<{ id: string; aadhaarNumber: string | null; isSocietyAdmin: boolean }>>(
+      Prisma.sql`
+        SELECT "id", ${aadhaarNumberSelect}, ${societyAdminSelect}
+        FROM "User"
+        WHERE "id" IN (${Prisma.join(userIdValues)})
+      `
+    );
+
+    const extrasByUserId = new Map(userIds.map((userId) => [userId, defaultExtras]));
+    rows.forEach((row) => {
+      extrasByUserId.set(row.id, { aadhaarNumber: row.aadhaarNumber, isSocietyAdmin: row.isSocietyAdmin });
+    });
+
+    return extrasByUserId;
+  }
+
   private async createLinkedCustomerProfile(
     tx: Prisma.TransactionClient,
     input: {
@@ -1044,9 +1558,7 @@ export class AdministrationService {
       role: UserRole;
       firstName: string;
       lastName?: string;
-      phone?: string;
-      email?: string;
-      address?: string;
+      aadhaarNumber?: string;
     }
   ) {
     const prefix = input.role === UserRole.AGENT ? "A" : "C";
@@ -1058,13 +1570,14 @@ export class AdministrationService {
         customerCode,
         societyId: input.societyId,
         firstName: input.firstName,
-        lastName: input.lastName,
-        phone: input.phone,
-        email: input.email,
-        address: input.address
+        lastName: input.lastName
       },
       select: { id: true }
     });
+
+    if (input.aadhaarNumber) {
+      await this.syncCustomerAadhaar(tx, customer.id, input.aadhaarNumber);
+    }
 
     return customer.id;
   }
@@ -1090,6 +1603,16 @@ export class AdministrationService {
     return value.trim().replace(/\s+/g, " ");
   }
 
+  private normalizeAadhaarNumber(value: string) {
+    const normalizedValue = value.replace(/\D/g, "");
+
+    if (normalizedValue.length !== 12) {
+      throw new BadRequestException("Aadhaar number must be exactly 12 digits");
+    }
+
+    return normalizedValue;
+  }
+
   private splitFullName(fullName: string) {
     const [firstName, ...restName] = fullName.trim().split(/\s+/);
     return {
@@ -1100,5 +1623,285 @@ export class AdministrationService {
 
   private hasRelatedActivity(counts: Record<string, number>) {
     return Object.values(counts).some((value) => value > 0);
+  }
+
+  private buildProvisionedFullName(role: UserRole, aadhaarNumber: string) {
+    const aadhaarSuffix = aadhaarNumber.slice(-4);
+
+    if (role === UserRole.SUPER_USER) {
+      return `Society Staff ${aadhaarSuffix}`;
+    }
+
+    if (role === UserRole.AGENT) {
+      return `Agent ${aadhaarSuffix}`;
+    }
+
+    return `Client ${aadhaarSuffix}`;
+  }
+
+  private async assertAadhaarAvailable(aadhaarNumber: string, excludeUserId?: string) {
+    const { aadhaarNumber: supportsAadhaarNumber } = await this.getUserExtraFieldAvailability();
+
+    if (!supportsAadhaarNumber) {
+      return;
+    }
+
+    const existingUser = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT "id"
+      FROM "User"
+      WHERE "aadhaarNumber" = ${aadhaarNumber}
+      LIMIT 1
+    `;
+
+    if (existingUser[0] && existingUser[0].id !== excludeUserId) {
+      throw new ConflictException("Aadhaar number is already registered");
+    }
+  }
+
+  private getUserExtraFieldAvailability() {
+    this.userExtraFieldAvailability ??= loadUserExtraFieldAvailability(this.prisma);
+
+    return this.userExtraFieldAvailability;
+  }
+
+  private async ensureHeadOfficeBranch(tx: Prisma.TransactionClient | PrismaService, societyId: string) {
+    const existingHeadOffice = await tx.branch.findFirst({
+      where: {
+        societyId,
+        isHead: true
+      },
+      select: {
+        id: true,
+        isActive: true
+      }
+    });
+
+    if (existingHeadOffice) {
+      if (!existingHeadOffice.isActive) {
+        await tx.branch.update({
+          where: { id: existingHeadOffice.id },
+          data: {
+            isActive: true
+          }
+        });
+      }
+
+      await tx.user.updateMany({
+        where: {
+          societyId,
+          branchId: null
+        },
+        data: {
+          branchId: existingHeadOffice.id
+        }
+      });
+
+      return {
+        id: existingHeadOffice.id
+      };
+    }
+
+    const existingBranch = await tx.branch.findFirst({
+      where: { societyId },
+      select: {
+        id: true
+      }
+    });
+
+    if (existingBranch) {
+      await tx.branch.update({
+        where: { id: existingBranch.id },
+        data: {
+          isHead: true,
+          isActive: true
+        }
+      });
+
+      await tx.user.updateMany({
+        where: {
+          societyId,
+          branchId: null
+        },
+        data: {
+          branchId: existingBranch.id
+        }
+      });
+
+      return existingBranch;
+    }
+
+    const createdBranch = await tx.branch.create({
+      data: {
+        code: DEFAULT_HEAD_OFFICE_CODE,
+        name: DEFAULT_HEAD_OFFICE_NAME,
+        isHead: true,
+        isActive: true,
+        societyId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    return createdBranch;
+  }
+
+  private async resolveManagedUserBranchId(
+    societyId: string,
+    branchId?: string | null,
+    tx: Prisma.TransactionClient | PrismaService = this.prisma
+  ) {
+    const normalizedBranchId = this.normalizeOptionalText(branchId);
+
+    if (!normalizedBranchId) {
+      const headOfficeBranch = await this.ensureHeadOfficeBranch(tx, societyId);
+      return headOfficeBranch.id;
+    }
+
+    const branch = await tx.branch.findFirst({
+      where: {
+        id: normalizedBranchId,
+        societyId
+      },
+      select: { id: true }
+    });
+
+    if (!branch) {
+      throw new NotFoundException("Selected branch does not belong to your society");
+    }
+
+    return branch.id;
+  }
+
+  private async createProvisionedZeroBalanceAccount(
+    tx: Prisma.TransactionClient,
+    input: {
+      societyId: string;
+      customerId: string;
+      branchId?: string | null;
+      role: UserRole;
+    }
+  ) {
+    if (input.role !== UserRole.CLIENT && input.role !== UserRole.AGENT) {
+      return;
+    }
+
+    const type = input.role === UserRole.AGENT ? AccountType.PIGMY : AccountType.SAVINGS;
+    const existingAccount = await tx.account.findFirst({
+      where: {
+        customerId: input.customerId,
+        type
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (existingAccount) {
+      return;
+    }
+
+    const branch = input.branchId
+      ? await tx.branch.findUnique({
+          where: { id: input.branchId },
+          select: {
+            code: true
+          }
+        })
+      : null;
+
+    const accountNumber = await this.generateProvisionedAccountNumber(tx, input.societyId, input.branchId ?? null, type);
+
+    await tx.account.create({
+      data: {
+        accountNumber,
+        societyId: input.societyId,
+        customerId: input.customerId,
+        type,
+        status: AccountStatus.ACTIVE,
+        currentBalance: 0,
+        branchId: input.branchId ?? null,
+        branchCode: branch?.code ?? null,
+        isPassbookEnabled: input.role === UserRole.CLIENT
+      }
+    });
+  }
+
+  private async generateProvisionedAccountNumber(
+    tx: Prisma.TransactionClient | PrismaService,
+    societyId: string,
+    branchId: string | null,
+    type: AccountType
+  ) {
+    const [society, branch, count] = await Promise.all([
+      tx.society.findUnique({
+        where: { id: societyId },
+        select: {
+          code: true
+        }
+      }),
+      branchId
+        ? tx.branch.findUnique({
+            where: { id: branchId },
+            select: {
+              code: true
+            }
+          })
+        : Promise.resolve(null),
+      tx.account.count({
+        where: {
+          societyId,
+          type
+        }
+      })
+    ]);
+
+    const accountCodeByType: Record<AccountType, string> = {
+      SAVINGS: "101",
+      CURRENT: "102",
+      FIXED_DEPOSIT: "201",
+      RECURRING_DEPOSIT: "202",
+      LOAN: "301",
+      PIGMY: "401",
+      GENERAL: "501"
+    };
+
+    const societyCode = (society?.code ?? "001").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3).padStart(3, "0");
+    const branchCode = (branch?.code ?? "001").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3).padStart(3, "0");
+    const sequence = String(count + 1).padStart(8, "0");
+
+    return `${societyCode}${branchCode}${accountCodeByType[type]}${sequence}`;
+  }
+
+  private async syncCustomerAadhaar(tx: Prisma.TransactionClient, customerId: string, aadhaarNumber: string) {
+    const existingAadhaarDocument = await tx.kycDocument.findFirst({
+      where: {
+        customerId,
+        docType: "AADHAAR"
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (existingAadhaarDocument) {
+      await tx.kycDocument.update({
+        where: {
+          id: existingAadhaarDocument.id
+        },
+        data: {
+          docNumber: aadhaarNumber
+        }
+      });
+      return;
+    }
+
+    await tx.kycDocument.create({
+      data: {
+        customerId,
+        docType: "AADHAAR",
+        docNumber: aadhaarNumber
+      }
+    });
   }
 }
