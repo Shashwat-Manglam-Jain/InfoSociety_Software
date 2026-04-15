@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { alpha } from "@mui/material/styles";
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -15,8 +16,7 @@ export function HeroSection({ homeCopy, handleAction }: HeroSectionProps) {
   return (
     <Box
       sx={{
-        background: (theme) =>
-          `linear-gradient(135deg, ${theme.palette.secondary.dark} 0%, ${theme.palette.secondary.main} 45%, ${theme.palette.secondary.light} 100%)`,
+        background: "var(--hero-gradient)",
         color: "white",
         py: { xs: 8, md: 14 },
         overflow: "hidden",
@@ -28,7 +28,7 @@ export function HeroSection({ homeCopy, handleAction }: HeroSectionProps) {
           left: "-5%",
           width: "45%",
           height: "70%",
-          background: "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)",
+          background: (theme) => `radial-gradient(circle, ${alpha(theme.palette.common.white, 0.18)} 0%, transparent 70%)`,
           filter: "blur(60px)",
           animation: "float 20s infinite alternate ease-in-out",
           zIndex: 0
@@ -40,7 +40,7 @@ export function HeroSection({ homeCopy, handleAction }: HeroSectionProps) {
           right: "5%",
           width: "35%",
           height: "60%",
-          background: "radial-gradient(circle, rgba(0,0,0,0.1) 0%, transparent 70%)",
+          background: (theme) => `radial-gradient(circle, ${alpha(theme.palette.info.main, 0.14)} 0%, transparent 72%)`,
           filter: "blur(50px)",
           animation: "float 15s infinite alternate-reverse ease-in-out",
           zIndex: 0
@@ -65,7 +65,9 @@ export function HeroSection({ homeCopy, handleAction }: HeroSectionProps) {
                   px: 2,
                   py: 0.8,
                   borderRadius: 4,
-                  display: "inline-block"
+                  display: "inline-block",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  backdropFilter: "blur(10px)"
                 }}
               >
                 {homeCopy.heroBadge}
@@ -102,7 +104,7 @@ export function HeroSection({ homeCopy, handleAction }: HeroSectionProps) {
                   borderRadius: 3,
                   fontSize: "1rem",
                   "&:hover": { bgcolor: "rgba(255,255,255,0.92)", transform: "translateY(-2px)" },
-                  boxShadow: "0 20px 40px -10px rgba(0,0,0,0.2)",
+                  boxShadow: (theme) => `0 24px 48px -18px ${alpha(theme.palette.common.black, 0.42)}`,
                   transition: "all 0.3s ease"
                 }}
                 endIcon={<ArrowForwardIcon />}
@@ -133,7 +135,7 @@ export function HeroSection({ homeCopy, handleAction }: HeroSectionProps) {
           </Grid>
           <Grid size={{ xs: 12, md: 5 }}>
             <Box sx={{ 
-              background: "rgba(255,255,255,0.12)", 
+              background: (theme) => `linear-gradient(180deg, ${alpha(theme.palette.common.white, 0.16)} 0%, ${alpha(theme.palette.common.white, 0.08)} 100%)`, 
               backdropFilter: "blur(12px)", 
               borderRadius: 2.5, 
               p: 4.5, 

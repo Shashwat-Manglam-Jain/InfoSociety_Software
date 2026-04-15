@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Grid, Typography, Stack, Box, Alert, Skeleton, Button, Chip, LinearProgress } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
 import BusinessCenterRoundedIcon from "@mui/icons-material/BusinessCenterRounded";
 import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
@@ -67,6 +67,7 @@ function buildShellUser(session: Session): AuthUser {
 
 export default function SuperadminDashboardPage() {
   const router = useRouter();
+  const theme = useTheme();
   const { t, locale } = useLanguage();
   const copy = getSuperadminCopy(locale);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -108,6 +109,25 @@ export default function SuperadminDashboardPage() {
   }, [router, copy.common.loadError]);
 
   const accountTypeLabel = t("account.platform");
+  const isDark = theme.palette.mode === "dark";
+  const panelBg = alpha(theme.palette.background.paper, isDark ? 0.78 : 0.96);
+  const panelBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.9 : 1)}`;
+  const panelShadow = isDark ? "0 10px 28px rgba(2,6,23,0.42)" : "0 8px 24px -12px rgba(15,23,42,0.08)";
+  const chartGrid = alpha(theme.palette.divider, isDark ? 0.45 : 0.65);
+  const chartTick = theme.palette.text.secondary;
+  const tooltipStyle = {
+    borderRadius: 12,
+    border: panelBorder,
+    boxShadow: panelShadow,
+    fontWeight: 900,
+    backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.96 : 0.98),
+    color: theme.palette.text.primary
+  };
+  const pageTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.025em", fontSize: { xs: "1.9rem", md: "2.35rem" } } as const;
+  const sectionTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.02em", fontSize: { xs: "1.3rem", md: "1.55rem" } } as const;
+  const cardValueSx = { fontWeight: 900, letterSpacing: "-0.025em", fontSize: { xs: "1.85rem", md: "2.3rem" }, wordBreak: "break-word" } as const;
+  const subMetricValueSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.015em", fontSize: { xs: "1.25rem", md: "1.55rem" }, wordBreak: "break-word" } as const;
+  const helperTextSx = { fontWeight: 700, color: "text.secondary", fontSize: { xs: "0.82rem", md: "0.9rem" } } as const;
 
   const pendingSocieties = useMemo(
     () => monitoringOverview?.societies.filter((s) => s.status === "PENDING") ?? [],
@@ -287,7 +307,7 @@ export default function SuperadminDashboardPage() {
             <AnalyticsRoundedIcon sx={{ color: "primary.main", fontSize: { xs: 26, sm: 30 } }} />
             <Typography
               variant="h4"
-              sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em", fontSize: { xs: "1.6rem", sm: "2rem" } }}
+              sx={pageTitleSx}
             >
               {copy.overview.portfolioTitle}
             </Typography>
@@ -329,7 +349,7 @@ export default function SuperadminDashboardPage() {
                     <Box>
                       <Typography
                         variant="h4"
-                        sx={{ fontWeight: 900, letterSpacing: "-0.02em", fontSize: { xs: "1.6rem", sm: "2.125rem" }, wordBreak: "break-word" }}
+                        sx={cardValueSx}
                       >
                         {metric.display}
                       </Typography>
@@ -348,9 +368,9 @@ export default function SuperadminDashboardPage() {
                   sx={{
                     p: { xs: 2, sm: 2.5 },
                     borderRadius: 2,
-                    bgcolor: "#fff",
-                    border: "1px solid rgba(148, 163, 184, 0.15)",
-                    boxShadow: "0 4px 12px -8px rgba(15, 23, 42, 0.08)"
+                    bgcolor: panelBg,
+                    border: panelBorder,
+                    boxShadow: panelShadow
                   }}
                 >
                   <Stack direction="row" spacing={1.5} alignItems="center">
@@ -358,11 +378,11 @@ export default function SuperadminDashboardPage() {
                     <Box>
                       <Typography
                         variant="h5"
-                        sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.01em", fontSize: { xs: "1.35rem", sm: "1.5rem" }, wordBreak: "break-word" }}
+                        sx={subMetricValueSx}
                       >
                         {metric.display}
                       </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700, color: "text.secondary", fontSize: "0.82rem" }}>
+                      <Typography variant="body2" sx={helperTextSx}>
                         {metric.label}
                       </Typography>
                     </Box>
@@ -378,10 +398,10 @@ export default function SuperadminDashboardPage() {
                 sx={{
                   p: { xs: 2.25, sm: 3, md: 4 },
                   borderRadius: 2,
-                  bgcolor: "#fff",
+                  bgcolor: panelBg,
                   height: "100%",
-                  border: "1px solid rgba(148,163,184,0.15)",
-                  boxShadow: "0 8px 24px -12px rgba(15,23,42,0.06)",
+                  border: panelBorder,
+                  boxShadow: panelShadow,
                   display: "flex",
                   flexDirection: "column"
                 }}
@@ -394,7 +414,7 @@ export default function SuperadminDashboardPage() {
                   sx={{ mb: 4 }}
                 >
                   <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em", fontSize: { xs: "1.35rem", sm: "1.5rem" } }}>
+                    <Typography variant="h5" sx={sectionTitleSx}>
                       {copy.overview.topBalancesTitle}
                     </Typography>
                     <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 700 }}>
@@ -404,14 +424,14 @@ export default function SuperadminDashboardPage() {
                   <Chip
                     label={replaceVar(copy.overview.liveRows, { count: topSocietyBalanceData.length })}
                     size="small"
-                    sx={{ fontWeight: 900, bgcolor: alpha("#10b981", 0.1), color: "#10b981" }}
+                    sx={{ fontWeight: 900, bgcolor: alpha(theme.palette.success.main, isDark ? 0.18 : 0.1), color: "success.main" }}
                   />
                 </Stack>
                 <Box sx={{ flex: 1, minHeight: { xs: 240, sm: 300 }, width: "100%" }}>
                   {topSocietyBalanceData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={topSocietyBalanceData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.18)" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chartGrid} />
                         <XAxis
                           dataKey="label"
                           axisLine={false}
@@ -420,14 +440,14 @@ export default function SuperadminDashboardPage() {
                           angle={topSocietyBalanceData.length > 4 ? -20 : 0}
                           textAnchor={topSocietyBalanceData.length > 4 ? "end" : "middle"}
                           height={topSocietyBalanceData.length > 4 ? 60 : 30}
-                          tick={{ fontSize: 12, fontWeight: 700, fill: "#94a3b8" }}
+                          tick={{ fontSize: 12, fontWeight: 700, fill: chartTick }}
                         />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: "#94a3b8" }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 700, fill: chartTick }} />
                         <Tooltip
                           formatter={(value) => fmtCurrency(Number(value ?? 0), copy.localeTag, copy)}
-                          contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontWeight: 900 }}
+                          contentStyle={tooltipStyle}
                         />
-                        <Bar dataKey="balance" radius={[10, 10, 0, 0]} fill="#10b981" />
+                        <Bar dataKey="balance" radius={[10, 10, 0, 0]} fill={theme.palette.success.main} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -447,15 +467,15 @@ export default function SuperadminDashboardPage() {
                   sx={{
                     p: { xs: 2.25, sm: 3, md: 4 },
                     borderRadius: 1,
-                    bgcolor: "#fff",
-                    border: "1px solid rgba(148,163,184,0.15)",
-                    boxShadow: "0 8px 24px -12px rgba(15,23,42,0.06)",
+                    bgcolor: panelBg,
+                    border: panelBorder,
+                    boxShadow: panelShadow,
                     flex: 1,
                     display: "flex",
                     flexDirection: "column"
                   }}
                 >
-                  <Typography variant="h6" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.01em", fontSize: { xs: "1.1rem", sm: "1.25rem" } }}>
+                  <Typography variant="h6" sx={sectionTitleSx}>
                     {copy.overview.statusDistributionTitle}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 700, mb: 1 }}>
@@ -471,7 +491,7 @@ export default function SuperadminDashboardPage() {
                               <Cell key={`status-cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontWeight: 900 }} />
+                          <Tooltip contentStyle={tooltipStyle} />
                           <Legend verticalAlign="bottom" height={48} iconType="circle" wrapperStyle={{ fontSize: "0.75rem", fontWeight: 800, lineHeight: 1.4 }} />
                         </PieChart>
                       </ResponsiveContainer>
@@ -487,16 +507,16 @@ export default function SuperadminDashboardPage() {
                   sx={{
                     p: { xs: 2.25, sm: 3, md: 4 },
                     borderRadius: 2,
-                    bgcolor: "#fff",
-                    border: "1px solid rgba(16,185,129,0.3)",
-                    boxShadow: "0 8px 24px -12px rgba(16,185,129,0.15)",
+                    bgcolor: panelBg,
+                    border: `1px solid ${alpha(theme.palette.success.main, isDark ? 0.42 : 0.24)}`,
+                    boxShadow: isDark ? `0 10px 28px ${alpha(theme.palette.success.dark, 0.18)}` : `0 8px 24px -12px ${alpha(theme.palette.success.main, 0.2)}`,
                     position: "relative",
                     overflow: "hidden"
                   }}
                 >
                   <Typography
                     variant="h6"
-                    sx={{ fontWeight: 900, color: "#10b981", mb: 1.5, display: "flex", alignItems: "center", gap: 1, fontSize: { xs: "1.1rem", sm: "1.25rem" } }}
+                    sx={{ ...sectionTitleSx, color: "success.main", mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}
                   >
                     <SpeedRoundedIcon />
                     {copy.overview.governanceTitle}
@@ -518,13 +538,13 @@ export default function SuperadminDashboardPage() {
                       )
                     }
                     sx={{
-                      bgcolor: "#dcfce7",
-                      color: "#166534",
+                      bgcolor: alpha(theme.palette.success.main, isDark ? 0.24 : 0.14),
+                      color: isDark ? theme.palette.success.light : theme.palette.success.dark,
                       py: 1.2,
                       fontWeight: 900,
                       borderRadius: 3,
                       boxShadow: "none",
-                      "&:hover": { bgcolor: "#bbf7d0", color: "#14532d", boxShadow: "none" }
+                      "&:hover": { bgcolor: alpha(theme.palette.success.main, isDark ? 0.34 : 0.22), color: isDark ? theme.palette.success.light : theme.palette.success.dark, boxShadow: "none" }
                     }}
                   >
                     {pendingSocieties.length > 0 ? copy.overview.openApprovalQueue : copy.overview.reviewSocietyNetwork}
@@ -543,7 +563,7 @@ export default function SuperadminDashboardPage() {
             sx={{ mb: 3 }}
           >
             <PeopleRoundedIcon sx={{ color: "primary.main", fontSize: 26 }} />
-            <Typography variant="h5" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.01em", fontSize: { xs: "1.35rem", sm: "1.5rem" } }}>
+            <Typography variant="h5" sx={sectionTitleSx}>
               {copy.overview.roleBreakdownTitle}
             </Typography>
           </Stack>
@@ -562,25 +582,25 @@ export default function SuperadminDashboardPage() {
                     sx={{
                       p: { xs: 2.25, sm: 3, md: 4 },
                       borderRadius: 1,
-                      bgcolor: "#fff",
+                      bgcolor: panelBg,
                       border: `1px solid ${alpha(item.color, 0.15)}`,
-                      boxShadow: "0 4px 20px -8px rgba(15,23,42,0.06)",
+                      boxShadow: panelShadow,
                       transition: "all 300ms ease",
                       "&:hover": { transform: "translateY(-4px)" }
                     }}
                   >
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2, gap: 1 }}>
                       <Box sx={{ p: 1, borderRadius: 2, bgcolor: alpha(item.color, 0.1), color: item.color }}>{item.icon}</Box>
-                      <Typography variant="h3" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em", fontSize: { xs: "1.9rem", sm: "2.25rem" } }}>
+                      <Typography variant="h3" sx={cardValueSx}>
                         {fmt(count, copy.localeTag)}
                       </Typography>
                     </Stack>
-                    <Typography variant="body1" sx={{ fontWeight: 800, color: "#0f172a", mb: 2 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 800, color: "text.primary", mb: 2 }}>
                       {item.label}
                     </Typography>
                     <Box sx={{ mt: 1.5 }}>
                       <Stack direction="row" justifyContent="space-between">
-                        <Typography variant="caption" sx={{ color: "text.disabled", fontWeight: 700, fontSize: "0.75rem" }}>
+                        <Typography variant="caption" sx={{ color: "text.disabled", fontWeight: 700, fontSize: { xs: "0.72rem", md: "0.78rem" } }}>
                           {copy.overview.shareOfPlatform}
                         </Typography>
                         <Typography variant="subtitle2" sx={{ fontWeight: 900, color: item.color }}>

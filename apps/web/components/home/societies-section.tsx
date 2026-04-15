@@ -48,13 +48,30 @@ export function SocietiesSection() {
   }, [copy.loadError]);
 
   return (
-    <Box id="societies" sx={{ py: { xs: 8, md: 12 }, bgcolor: "background.default" }}>
+    <Box
+      id="societies"
+      sx={{
+        py: { xs: 8, md: 12 },
+        background: "transparent"
+      }}
+    >
       <Container maxWidth="lg">
         <Stack spacing={2} sx={{ mb: 6, textAlign: "center", alignItems: "center" }}>
-          <Typography variant="overline" sx={{ fontWeight: 900, color: "secondary.main", letterSpacing: 2 }}>
+          <Box
+            className="pill-soft"
+            sx={{
+              px: 1.8,
+              py: 0.8,
+              fontWeight: 800,
+              color: "secondary.main",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              fontSize: "0.76rem"
+            }}
+          >
             {copy.eyebrow}
-          </Typography>
-          <Typography variant="h3" sx={{ fontWeight: 900, color: "text.primary", letterSpacing: "-0.02em", textAlign: "center" }}>
+          </Box>
+          <Typography variant="h3" sx={{ fontWeight: 900, color: "text.primary", letterSpacing: "-0.04em", textAlign: "center" }}>
             {copy.title}
           </Typography>
           <Typography variant="body1" sx={{ color: "text.secondary", maxWidth: 700, mx: "auto", fontSize: "1.1rem", textAlign: "center" }}>
@@ -121,13 +138,14 @@ export function SocietiesSection() {
                   elevation={0}
                   sx={{ 
                     height: "100%",
-                    borderRadius: 2,
+                    borderRadius: 4,
                     border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`,
-                    bgcolor: "background.paper",
+                    backgroundImage: "var(--card-gradient)",
                     transition: "all 300ms ease",
+                    backdropFilter: "blur(14px)",
                     "&:hover": {
                       transform: "translateY(-8px)",
-                      boxShadow: (theme) => theme.shadows[4],
+                      boxShadow: (theme) => `0 24px 50px ${alpha(theme.palette.common.black, theme.palette.mode === "light" ? 0.12 : 0.3)}`,
                       borderColor: "secondary.light"
                     }
                   }}
@@ -136,9 +154,9 @@ export function SocietiesSection() {
                     <Stack spacing={3}>
                       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                          <Box sx={{ 
-                           p: 1.5, 
-                           borderRadius: 1, 
-                           bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.1),
+                           p: 1.6, 
+                           borderRadius: 2.5, 
+                           background: (theme) => `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.12)} 0%, ${alpha(theme.palette.secondary.main, 0.18)} 100%)`,
                            color: "secondary.main"
                          }}>
                             <DomainRoundedIcon />
@@ -147,7 +165,7 @@ export function SocietiesSection() {
                       </Box>
 
                       <Box>
-                        <Typography variant="h5" sx={{ fontWeight: 800, color: "text.primary", mb: 0.5 }}>
+                        <Typography variant="h5" sx={{ fontWeight: 800, color: "text.primary", mb: 0.5, letterSpacing: "-0.02em" }}>
                           {society.name}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
@@ -171,10 +189,10 @@ export function SocietiesSection() {
                               size="small"
                               startIcon={<ManageAccountsRoundedIcon sx={{ fontSize: 16 }} />}
                               sx={{ 
-                                bgcolor: "#059669", 
-                                "&:hover": { bgcolor: "#047857" },
+                                background: "linear-gradient(135deg, #047857 0%, #059669 100%)", 
+                                "&:hover": { background: "linear-gradient(135deg, #065f46 0%, #047857 100%)" },
                                 fontWeight: 800,
-                                borderRadius: 1
+                                borderRadius: 2
                               }}
                             >
                               {copy.roleAgent}
@@ -189,10 +207,10 @@ export function SocietiesSection() {
                               size="small"
                               startIcon={<BadgeRoundedIcon sx={{ fontSize: 16 }} />}
                               sx={{ 
-                                bgcolor: "#0f172a", 
-                                "&:hover": { bgcolor: "#111827" },
+                                background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", 
+                                "&:hover": { background: "linear-gradient(135deg, #111827 0%, #0f172a 100%)" },
                                 fontWeight: 800,
-                                borderRadius: 1
+                                borderRadius: 2
                               }}
                             >
                               {copy.roleStaff}
@@ -207,10 +225,10 @@ export function SocietiesSection() {
                               size="small"
                               startIcon={<PersonRoundedIcon sx={{ fontSize: 16 }} />}
                               sx={{ 
-                                bgcolor: "#1e3a8a", 
-                                "&:hover": { bgcolor: "#1e40af" },
+                                background: "linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)", 
+                                "&:hover": { background: "linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%)" },
                                 fontWeight: 800,
-                                borderRadius: 1
+                                borderRadius: 2
                               }}
                             >
                               {copy.roleClient}

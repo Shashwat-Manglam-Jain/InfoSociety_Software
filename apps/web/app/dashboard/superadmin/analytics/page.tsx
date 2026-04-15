@@ -21,7 +21,7 @@ import {
   LinearProgress,
   Avatar
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import BusinessCenterRoundedIcon from "@mui/icons-material/BusinessCenterRounded";
 import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
 import AnalyticsRoundedIcon from "@mui/icons-material/AnalyticsRounded";
@@ -53,26 +53,27 @@ function fmtCurrency(value: number, localeTag: string, copy: ReturnType<typeof g
 }
 
 function StatusChip({ status, copy }: { status: string; copy: ReturnType<typeof getSuperadminCopy> }) {
+  const theme = useTheme();
   const config = {
     ACTIVE: {
       label: copy.analytics.statusActive,
       icon: <CheckCircleRoundedIcon sx={{ fontSize: 14 }} />,
-      bg: "#dcfce7",
-      color: "#166534"
+      bg: alpha(theme.palette.success.main, theme.palette.mode === "dark" ? 0.2 : 0.12),
+      color: theme.palette.mode === "dark" ? theme.palette.success.light : theme.palette.success.dark
     },
     PENDING: {
       label: copy.analytics.statusPending,
       icon: <HourglassEmptyRoundedIcon sx={{ fontSize: 14 }} />,
-      bg: "#fef9c3",
-      color: "#854d0e"
+      bg: alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.2 : 0.14),
+      color: theme.palette.mode === "dark" ? theme.palette.warning.light : theme.palette.warning.dark
     },
     SUSPENDED: {
       label: copy.analytics.statusSuspended,
       icon: <PauseCircleRoundedIcon sx={{ fontSize: 14 }} />,
-      bg: "#fee2e2",
-      color: "#991b1b"
+      bg: alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.2 : 0.12),
+      color: theme.palette.mode === "dark" ? theme.palette.error.light : theme.palette.error.dark
     }
-  }[status] ?? { label: status, icon: null, bg: "#f1f5f9", color: "#475569" };
+  }[status] ?? { label: status, icon: null, bg: alpha(theme.palette.text.secondary, 0.12), color: theme.palette.text.secondary };
 
   return (
     <Chip
@@ -93,12 +94,19 @@ function StatusChip({ status, copy }: { status: string; copy: ReturnType<typeof 
 
 export default function SuperadminAnalyticsPage() {
   const router = useRouter();
+  const theme = useTheme();
   const { t, locale } = useLanguage();
   const copy = getSuperadminCopy(locale);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [monitoringOverview, setMonitoringOverview] = useState<MonitoringOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isDark = theme.palette.mode === "dark";
+  const panelBg = alpha(theme.palette.background.paper, isDark ? 0.78 : 0.96);
+  const panelBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.9 : 1)}`;
+  const panelShadow = isDark ? "0 10px 28px rgba(2,6,23,0.42)" : "0 8px 24px -12px rgba(15,23,42,0.08)";
+  const pageTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.025em", fontSize: { xs: "1.9rem", md: "2.35rem" } } as const;
+  const sectionTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.02em", fontSize: { xs: "1.3rem", md: "1.55rem" } } as const;
 
   async function loadData() {
     const session = getSession();
@@ -192,7 +200,7 @@ export default function SuperadminAnalyticsPage() {
           <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 2 }}>
             {copy.analytics.overline}
           </Typography>
-          <Typography variant="h3" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.03em" }}>
+          <Typography variant="h3" sx={pageTitleSx}>
             {copy.analytics.title}
           </Typography>
         </Box>
@@ -200,13 +208,13 @@ export default function SuperadminAnalyticsPage() {
         <Box sx={{ mb: 8 }}>
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
             <AccountTreeRoundedIcon sx={{ color: "primary.main", fontSize: 32 }} />
-            <Typography variant="h3" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em" }}>
+            <Typography variant="h3" sx={sectionTitleSx}>
               {copy.analytics.intelligenceTitle}
             </Typography>
           </Stack>
 
-          <Box sx={{ mb: 5, p: 4, borderRadius: 1, bgcolor: "#fff", border: "1px solid rgba(148,163,184,0.15)", boxShadow: "0 4px 12px rgba(15,23,42,0.03)" }}>
-            <Typography variant="h6" sx={{ fontWeight: 900, mb: 1, color: "#0f172a" }}>
+          <Box sx={{ mb: 5, p: 4, borderRadius: 1, bgcolor: panelBg, border: panelBorder, boxShadow: panelShadow }}>
+            <Typography variant="h6" sx={{ fontWeight: 900, mb: 1, color: "text.primary" }}>
               {copy.analytics.volumeTitle}
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary", mb: 4, fontWeight: 700 }}>
@@ -217,30 +225,30 @@ export default function SuperadminAnalyticsPage() {
                 <AreaChart data={volumeData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="volColor" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      <stop offset="5%" stopColor={theme.palette.primary.main} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeight: 700, fill: "#64748b" }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeight: 700, fill: "#64748b" }} />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeight: 700, fill: theme.palette.text.secondary }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeight: 700, fill: theme.palette.text.secondary }} />
                   <Tooltip
                     formatter={(value) => fmtCurrency(Number(value ?? 0), copy.localeTag, copy)}
-                    contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontWeight: 900 }}
+                    contentStyle={{ borderRadius: 12, border: panelBorder, boxShadow: panelShadow, fontWeight: 900, backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.96 : 0.98), color: theme.palette.text.primary }}
                   />
-                  <Area type="monotone" dataKey="vol" stroke="#3b82f6" strokeWidth={4} fill="url(#volColor)" />
+                  <Area type="monotone" dataKey="vol" stroke={theme.palette.primary.main} strokeWidth={4} fill="url(#volColor)" />
                 </AreaChart>
               </ResponsiveContainer>
             </Box>
           </Box>
 
-          <TableContainer component={Paper} sx={{ borderRadius: 1, border: "1px solid rgba(148,163,184,0.12)", boxShadow: "0 4px 20px -8px rgba(15,23,42,0.06)" }}>
+          <TableContainer component={Paper} sx={{ borderRadius: 1, border: panelBorder, boxShadow: panelShadow, bgcolor: panelBg }}>
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: "#f1f5f9" }}>
+                <TableRow sx={{ bgcolor: alpha(theme.palette.text.primary, isDark ? 0.12 : 0.04) }}>
                   {copy.analytics.tableHeaders.map((heading) => (
                     <TableCell
                       key={heading}
-                      sx={{ fontWeight: 900, color: "#475569", fontSize: "0.85rem", letterSpacing: 1.2, textTransform: "uppercase", whiteSpace: "nowrap", py: 2.5 }}
+                      sx={{ fontWeight: 900, color: "text.secondary", fontSize: "0.85rem", letterSpacing: 1.2, textTransform: "uppercase", whiteSpace: "nowrap", py: 2.5 }}
                     >
                       {heading}
                     </TableCell>
@@ -252,18 +260,18 @@ export default function SuperadminAnalyticsPage() {
                   <TableRow
                     key={society.id}
                     sx={{
-                      "&:hover": { bgcolor: "rgba(59,130,246,0.05)" },
-                      borderBottom: "1px solid rgba(148,163,184,0.15)",
+                      "&:hover": { bgcolor: alpha(theme.palette.primary.main, isDark ? 0.12 : 0.05) },
+                      borderBottom: `1px solid ${alpha(theme.palette.divider, isDark ? 0.8 : 1)}`,
                       transition: "background 150ms"
                     }}
                   >
                     <TableCell>
                       <Stack direction="row" spacing={2} alignItems="center">
-                        <Avatar sx={{ width: 44, height: 44, bgcolor: alpha("#3b82f6", 0.1), color: "#3b82f6", fontWeight: 900, fontSize: "1rem" }}>
+                        <Avatar sx={{ width: 44, height: 44, bgcolor: alpha(theme.palette.primary.main, 0.1), color: "primary.main", fontWeight: 900, fontSize: "1rem" }}>
                           {society.name?.[0]}
                         </Avatar>
                         <Box>
-                          <Typography variant="body1" sx={{ fontWeight: 900, color: "#0f172a" }}>
+                          <Typography variant="body1" sx={{ fontWeight: 900, color: "text.primary" }}>
                             {society.name}
                           </Typography>
                           <Typography variant="body2" sx={{ color: "text.disabled", fontWeight: 800 }}>
@@ -280,8 +288,8 @@ export default function SuperadminAnalyticsPage() {
                           fontWeight: 900,
                           fontSize: "0.8rem",
                           height: 28,
-                          bgcolor: society.subscriptionPlan === "PREMIUM" ? alpha("#8b5cf6", 0.15) : alpha("#64748b", 0.1),
-                          color: society.subscriptionPlan === "PREMIUM" ? "#7c3aed" : "#475569"
+                          bgcolor: society.subscriptionPlan === "PREMIUM" ? alpha(theme.palette.secondary.main, 0.16) : alpha(theme.palette.text.secondary, 0.1),
+                          color: society.subscriptionPlan === "PREMIUM" ? theme.palette.secondary.main : theme.palette.text.secondary
                         }}
                       />
                     </TableCell>
@@ -299,12 +307,12 @@ export default function SuperadminAnalyticsPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body1" sx={{ fontWeight: 900, color: "#059669" }}>
+                      <Typography variant="body1" sx={{ fontWeight: 900, color: "success.main" }}>
                         {fmt(society.activeUsers, copy.localeTag)}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body1" sx={{ fontWeight: 900, color: "#0f172a" }}>
+                      <Typography variant="body1" sx={{ fontWeight: 900, color: "text.primary" }}>
                         {fmtCurrency(society.totalBalance, copy.localeTag, copy)}
                       </Typography>
                       <Box sx={{ mt: 1 }}>
@@ -318,8 +326,8 @@ export default function SuperadminAnalyticsPage() {
                           sx={{
                             height: 6,
                             borderRadius: 6,
-                            bgcolor: "rgba(148,163,184,0.2)",
-                            "& .MuiLinearProgress-bar": { bgcolor: "#3b82f6", borderRadius: 6 }
+                            bgcolor: alpha(theme.palette.text.secondary, 0.18),
+                            "& .MuiLinearProgress-bar": { bgcolor: theme.palette.primary.main, borderRadius: 6 }
                           }}
                         />
                       </Box>
@@ -333,7 +341,7 @@ export default function SuperadminAnalyticsPage() {
                       <Button
                         size="small"
                         variant="contained"
-                        sx={{ borderRadius: 3, fontWeight: 900, fontSize: "0.85rem", py: 1, px: 2, bgcolor: "#0f172a" }}
+                        sx={{ borderRadius: 3, fontWeight: 900, fontSize: "0.85rem", py: 1, px: 2, bgcolor: "primary.main" }}
                         onClick={() => router.push("/dashboard/superadmin/societies")}
                       >
                         {copy.analytics.inspect}

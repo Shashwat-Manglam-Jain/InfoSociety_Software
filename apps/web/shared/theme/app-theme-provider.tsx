@@ -1,8 +1,16 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef } from "react";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import type { PaletteMode } from "@mui/material";
+import { useLanguage } from "@/shared/i18n/language-provider";
+import { useAppDispatch, useAppSelector } from "@/shared/store/hooks";
+import {
+  hydrateThemePreferences,
+  setThemeMode,
+  setThemePreset,
+  toggleThemeMode
+} from "@/shared/store/slices/ui-preferences-slice";
 import { createAppTheme, defaultThemeMode, defaultThemePreset, themePresets, type AppThemePreset } from "./theme";
 
 const STORAGE_KEY = "infopath.theme.v1";
@@ -50,21 +58,27 @@ function parseStoredTheme(raw: string | null): Partial<ThemeState> {
 }
 
 export function AppThemeProvider({ children }: { children: React.ReactNode }) {
-  const [preset, setPreset] = useState<AppThemePreset>(defaultThemePreset);
-  const [mode, setMode] = useState<PaletteMode>(defaultThemeMode);
+  const dispatch = useAppDispatch();
+  const { locale } = useLanguage();
+  const preset = useAppSelector((state) => state.uiPreferences.themePreset);
+  const mode = useAppSelector((state) => state.uiPreferences.themeMode);
+  const hasHydrated = useRef(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || hasHydrated.current) return;
 
     const stored = parseStoredTheme(window.localStorage.getItem(STORAGE_KEY));
-    if (stored.preset) setPreset(stored.preset);
-    if (stored.mode) setMode(stored.mode);
+    const nextMode = stored.mode ?? (window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : defaultThemeMode);
 
-    if (!stored.mode) {
-      const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
-      setMode(prefersDark ? "dark" : defaultThemeMode);
-    }
-  }, []);
+    dispatch(
+      hydrateThemePreferences({
+        themePreset: stored.preset ?? defaultThemePreset,
+        themeMode: nextMode
+      })
+    );
+
+    hasHydrated.current = true;
+  }, [dispatch]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -82,18 +96,18 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [mode, preset]);
 
-  const theme = useMemo(() => createAppTheme({ preset, mode }), [mode, preset]);
+  const theme = useMemo(() => createAppTheme({ preset, mode, locale }), [locale, mode, preset]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
       preset,
       mode,
       presets: themePresets,
-      setPreset,
-      setMode,
-      toggleMode: () => setMode((prev) => (prev === "light" ? "dark" : "light"))
+      setPreset: (nextPreset) => dispatch(setThemePreset(nextPreset)),
+      setMode: (nextMode) => dispatch(setThemeMode(nextMode)),
+      toggleMode: () => dispatch(toggleThemeMode())
     }),
-    [mode, preset]
+    [dispatch, mode, preset]
   );
 
   return (

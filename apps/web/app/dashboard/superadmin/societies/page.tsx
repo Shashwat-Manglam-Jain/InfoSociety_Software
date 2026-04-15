@@ -24,7 +24,7 @@ import {
   Typography
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import AnalyticsRoundedIcon from "@mui/icons-material/AnalyticsRounded";
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
 import BusinessCenterRoundedIcon from "@mui/icons-material/BusinessCenterRounded";
@@ -55,25 +55,25 @@ function fmtCurrency(value: number, localeTag: string) {
   return `₹${fmt(value)}`;
 }
 
-function statusStyles(status: OverviewSociety["status"]) {
+function statusStyles(status: OverviewSociety["status"], isDark: boolean) {
   if (status === "ACTIVE") {
-    return { bgcolor: alpha("#10b981", 0.12), color: "#047857" };
+    return { bgcolor: alpha("#10b981", isDark ? 0.2 : 0.12), color: isDark ? "#6ee7b7" : "#047857" };
   }
 
   if (status === "SUSPENDED") {
-    return { bgcolor: alpha("#ef4444", 0.12), color: "#b91c1c" };
+    return { bgcolor: alpha("#ef4444", isDark ? 0.2 : 0.12), color: isDark ? "#fca5a5" : "#b91c1c" };
   }
 
-  return { bgcolor: alpha("#f59e0b", 0.12), color: "#b45309" };
+  return { bgcolor: alpha("#f59e0b", isDark ? 0.22 : 0.12), color: isDark ? "#fcd34d" : "#b45309" };
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
+function DetailItem({ label, value, isDark }: { label: string; value: string; isDark: boolean }) {
   return (
-    <Box sx={{ p: 2, borderRadius: 3, bgcolor: "#fff", border: "1px solid rgba(148,163,184,0.15)" }}>
+    <Box sx={{ p: 2, borderRadius: 3, bgcolor: (theme) => alpha(theme.palette.background.paper, isDark ? 0.82 : 0.98), border: (theme) => `1px solid ${alpha(theme.palette.divider, isDark ? 0.9 : 1)}` }}>
       <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
         {label}
       </Typography>
-      <Typography variant="body2" sx={{ mt: 0.4, color: "#0f172a", fontWeight: 800 }}>
+      <Typography variant="body2" sx={{ mt: 0.4, color: "text.primary", fontWeight: 800 }}>
         {value}
       </Typography>
     </Box>
@@ -82,6 +82,7 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 export default function SuperadminSocietiesExplorer() {
   const router = useRouter();
+  const theme = useTheme();
   const { t, locale } = useLanguage();
   const copy = getSuperadminNetworkExplorerCopy(locale);
   const localeTag = copy.localeTag;
@@ -92,6 +93,12 @@ export default function SuperadminSocietiesExplorer() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSocietyId, setSelectedSocietyId] = useState<string | null>(null);
   const [processingSocietyId, setProcessingSocietyId] = useState<string | null>(null);
+  const isDark = theme.palette.mode === "dark";
+  const panelBg = alpha(theme.palette.background.paper, isDark ? 0.78 : 0.96);
+  const panelBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.9 : 1)}`;
+  const panelShadow = isDark ? "0 10px 28px rgba(2,6,23,0.42)" : "0 8px 24px -12px rgba(15,23,42,0.08)";
+  const pageTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.025em", fontSize: { xs: "1.9rem", md: "2.35rem" } } as const;
+  const sectionTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.02em", fontSize: { xs: "1.2rem", md: "1.45rem" } } as const;
 
   async function loadData() {
     const session = getSession();
@@ -251,7 +258,7 @@ export default function SuperadminSocietiesExplorer() {
           <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 2 }}>
             {copy.page.eyebrow}
           </Typography>
-          <Typography variant="h3" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.03em" }}>
+          <Typography variant="h3" sx={pageTitleSx}>
             {copy.page.title}
           </Typography>
           <Typography variant="subtitle1" sx={{ color: "text.secondary", mt: 1, maxWidth: 840 }}>
@@ -264,7 +271,7 @@ export default function SuperadminSocietiesExplorer() {
           <Chip label={copy.page.pendingApprovals.replace("{{count}}", fmt(pendingCount, localeTag))} color={pendingCount > 0 ? "warning" : "default"} sx={{ fontWeight: 900, width: "fit-content" }} />
         </Stack>
 
-        <Paper elevation={0} sx={{ p: 3, borderRadius: 5, border: "1px solid rgba(148,163,184,0.2)", bgcolor: "#fff" }}>
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 5, border: panelBorder, bgcolor: panelBg, boxShadow: panelShadow }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, mb: 4, flexWrap: "wrap" }}>
             <Box sx={{ maxWidth: 440, width: "100%" }}>
               <TextField
@@ -274,7 +281,7 @@ export default function SuperadminSocietiesExplorer() {
                 onChange={(event) => setSearchQuery(event.target.value)}
                 InputProps={{
                   startAdornment: <SearchRoundedIcon sx={{ mr: 1, color: "text.disabled" }} />,
-                  sx: { borderRadius: 3, bgcolor: "#f8fafc", "& fieldset": { border: "none" } }
+                  sx: { borderRadius: 3, bgcolor: alpha(theme.palette.background.default, isDark ? 0.4 : 0.6), "& fieldset": { border: "none" } }
                 }}
                 size="small"
               />
@@ -287,15 +294,15 @@ export default function SuperadminSocietiesExplorer() {
           <TableContainer>
             <Table sx={{ minWidth: 780 }}>
               <TableHead>
-                <TableRow sx={{ bgcolor: "rgba(15,23,42,0.02)" }}>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.society}</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.code}</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.status}</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.users}</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.customers}</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.accounts}</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }}>{copy.page.table.balance}</TableCell>
-                  <TableCell sx={{ fontWeight: 900, color: "#64748b", py: 2 }} align="right">
+                <TableRow sx={{ bgcolor: alpha(theme.palette.text.primary, isDark ? 0.12 : 0.04) }}>
+                  <TableCell sx={{ fontWeight: 900, color: "text.secondary", py: 2 }}>{copy.page.table.society}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "text.secondary", py: 2 }}>{copy.page.table.code}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "text.secondary", py: 2 }}>{copy.page.table.status}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "text.secondary", py: 2 }}>{copy.page.table.users}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "text.secondary", py: 2 }}>{copy.page.table.customers}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "text.secondary", py: 2 }}>{copy.page.table.accounts}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "text.secondary", py: 2 }}>{copy.page.table.balance}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: "text.secondary", py: 2 }} align="right">
                     {copy.page.table.actions}
                   </TableCell>
                 </TableRow>
@@ -306,15 +313,15 @@ export default function SuperadminSocietiesExplorer() {
                     key={society.id}
                     hover
                     onClick={() => setSelectedSocietyId(society.id)}
-                    sx={{ cursor: "pointer", "&:hover": { bgcolor: "rgba(59,130,246,0.04)" } }}
+                    sx={{ cursor: "pointer", "&:hover": { bgcolor: alpha(theme.palette.primary.main, isDark ? 0.12 : 0.04) } }}
                   >
                     <TableCell>
                       <Stack direction="row" spacing={2} alignItems="center">
-                        <Avatar sx={{ width: 40, height: 40, bgcolor: alpha("#3b82f6", 0.1), color: "#3b82f6", fontWeight: 900 }}>
+                        <Avatar sx={{ width: 40, height: 40, bgcolor: alpha(theme.palette.primary.main, 0.1), color: "primary.main", fontWeight: 900 }}>
                           {society.name[0]}
                         </Avatar>
                         <Box>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "#0f172a" }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "text.primary", fontSize: { xs: "0.98rem", md: "1.02rem" } }}>
                             {society.name}
                           </Typography>
                           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
@@ -324,12 +331,12 @@ export default function SuperadminSocietiesExplorer() {
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: "monospace", color: "#64748b" }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: "monospace", color: "text.secondary" }}>
                         {society.code}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Chip label={society.status} size="small" sx={{ height: 24, fontSize: "0.7rem", fontWeight: 900, ...statusStyles(society.status) }} />
+                      <Chip label={society.status} size="small" sx={{ height: 24, fontSize: { xs: "0.68rem", md: "0.74rem" }, fontWeight: 900, ...statusStyles(society.status, isDark) }} />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 800 }}>{fmt(society.activeUsers, localeTag)}</Typography>
@@ -369,7 +376,7 @@ export default function SuperadminSocietiesExplorer() {
         anchor="right"
         open={Boolean(selectedSocietyId)}
         onClose={() => setSelectedSocietyId(null)}
-        PaperProps={{ sx: { width: { xs: "100%", md: 620 }, p: { xs: 3, md: 4 }, bgcolor: "#f8fafc" } }}
+        PaperProps={{ sx: { width: { xs: "100%", md: 620 }, p: { xs: 3, md: 4 }, bgcolor: alpha(theme.palette.background.default, isDark ? 0.48 : 0.72) } }}
       >
         {selectedSociety ? (
           <Box>
@@ -378,16 +385,16 @@ export default function SuperadminSocietiesExplorer() {
                 <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 3 }}>
                   {copy.page.drawer.societyId}: {selectedSociety.code}
                 </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a", mt: 1, letterSpacing: "-0.03em" }}>
+                <Typography variant="h4" sx={sectionTitleSx}>
                   {selectedSociety.name}
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} flexWrap="wrap" useFlexGap>
-                  <Chip label={selectedSociety.status} sx={{ fontWeight: 900, ...statusStyles(selectedSociety.status) }} />
+                  <Chip label={selectedSociety.status} sx={{ fontWeight: 900, ...statusStyles(selectedSociety.status, isDark) }} />
                   <Chip label={`${selectedSociety.subscriptionPlan} ${copy.page.drawer.planSuffix}`} sx={{ fontWeight: 900 }} />
                   <Chip label={selectedSociety.subscriptionStatus} sx={{ fontWeight: 900 }} />
                 </Stack>
               </Box>
-              <IconButton size="large" onClick={() => setSelectedSocietyId(null)} sx={{ bgcolor: "rgba(15,23,42,0.05)" }}>
+              <IconButton size="large" onClick={() => setSelectedSocietyId(null)} sx={{ bgcolor: alpha(theme.palette.text.primary, isDark ? 0.14 : 0.05) }}>
                 <CloseRoundedIcon sx={{ fontSize: 28 }} />
               </IconButton>
             </Stack>
@@ -400,7 +407,7 @@ export default function SuperadminSocietiesExplorer() {
               </Alert>
             ) : null}
 
-            <Box sx={{ mb: 4, p: 3, borderRadius: 4, bgcolor: "#fff", border: "1px solid rgba(15,23,42,0.08)" }}>
+            <Box sx={{ mb: 4, p: 3, borderRadius: 4, bgcolor: alpha(theme.palette.background.paper, isDark ? 0.84 : 0.98), border: panelBorder }}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                 {selectedSociety.status === "ACTIVE" ? (
                   <Button
@@ -418,7 +425,7 @@ export default function SuperadminSocietiesExplorer() {
                     variant="contained"
                     disabled={processingSocietyId === selectedSociety.id}
                     onClick={() => void handleAccessChange(selectedSociety, "ACTIVE", true)}
-                    sx={{ flex: 1, fontWeight: 900, borderRadius: 3, boxShadow: "none", bgcolor: "#10b981", "&:hover": { bgcolor: "#059669" } }}
+                    sx={{ flex: 1, fontWeight: 900, borderRadius: 3, boxShadow: "none", bgcolor: "success.main", "&:hover": { bgcolor: "success.dark" } }}
                     startIcon={<VerifiedUserRoundedIcon />}
                   >
                     {processingSocietyId === selectedSociety.id ? copy.page.drawer.updating : copy.page.drawer.approveSociety}
@@ -434,7 +441,7 @@ export default function SuperadminSocietiesExplorer() {
               </Stack>
             </Box>
 
-            <Typography variant="h6" sx={{ fontWeight: 900, color: "#0f172a", mb: 2 }}>
+            <Typography variant="h6" sx={sectionTitleSx}>
               {copy.page.drawer.liveMetrics}
             </Typography>
             <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -447,11 +454,11 @@ export default function SuperadminSocietiesExplorer() {
                 { label: copy.page.drawer.paymentVolume, value: fmtCurrency(selectedSociety.successfulPaymentVolume, localeTag) }
               ].map((metric) => (
                 <Grid size={{ xs: 12, sm: 6 }} key={metric.label}>
-                  <Box sx={{ p: 2.5, borderRadius: 4, bgcolor: "#fff", border: "1px solid rgba(148,163,184,0.15)" }}>
+                  <Box sx={{ p: 2.5, borderRadius: 4, bgcolor: alpha(theme.palette.background.paper, isDark ? 0.82 : 0.98), border: panelBorder }}>
                     <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
                       {metric.label}
                     </Typography>
-                    <Typography variant="h5" sx={{ mt: 0.6, fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em" }}>
+                    <Typography variant="h5" sx={{ mt: 0.6, fontWeight: 900, color: "text.primary", letterSpacing: "-0.02em", fontSize: { xs: "1.18rem", md: "1.35rem" } }}>
                       {metric.value}
                     </Typography>
                   </Box>
@@ -459,36 +466,36 @@ export default function SuperadminSocietiesExplorer() {
               ))}
             </Grid>
 
-            <Typography variant="h6" sx={{ fontWeight: 900, color: "#0f172a", mb: 2 }}>
+            <Typography variant="h6" sx={sectionTitleSx}>
               {copy.page.drawer.apiBackedDetails}
             </Typography>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label={copy.page.drawer.registrationState} value={selectedSociety.registrationState ?? copy.page.drawer.notProvided} />
+                <DetailItem label={copy.page.drawer.registrationState} value={selectedSociety.registrationState ?? copy.page.drawer.notProvided} isDark={isDark} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label={copy.page.drawer.registrationNumber} value={selectedSociety.registrationNumber ?? copy.page.drawer.notProvided} />
+                <DetailItem label={copy.page.drawer.registrationNumber} value={selectedSociety.registrationNumber ?? copy.page.drawer.notProvided} isDark={isDark} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label={copy.page.drawer.registrationAuthority} value={selectedSociety.registrationAuthority ?? copy.page.drawer.notProvided} />
+                <DetailItem label={copy.page.drawer.registrationAuthority} value={selectedSociety.registrationAuthority ?? copy.page.drawer.notProvided} isDark={isDark} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label={copy.page.drawer.category} value={selectedSociety.category ?? copy.page.drawer.notProvided} />
+                <DetailItem label={copy.page.drawer.category} value={selectedSociety.category ?? copy.page.drawer.notProvided} isDark={isDark} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label={copy.page.drawer.billingEmail} value={selectedSociety.billingEmail ?? copy.page.drawer.notProvided} />
+                <DetailItem label={copy.page.drawer.billingEmail} value={selectedSociety.billingEmail ?? copy.page.drawer.notProvided} isDark={isDark} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label={copy.page.drawer.billingPhone} value={selectedSociety.billingPhone ?? copy.page.drawer.notProvided} />
+                <DetailItem label={copy.page.drawer.billingPhone} value={selectedSociety.billingPhone ?? copy.page.drawer.notProvided} isDark={isDark} />
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <DetailItem label={copy.page.drawer.billingAddress} value={selectedSociety.billingAddress ?? copy.page.drawer.notProvided} />
+                <DetailItem label={copy.page.drawer.billingAddress} value={selectedSociety.billingAddress ?? copy.page.drawer.notProvided} isDark={isDark} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label={copy.page.drawer.digitalPayments} value={selectedSociety.acceptsDigitalPayments ? copy.page.drawer.enabled : copy.page.drawer.disabled} />
+                <DetailItem label={copy.page.drawer.digitalPayments} value={selectedSociety.acceptsDigitalPayments ? copy.page.drawer.enabled : copy.page.drawer.disabled} isDark={isDark} />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <DetailItem label={copy.page.drawer.upiId} value={selectedSociety.upiId ?? copy.page.drawer.notProvided} />
+                <DetailItem label={copy.page.drawer.upiId} value={selectedSociety.upiId ?? copy.page.drawer.notProvided} isDark={isDark} />
               </Grid>
             </Grid>
 

@@ -72,9 +72,9 @@ export function PricingSection({ t, pricingPlans, pricingLoading, pricingError, 
                 border: plan.highlighted
                   ? `2px solid ${alpha(theme.palette.secondary.main, theme.palette.mode === "light" ? 0.55 : 0.7)}`
                   : `1px solid ${alpha(theme.palette.divider, 0.9)}`,
-                bgcolor: plan.highlighted
-                  ? alpha(theme.palette.secondary.main, theme.palette.mode === "light" ? 0.12 : 0.2)
-                  : alpha(theme.palette.background.paper, theme.palette.mode === "light" ? 0.9 : 0.5),
+                backgroundImage: plan.highlighted
+                  ? `linear-gradient(180deg, ${alpha(theme.palette.secondary.main, theme.palette.mode === "light" ? 0.18 : 0.28)} 0%, ${alpha(theme.palette.background.paper, theme.palette.mode === "light" ? 0.96 : 0.82)} 100%)`
+                  : "var(--card-gradient)",
                 position: "relative",
                 overflow: "visible",
                 transform: plan.highlighted ? "translateY(-4px)" : "none",

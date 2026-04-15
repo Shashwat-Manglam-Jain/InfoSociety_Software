@@ -12,11 +12,13 @@ interface CtaSectionProps {
 export function CtaSection({ homeCopy, handleAction }: CtaSectionProps) {
   return (
     <Box
+      className="hero-gradient"
       sx={{
-        bgcolor: "secondary.main",
         color: "white",
         py: { xs: 6, md: 8 },
-        textAlign: "center"
+        textAlign: "center",
+        position: "relative",
+        overflow: "hidden"
       }}
     >
       <Container maxWidth="sm">

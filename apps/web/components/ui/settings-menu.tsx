@@ -106,7 +106,7 @@ export function SettingsMenu({ variant = "icon", label, size = "small", fullWidt
                   width: 12,
                   height: 12,
                   borderRadius: 999,
-                  background: value.primary
+                  background: `linear-gradient(135deg, ${value.primary} 0%, ${value.secondary} 100%)`
                 }}
               />
             </ListItemIcon>

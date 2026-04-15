@@ -7,7 +7,7 @@ import {
   Chip, Avatar, Paper, LinearProgress, Table, TableHead,
   TableRow, TableCell, TableBody, Switch, FormControlLabel
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import BusinessCenterRoundedIcon from "@mui/icons-material/BusinessCenterRounded";
 import AnalyticsRoundedIcon from "@mui/icons-material/AnalyticsRounded";
 import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
@@ -35,6 +35,7 @@ const REPORTS = [
 
 export default function SuperadminReports() {
   const router = useRouter();
+  const theme = useTheme();
   const { t, locale } = useLanguage();
   const navCopy = getSuperadminCopy(locale);
   const copy = getSuperadminExtraCopy(locale);
@@ -42,6 +43,12 @@ export default function SuperadminReports() {
   const [loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState("all_societies");
   const [generating, setGenerating] = useState(false);
+  const isDark = theme.palette.mode === "dark";
+  const panelBg = alpha(theme.palette.background.paper, isDark ? 0.78 : 0.96);
+  const panelBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.9 : 1)}`;
+  const panelShadow = isDark ? "0 10px 28px rgba(2,6,23,0.42)" : "0 8px 24px -12px rgba(15,23,42,0.08)";
+  const pageTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.025em", fontSize: { xs: "1.9rem", md: "2.35rem" } } as const;
+  const sectionTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.02em", fontSize: { xs: "1.2rem", md: "1.45rem" } } as const;
 
   useEffect(() => {
     async function init() {
@@ -106,7 +113,7 @@ export default function SuperadminReports() {
           <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 2 }}>
             {copy.reports.overline}
           </Typography>
-          <Typography variant="h3" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.03em" }}>
+          <Typography variant="h3" sx={pageTitleSx}>
             {copy.reports.title}
           </Typography>
           <Typography variant="subtitle1" sx={{ color: "text.secondary", mt: 1, maxWidth: 800 }}>
@@ -116,8 +123,8 @@ export default function SuperadminReports() {
 
         <Grid container spacing={4}>
           <Grid size={{ xs: 12, md: 5 }}>
-            <Paper elevation={0} sx={{ p: 4, borderRadius: 1, border: "1px solid rgba(148,163,184,0.2)", bgcolor: "#fff", position: "sticky", top: 100 }}>
-              <Typography variant="h6" sx={{ fontWeight: 900, mb: 1, color: "#0f172a" }}>{copy.reports.generatorTitle}</Typography>
+            <Paper elevation={0} sx={{ p: 4, borderRadius: 1, border: panelBorder, bgcolor: panelBg, boxShadow: panelShadow, position: "sticky", top: 100 }}>
+              <Typography variant="h6" sx={sectionTitleSx}>{copy.reports.generatorTitle}</Typography>
               <Typography variant="body2" sx={{ color: "text.secondary", mb: 4 }}>
                 {copy.reports.generatorDescription}
               </Typography>
@@ -132,20 +139,20 @@ export default function SuperadminReports() {
                 </TextField>
 
                 {reportType === "custom_matrix" && (
-                  <Paper elevation={0} sx={{ p: 2.5, borderRadius: 1, bgcolor: "rgba(15,23,42,0.02)", border: "1px dashed rgba(148,163,184,0.3)" }}>
+                  <Paper elevation={0} sx={{ p: 2.5, borderRadius: 1, bgcolor: alpha(theme.palette.background.default, isDark ? 0.35 : 0.55), border: `1px dashed ${alpha(theme.palette.divider, 0.7)}` }}>
                     <Typography variant="caption" sx={{ fontWeight: 900, color: "text.secondary", textTransform: "uppercase", letterSpacing: 1.5, mb: 1.5, display: "block" }}>{copy.reports.customFiltersTitle}</Typography>
                     <Stack spacing={2}>
-                      <TextField fullWidth size="small" label={copy.reports.targetSocietyId} placeholder={copy.reports.targetSocietyPlaceholder} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1, bgcolor: "#fff", fontWeight: 700 } }} />
-                      <TextField fullWidth size="small" label={copy.reports.agentName} placeholder={copy.reports.agentPlaceholder} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "#fff", fontWeight: 700 } }} />
-                      <TextField fullWidth size="small" label={copy.reports.clientName} placeholder={copy.reports.clientPlaceholder} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "#fff", fontWeight: 700 } }} />
-                      <TextField select fullWidth size="small" label={copy.reports.targetAccountType} defaultValue="ALL" sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "#fff", fontWeight: 700 } }}>
+                      <TextField fullWidth size="small" label={copy.reports.targetSocietyId} placeholder={copy.reports.targetSocietyPlaceholder} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1, bgcolor: alpha(theme.palette.background.paper, isDark ? 0.88 : 1), fontWeight: 700 } }} />
+                      <TextField fullWidth size="small" label={copy.reports.agentName} placeholder={copy.reports.agentPlaceholder} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: alpha(theme.palette.background.paper, isDark ? 0.88 : 1), fontWeight: 700 } }} />
+                      <TextField fullWidth size="small" label={copy.reports.clientName} placeholder={copy.reports.clientPlaceholder} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: alpha(theme.palette.background.paper, isDark ? 0.88 : 1), fontWeight: 700 } }} />
+                      <TextField select fullWidth size="small" label={copy.reports.targetAccountType} defaultValue="ALL" sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: alpha(theme.palette.background.paper, isDark ? 0.88 : 1), fontWeight: 700 } }}>
                         <MenuItem value="ALL" sx={{ fontWeight: 700 }}>{copy.reports.allAccounts}</MenuItem>
                         <MenuItem value="LOAN" sx={{ fontWeight: 700 }}>{copy.reports.loans}</MenuItem>
                         <MenuItem value="SAVINGS" sx={{ fontWeight: 700 }}>{copy.reports.savings}</MenuItem>
                         <MenuItem value="FIXED_DEPOSIT" sx={{ fontWeight: 700 }}>{copy.reports.fixedDeposits}</MenuItem>
                       </TextField>
 
-                      <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid rgba(148,163,184,0.3)", bgcolor: "#fff" }}>
+                      <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: panelBorder, bgcolor: alpha(theme.palette.background.paper, isDark ? 0.84 : 1) }}>
                         <Typography variant="caption" sx={{ fontWeight: 800, color: "text.primary" }}>{copy.reports.booleanToggles}</Typography>
                         <Grid container spacing={1} sx={{ mt: 1 }}>
                           <Grid size={{ xs: 12, sm: 6 }}><FormControlLabel control={<Switch size="small" />} label={<Typography variant="body2" sx={{ fontWeight: 700 }}>{copy.reports.includeInactiveUsers}</Typography>} /></Grid>
@@ -163,7 +170,7 @@ export default function SuperadminReports() {
                   <TextField type="date" label={copy.reports.toDate} fullWidth InputLabelProps={{ shrink: true }} sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3, fontWeight: 700 } }} />
                 </Stack>
 
-                <Button variant="contained" size="large" onClick={handleGenerate} disabled={generating} startIcon={<AnalyticsRoundedIcon />} sx={{ py: 1.5, borderRadius: 3, fontWeight: 900, fontSize: "1rem" }}>
+                <Button variant="contained" size="large" onClick={handleGenerate} disabled={generating} startIcon={<AnalyticsRoundedIcon />} sx={{ py: 1.5, borderRadius: 3, fontWeight: 900, fontSize: { xs: "0.95rem", md: "1rem" } }}>
                   {generating ? copy.reports.generating : copy.reports.generate}
                 </Button>
                 {generating && <LinearProgress sx={{ borderRadius: 4, height: 6 }} />}
@@ -172,9 +179,9 @@ export default function SuperadminReports() {
           </Grid>
 
           <Grid size={{ xs: 12, md: 7 }}>
-            <Paper elevation={0} sx={{ borderRadius: 1, border: "1px solid rgba(148,163,184,0.2)", bgcolor: "#fff", overflow: "hidden" }}>
-              <Box sx={{ p: 3, borderBottom: "1px solid rgba(148,163,184,0.12)", bgcolor: "#f8fafc" }}>
-                <Typography variant="h6" sx={{ fontWeight: 900, color: "#0f172a" }}>{copy.reports.jobsTitle}</Typography>
+            <Paper elevation={0} sx={{ borderRadius: 1, border: panelBorder, bgcolor: panelBg, boxShadow: panelShadow, overflow: "hidden" }}>
+              <Box sx={{ p: 3, borderBottom: `1px solid ${alpha(theme.palette.divider, isDark ? 0.8 : 1)}`, bgcolor: alpha(theme.palette.background.default, isDark ? 0.35 : 0.55) }}>
+                <Typography variant="h6" sx={sectionTitleSx}>{copy.reports.jobsTitle}</Typography>
                 <Typography variant="body2" sx={{ color: "text.secondary", fontStyle: "italic", mt: 0.5 }}>
                   {copy.reports.jobsDescription}
                 </Typography>
@@ -190,20 +197,20 @@ export default function SuperadminReports() {
                 </TableHead>
                 <TableBody>
                   {REPORTS.map((rp) => (
-                    <TableRow key={rp.id} sx={{ "&:hover": { bgcolor: "rgba(15,23,42,0.02)" } }}>
+                    <TableRow key={rp.id} sx={{ "&:hover": { bgcolor: alpha(theme.palette.primary.main, isDark ? 0.12 : 0.04) } }}>
                       <TableCell>
                         <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Avatar sx={{ width: 36, height: 36, bgcolor: rp.type === "PDF" ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", color: rp.type === "PDF" ? "#ef4444" : "#10b981" }}>
+                          <Avatar sx={{ width: 36, height: 36, bgcolor: rp.type === "PDF" ? alpha(theme.palette.error.main, 0.12) : alpha(theme.palette.success.main, 0.12), color: rp.type === "PDF" ? "error.main" : "success.main" }}>
                             {rp.type === "PDF" ? <PictureAsPdfRoundedIcon sx={{ fontSize: 18 }} /> : <DescriptionRoundedIcon sx={{ fontSize: 18 }} />}
                           </Avatar>
                           <Box>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "#0f172a" }}>{rp.name}</Typography>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "text.primary" }}>{rp.name}</Typography>
                             <Typography variant="caption" sx={{ color: "text.disabled", fontWeight: 800 }}>{rp.type}</Typography>
                           </Box>
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        <Chip label={rp.category} size="small" sx={{ fontWeight: 800, fontSize: "0.65rem", bgcolor: alpha("#3b82f6", 0.08), color: "#3b82f6" }} />
+                        <Chip label={rp.category} size="small" sx={{ fontWeight: 800, fontSize: "0.65rem", bgcolor: alpha(theme.palette.primary.main, 0.1), color: "primary.main" }} />
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 700 }}>{new Date(rp.generatedAt).toLocaleDateString()}</Typography>
@@ -214,7 +221,7 @@ export default function SuperadminReports() {
                             {copy.reports.download}
                           </Button>
                         ) : (
-                          <Chip label={copy.reports.running} size="small" sx={{ fontWeight: 800, fontSize: "0.65rem", bgcolor: "#fef3c7", color: "#d97706" }} />
+                          <Chip label={copy.reports.running} size="small" sx={{ fontWeight: 800, fontSize: "0.65rem", bgcolor: alpha(theme.palette.warning.main, 0.14), color: "warning.main" }} />
                         )}
                       </TableCell>
                     </TableRow>

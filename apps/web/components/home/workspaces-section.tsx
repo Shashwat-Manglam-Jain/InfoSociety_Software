@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Box, Chip, Container, Typography, alpha, IconButton, Stack } from "@mui/material";
+import { Box, Container, Typography, alpha, IconButton, Stack } from "@mui/material";
 import ArrowBackIosNewRoundedIcon from "@mui/icons-material/ArrowBackIosNewRounded";
 import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import { useTheme } from "@mui/material/styles";
@@ -58,7 +58,7 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
           isDark
             ? `radial-gradient(120% 90% at 50% 0%, ${alpha(theme.palette.primary.main, 0.16)} 0%, transparent 58%),
                linear-gradient(180deg, ${alpha("#08101d", 0.98)} 0%, ${alpha("#0d1728", 0.98)} 100%)`
-            : `linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(244,247,252,1) 100%)`,
+            : "var(--section-gradient)",
         overflow: "hidden",
         position: "relative",
         "&::before": isDark
@@ -77,18 +77,23 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
     >
       <Container maxWidth="lg" sx={{ mb: { xs: 4, md: 6 } }}>
         <Box sx={{ textAlign: "center" }}>
-          <Chip
-            label="Institutional Roles"
+          <Box
+            className="pill-soft"
             sx={{
               mb: 2,
-              bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.1),
+              mx: "auto",
+              width: "fit-content",
+              px: 1.8,
+              py: 0.8,
               color: "secondary.main",
               fontWeight: 800,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
               fontSize: "0.75rem"
             }}
-          />
+          >
+            Institutional Roles
+          </Box>
           <Typography
             variant="h3"
             sx={{
@@ -129,7 +134,7 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
                 zIndex: 10,
                 color: isDark ? "#e2e8f0" : "#1e293b",
                 bgcolor: isDark ? alpha("#0f172a", 0.84) : "rgba(255,255,255,0.9)",
-                boxShadow: isDark ? "0 14px 36px rgba(2,6,23,0.45)" : "0 8px 32px rgba(0,0,0,0.12)",
+                boxShadow: isDark ? "0 14px 36px rgba(2,6,23,0.45)" : "0 16px 40px rgba(15,23,42,0.12)",
                 border: isDark ? `1px solid ${alpha("#cbd5e1", 0.14)}` : "1px solid rgba(0,0,0,0.06)",
                 width: 48,
                 height: 48,
@@ -152,7 +157,7 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
                 zIndex: 10,
                 color: isDark ? "#e2e8f0" : "#1e293b",
                 bgcolor: isDark ? alpha("#0f172a", 0.84) : "rgba(255,255,255,0.9)",
-                boxShadow: isDark ? "0 14px 36px rgba(2,6,23,0.45)" : "0 8px 32px rgba(0,0,0,0.12)",
+                boxShadow: isDark ? "0 14px 36px rgba(2,6,23,0.45)" : "0 16px 40px rgba(15,23,42,0.12)",
                 border: isDark ? `1px solid ${alpha("#cbd5e1", 0.14)}` : "1px solid rgba(0,0,0,0.06)",
                 width: 48,
                 height: 48,

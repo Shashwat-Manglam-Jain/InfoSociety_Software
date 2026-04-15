@@ -36,17 +36,18 @@ export function SiteFooter() {
       component="footer"
       sx={{
         mt: 0,
-        py: { xs: 3, md: 4 },
-        borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+        py: { xs: 4, md: 5 },
+        borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.75)}`,
         background: (theme) =>
           `radial-gradient(100% 120% at 10% 0%, ${alpha(theme.palette.primary.main, 0.08)}, ${alpha(theme.palette.primary.main, 0)} 65%),
-          linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.92)} 0%, ${theme.palette.background.default} 100%)`
+          linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.92)} 0%, ${theme.palette.background.default} 100%)`,
+        backdropFilter: "blur(14px)"
       }}
     >
       <Container maxWidth="lg">
         <Grid container spacing={2} alignItems={{ xs: "flex-start", md: "center" }}>
           <Grid size={{ xs: 12, md: 5 }}>
-            <Typography variant="subtitle1" fontWeight={800}>
+            <Typography variant="subtitle1" fontWeight={800} sx={{ letterSpacing: "-0.02em" }}>
               {appBranding.productName}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mt: 0.5 }}>
@@ -67,7 +68,12 @@ export function SiteFooter() {
                   size="small"
                   variant="text"
                   color="inherit"
-                  sx={{ color: "text.secondary", fontWeight: 600 }}
+                  sx={{
+                    color: "text.secondary",
+                    fontWeight: 700,
+                    borderRadius: 999,
+                    px: 1.4
+                  }}
                 >
                   {item.label}
                 </Button>

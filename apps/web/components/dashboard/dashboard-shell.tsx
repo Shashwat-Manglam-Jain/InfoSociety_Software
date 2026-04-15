@@ -48,6 +48,8 @@ export function DashboardShell({
   const theme = useTheme();
   const isMobileScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const useMobileDrawer = isMobileScreen;
+  const shellBorder = alpha(theme.palette.divider, theme.palette.mode === "dark" ? 0.9 : 1);
+  const shellHover = alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.08);
 
   const normalizedAccessibleModules = useMemo(() => {
     if (!Array.isArray(accessibleModules) || accessibleModules.length === 0) {
@@ -133,8 +135,9 @@ export function DashboardShell({
             sx={{
               width: 44,
               height: 44,
-              borderRadius: "12px",
-              bgcolor: "primary.main",
+              borderRadius: 2,
+              background: (theme) =>
+                `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 58%, ${theme.palette.secondary.main} 100%)`,
               color: "primary.contrastText",
               fontSize: "1.1rem",
               fontWeight: 800,
@@ -191,9 +194,9 @@ export function DashboardShell({
                       justifyContent: "flex-start",
                       px: 2,
                       py: 1.25,
-                      borderRadius: "12px",
+                      borderRadius: 2,
                       color: item.active ? "primary.main" : "text.secondary",
-                      bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.08) : "transparent",
+                      bgcolor: item.active ? shellHover : "transparent",
                       textTransform: "none",
                       fontSize: "0.875rem",
                       fontWeight: item.active ? 700 : 500,
@@ -217,7 +220,7 @@ export function DashboardShell({
                         "& svg": { fontSize: "1.3rem" }
                       },
                       "&:hover": {
-                        bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.12) : "action.hover",
+                        bgcolor: item.active ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.24 : 0.12) : "action.hover",
                         color: item.active ? "primary.main" : "text.primary"
                       }
                     }}
@@ -229,7 +232,7 @@ export function DashboardShell({
                       <Chip
                         label={item.badge}
                         size="small"
-                        sx={{ ml: 1, height: 18, fontSize: "0.6rem", fontWeight: 1000, bgcolor: "action.hover", color: "text.secondary" }}
+                        sx={{ ml: 1, height: 18, fontSize: "0.6rem", fontWeight: 1000, bgcolor: shellHover, color: "text.secondary" }}
                       />
                     )}
                   </Button>
@@ -284,9 +287,9 @@ export function DashboardShell({
                         px: 1.5,
                         pl: 2,
                         py: 1,
-                        borderRadius: "10px",
+                        borderRadius: 2,
                         color: item.active ? "primary.main" : "text.secondary",
-                        bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.06) : "transparent",
+                        bgcolor: item.active ? shellHover : "transparent",
                         textTransform: "none",
                         fontSize: "0.875rem",
                         fontWeight: item.active ? 600 : 500,
@@ -297,7 +300,7 @@ export function DashboardShell({
                           "& svg": { fontSize: "1.2rem" }
                         },
                         "&:hover": {
-                          bgcolor: item.active ? (theme) => alpha(theme.palette.primary.main, 0.08) : "action.hover",
+                          bgcolor: item.active ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.24 : 0.12) : "action.hover",
                           color: item.active ? "primary.main" : "text.primary"
                         }
                       }}
@@ -306,7 +309,7 @@ export function DashboardShell({
                         {item.label || item.name}
                       </Box>
                       {item.badge && (
-                        <Chip label={item.badge} size="small" sx={{ ml: 1, height: 18, fontSize: "0.6rem", fontWeight: 1000, bgcolor: "#f1f5f9", color: "#64748b" }} />
+                        <Chip label={item.badge} size="small" sx={{ ml: 1, height: 18, fontSize: "0.6rem", fontWeight: 1000, bgcolor: shellHover, color: "text.secondary" }} />
                       )}
                     </Button>
                   ))}
@@ -320,9 +323,8 @@ export function DashboardShell({
       <Box
         sx={{
           p: 2,
-          borderTop: (theme) =>
-            `1px solid ${theme.palette.mode === "dark" ? "rgba(148, 163, 184, 0.12)" : "#f1f5f9"}`,
-          bgcolor: (theme) => (theme.palette.mode === "dark" ? "#0f172a" : "#fcfdfe")
+          borderTop: `1px solid ${shellBorder}`,
+          bgcolor: "background.paper"
         }}
       >
         <Button
@@ -335,9 +337,9 @@ export function DashboardShell({
           startIcon={<LogoutIcon sx={{ fontSize: 18 }} />}
           sx={{
             py: 1.2,
-            borderRadius: "10px",
+            borderRadius: 2,
             fontWeight: 900,
-            color: (theme) => (theme.palette.mode === "dark" ? "#cbd5e1" : "#94a3b8"),
+            color: "text.secondary",
             textTransform: "none",
             fontSize: "0.82rem",
             "&:hover": {
@@ -361,8 +363,7 @@ export function DashboardShell({
           color: "#fff",
           backdropFilter: "blur(24px)",
           borderBottom: (theme) => `1px solid ${alpha(theme.palette.common.white, 0.12)}`,
-          background: (theme) =>
-            `linear-gradient(135deg, ${alpha(theme.palette.primary.dark, 0.98)} 0%, ${alpha(theme.palette.primary.main, 1)} 50%, ${alpha(theme.palette.secondary.main, 0.98)} 100%)`,
+          background: "var(--hero-gradient)",
           zIndex: (theme) => theme.zIndex.drawer - 1,
           boxShadow: `0 8px 32px rgba(15, 23, 42, 0.15)`
         }}
@@ -374,7 +375,7 @@ export function DashboardShell({
           sx={{
               display: useMobileDrawer ? "inline-flex" : "none",
               color: "#fff",
-              bgcolor: "rgba(255,255,255,0.08)"
+              bgcolor: alpha(theme.palette.common.white, 0.08)
             }}
           >
             <MenuRoundedIcon fontSize="small" />
@@ -385,10 +386,10 @@ export function DashboardShell({
               sx={{
                 width: 38,
                 height: 38,
-                borderRadius: "10px",
+                borderRadius: 2,
                 display: "grid",
                 placeItems: "center",
-                background: "rgba(255,255,255,0.15)",
+                background: alpha(theme.palette.common.white, 0.15),
                 backdropFilter: "blur(4px)",
                 border: "1px solid rgba(255,255,255,0.25)",
                 boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
@@ -415,7 +416,7 @@ export function DashboardShell({
                 sx={{
                   width: 32,
                   height: 32,
-                  bgcolor: "rgba(255,255,255,0.15)",
+                  bgcolor: alpha(theme.palette.common.white, 0.15),
                   border: "1px solid rgba(255,255,255,0.3)",
                   fontWeight: 900,
                   fontSize: "0.8rem"
@@ -433,7 +434,7 @@ export function DashboardShell({
               onClick={onLogout}
               sx={{ 
                 color: "#fff", 
-                bgcolor: "rgba(255,255,255,0.08)",
+                bgcolor: alpha(theme.palette.common.white, 0.08),
                 "&:hover": { bgcolor: "#ef4444", color: "#fff" }
               }}
             >
@@ -447,7 +448,7 @@ export function DashboardShell({
             sx={{
               display: { xs: "inline-flex", md: "none" },
               color: "#fff",
-              bgcolor: "rgba(255,255,255,0.08)",
+              bgcolor: alpha(theme.palette.common.white, 0.08),
               "&:hover": { bgcolor: "#ef4444", color: "#fff" }
             }}
           >
@@ -463,7 +464,7 @@ export function DashboardShell({
           sx: {
             width: 300,
             display: useMobileDrawer ? "flex" : "none",
-            borderRight: (theme) => `1px solid ${theme.palette.divider}`
+            borderRight: `1px solid ${shellBorder}`
           }
         }}
       >
@@ -487,8 +488,9 @@ export function DashboardShell({
             height: "100%",
             overflowY: "auto",
             overflowX: "hidden",
-            borderRight: (theme) => `1px solid ${theme.palette.divider}`,
-            background: (theme) => theme.palette.background.paper,
+            borderRight: `1px solid ${shellBorder}`,
+            background: (theme) =>
+              `linear-gradient(180deg, ${theme.palette.background.paper} 0%, ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.12 : 0.05)} 100%)`,
             display: useMobileDrawer ? "none" : keepSidebarVisible ? { xs: "none", sm: "flex" } : "flex",
             flexShrink: 0,
             flexDirection: "column",
@@ -508,7 +510,8 @@ export function DashboardShell({
             height: "100%",
             overflowY: "auto",
             overflowX: "hidden",
-            bgcolor: (theme) => theme.palette.mode === "dark" ? "#020617" : "#fcfdfe",
+            background: (theme) =>
+              `linear-gradient(180deg, ${theme.palette.background.default} 0%, ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.08 : 0.03)} 100%)`,
             pt: { xs: 4, md: 5 },
             pb: 4,
             px: { xs: 1.5, sm: 2.5, md: 6 },

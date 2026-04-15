@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import SavingsRoundedIcon from "@mui/icons-material/SavingsRounded";
 import MenuIcon from "@mui/icons-material/Menu";
 import {
@@ -14,8 +13,6 @@ import {
   Divider,
   Drawer,
   IconButton,
-  Menu,
-  MenuItem,
   Stack,
   Toolbar,
   Typography
@@ -97,10 +94,11 @@ export function SiteNavbar() {
       position="sticky"
       elevation={0}
       sx={{
-        bgcolor: (theme) => alpha(theme.palette.background.paper, 0.94),
-        backdropFilter: "blur(8px)",
-        borderBottom: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+        bgcolor: (theme) => alpha(theme.palette.background.paper, 0.78),
+        backdropFilter: "blur(18px)",
+        borderBottom: (theme) => `1px solid ${alpha(theme.palette.divider, 0.72)}`,
         color: "text.primary",
+        boxShadow: (theme) => `0 10px 40px ${alpha(theme.palette.common.black, theme.palette.mode === "light" ? 0.06 : 0.22)}`,
         "&::after": {
           content: '""',
           position: "absolute",
@@ -114,34 +112,44 @@ export function SiteNavbar() {
       }}
     >
       <Container maxWidth="xl">
-        <Toolbar disableGutters sx={{ minHeight: 72 }}>
-          <Stack component={Link} href="/" direction="row" spacing={1} alignItems="center" sx={{ mr: 2, pr: 1 }}>
+        <Toolbar disableGutters sx={{ minHeight: 76, gap: 2 }}>
+          <Stack component={Link} href="/" direction="row" spacing={1.25} alignItems="center" sx={{ mr: 2, pr: 1 }}>
             <Box
               sx={{
-                width: 38,
-                height: 38,
-                borderRadius: "10px",
+                width: 42,
+                height: 42,
+                borderRadius: "14px",
                 background: (theme) =>
-                  `linear-gradient(145deg, ${theme.palette.secondary.dark} 0%, ${theme.palette.secondary.main} 100%)`,
+                  `linear-gradient(145deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 52%, ${theme.palette.secondary.main} 100%)`,
                 color: "#fff",
                 display: "grid",
                 placeItems: "center",
-                boxShadow: (theme) => `0 8px 16px ${alpha(theme.palette.secondary.dark, 0.28)}`
+                boxShadow: (theme) => `0 14px 24px ${alpha(theme.palette.primary.dark, 0.26)}`
               }}
             >
               <SavingsRoundedIcon fontSize="small" />
             </Box>
             <Box>
-              <Typography variant="subtitle2" sx={{ lineHeight: 1.05, fontWeight: 700 }}>
+              <Typography variant="subtitle2" sx={{ lineHeight: 1.05, fontWeight: 800, letterSpacing: "-0.02em" }}>
                 {appBranding.productShortName}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1, letterSpacing: "0.04em", textTransform: "uppercase" }}>
                 {appBranding.productCaption}
               </Typography>
             </Box>
           </Stack>
 
-          <Stack direction="row" spacing={0.7} sx={{ display: { xs: "none", md: "flex" } }}>
+          <Stack
+            direction="row"
+            spacing={0.7}
+            sx={{
+              display: { xs: "none", md: "flex" },
+              p: 0.75,
+              borderRadius: 999,
+              border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.7)}`,
+              bgcolor: (theme) => alpha(theme.palette.background.paper, 0.68)
+            }}
+          >
             {navLinks.map((link) => {
               const isActive = isActiveNav(pathname, link.href);
 
@@ -152,12 +160,14 @@ export function SiteNavbar() {
                   href={link.href}
                   color={isActive ? "secondary" : "inherit"}
                   sx={{
-                    px: 1.5,
-                    borderRadius: "8px",
-                    border: (theme) => (isActive ? `1px solid ${alpha(theme.palette.secondary.main, 0.35)}` : "1px solid transparent"),
+                    px: 1.75,
+                    borderRadius: "999px",
+                    fontWeight: isActive ? 800 : 700,
+                    color: isActive ? "text.primary" : "text.secondary",
+                    border: (theme) => (isActive ? `1px solid ${alpha(theme.palette.primary.main, 0.18)}` : "1px solid transparent"),
                     background: (theme) =>
                       isActive
-                        ? `linear-gradient(180deg, ${alpha(theme.palette.secondary.main, 0.12)} 0%, ${alpha(theme.palette.secondary.main, 0.22)} 100%)`
+                        ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.14)} 0%, ${alpha(theme.palette.secondary.main, 0.18)} 100%)`
                         : "transparent"
                   }}
                 >
@@ -176,8 +186,13 @@ export function SiteNavbar() {
                 component={Link}
                 href={action.href}
                 variant="outlined"
-                color="secondary"
-                sx={{ minWidth: 110, borderColor: "rgba(196, 49, 60, 0.75)", color: "rgba(196,49,60,0.95)" }}
+                color="primary"
+                sx={{
+                  minWidth: 116,
+                  borderColor: (theme) => alpha(theme.palette.primary.main, 0.26),
+                  color: "text.primary",
+                  bgcolor: (theme) => alpha(theme.palette.background.paper, 0.52)
+                }}
               >
                 {t(action.labelKey)}
               </Button>
@@ -189,7 +204,11 @@ export function SiteNavbar() {
                 href="/register"
                 variant="contained"
                 color="secondary"
-                sx={{ minWidth: 140 }}
+                sx={{
+                  minWidth: 148,
+                  background: (theme) =>
+                    `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`
+                }}
               >
                 {t("nav.register")}
               </Button>
@@ -200,7 +219,12 @@ export function SiteNavbar() {
             edge="end"
             aria-label="open navigation menu"
             onClick={() => setMobileOpen(true)}
-            sx={{ ml: "auto", display: { xs: "inline-flex", md: "none" } }}
+            sx={{
+              ml: "auto",
+              display: { xs: "inline-flex", md: "none" },
+              border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.78)}`,
+              bgcolor: (theme) => alpha(theme.palette.background.paper, 0.72)
+            }}
           >
             <MenuIcon />
           </IconButton>
@@ -215,6 +239,7 @@ export function SiteNavbar() {
           display: { md: "none" },
           "& .MuiDrawer-paper": {
             backgroundColor: "background.paper",
+            backgroundImage: "var(--card-gradient)",
             borderLeft: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`
           }
         }}

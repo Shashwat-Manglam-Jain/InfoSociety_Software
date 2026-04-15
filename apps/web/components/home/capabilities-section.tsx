@@ -11,7 +11,15 @@ interface CapabilitiesSectionProps {
 
 export function CapabilitiesSection({ homeCopy }: CapabilitiesSectionProps) {
   return (
-    <Box id="modules" sx={{ bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.09), py: { xs: 6, md: 8 } }}>
+    <Box
+      id="modules"
+      className="section-gradient"
+      sx={{
+        py: { xs: 6, md: 8 },
+        borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.55)}`,
+        borderBottom: (theme) => `1px solid ${alpha(theme.palette.divider, 0.45)}`
+      }}
+    >
       <Container maxWidth="lg">
         <Typography variant="h4" sx={{ mb: 3, fontWeight: 700 }}>
           {homeCopy.capabilitiesTitle}

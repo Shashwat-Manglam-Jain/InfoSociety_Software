@@ -6,7 +6,7 @@ import {
   Grid, Typography, Stack, Box, Alert, Skeleton, Button, TextField,
   Paper, CircularProgress, Divider
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import BusinessCenterRoundedIcon from "@mui/icons-material/BusinessCenterRounded";
 import AnalyticsRoundedIcon from "@mui/icons-material/AnalyticsRounded";
 import SettingsSuggestRoundedIcon from "@mui/icons-material/SettingsSuggestRounded";
@@ -26,11 +26,18 @@ import type { AuthUser } from "@/shared/types";
 
 export default function SuperadminSettings() {
   const router = useRouter();
+  const theme = useTheme();
   const { t, locale } = useLanguage();
   const copy = getSuperadminSettingsCopy(locale);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const isDark = theme.palette.mode === "dark";
+  const panelBg = alpha(theme.palette.background.paper, isDark ? 0.78 : 0.96);
+  const panelBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.9 : 1)}`;
+  const panelShadow = isDark ? "0 10px 28px rgba(2,6,23,0.42)" : "0 8px 24px -12px rgba(15,23,42,0.08)";
+  const pageTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.025em", fontSize: { xs: "1.9rem", md: "2.35rem" } } as const;
+  const sectionTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.02em", fontSize: { xs: "1.2rem", md: "1.45rem" } } as const;
 
   // Mock initial UI state
   const [uiConfig, setUiConfig] = useState({
@@ -102,7 +109,7 @@ export default function SuperadminSettings() {
         <Box sx={{ mb: 6 }}>
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
             <SettingsSuggestRoundedIcon sx={{ color: "primary.main", fontSize: 40 }} />
-             <Typography variant="h3" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.03em" }}>
+             <Typography variant="h3" sx={pageTitleSx}>
                {copy.settings.title}
              </Typography>
           </Stack>
@@ -113,10 +120,10 @@ export default function SuperadminSettings() {
 
         <Grid container spacing={4}>
           <Grid size={{ xs: 12, md: 8 }}>
-            <Paper elevation={0} sx={{ p: { xs: 3, md: 5 }, borderRadius: 1, border: "1px solid rgba(148,163,184,0.2)", bgcolor: "#fff" }}>
+            <Paper elevation={0} sx={{ p: { xs: 3, md: 5 }, borderRadius: 1, border: panelBorder, bgcolor: panelBg, boxShadow: panelShadow }}>
               <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 4 }}>
-                <WebRoundedIcon sx={{ color: "#3b82f6", fontSize: 24 }} />
-                <Typography variant="h5" sx={{ fontWeight: 900, color: "#0f172a" }}>{copy.settings.sections.publicWebsite}</Typography>
+                <WebRoundedIcon sx={{ color: "primary.main", fontSize: 24 }} />
+                <Typography variant="h5" sx={sectionTitleSx}>{copy.settings.sections.publicWebsite}</Typography>
               </Stack>
               
               <Stack spacing={4}>
@@ -173,7 +180,7 @@ export default function SuperadminSettings() {
                     disabled={saving}
                     onClick={handleSave}
                     startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveAltRoundedIcon />}
-                    sx={{ py: 1.5, px: 4, borderRadius: 3, fontWeight: 900, bgcolor: "#0f172a", "&:hover": { bgcolor: "#1e293b" } }}
+                    sx={{ py: 1.5, px: 4, borderRadius: 3, fontWeight: 900, bgcolor: "primary.main", "&:hover": { bgcolor: "primary.dark" } }}
                  >
                     {saving ? copy.common.deploying : copy.settings.publishButton}
                  </Button>
@@ -182,8 +189,8 @@ export default function SuperadminSettings() {
           </Grid>
           
           <Grid size={{ xs: 12, md: 4 }}>
-             <Paper elevation={0} sx={{ p: 4, borderRadius: 1.5, border: "1px solid rgba(148,163,184,0.15)", bgcolor: "#f8fafc" }}>
-               <Typography variant="h6" sx={{ fontWeight: 900, mb: 2, color: "#0f172a" }}>{copy.settings.info.syncTitle}</Typography>
+             <Paper elevation={0} sx={{ p: 4, borderRadius: 1.5, border: panelBorder, bgcolor: alpha(theme.palette.background.default, isDark ? 0.35 : 0.55), boxShadow: panelShadow }}>
+               <Typography variant="h6" sx={sectionTitleSx}>{copy.settings.info.syncTitle}</Typography>
                <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 700, mb: 3 }}>
                  {copy.settings.info.syncDesc}
                </Typography>
