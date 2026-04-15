@@ -2,6 +2,7 @@ import { Logger, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { applyRequestRuntime } from "./common/http/request-runtime";
 import { AppModule } from "./app/app.module";
 
 function normalizeOrigin(origin: string) {
@@ -36,6 +37,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix("api/v1");
   expressApp.disable("x-powered-by");
+  applyRequestRuntime(expressApp, configService, logger);
   expressApp.use((_req: unknown, res: { setHeader(name: string, value: string): void }, next: () => void) => {
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     res.setHeader("X-Content-Type-Options", "nosniff");
@@ -98,6 +100,7 @@ async function bootstrap() {
   await app.listen(port);
   logger.log(`API listening on ${await app.getUrl()}`);
   logger.log(`Allowed CORS origins: ${Array.from(allowedOrigins).join(", ")}`);
+  logger.log(`Runtime mode: ${configService.get<string>("NODE_ENV") ?? "development"}`);
 }
 
 void bootstrap();

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { UserRole } from "@prisma/client";
 import { Request } from "express";
@@ -37,6 +37,22 @@ export class DepositsController {
   @Post("schemes")
   createScheme(@Req() req: Request & { user: RequestUser }, @Body() dto: CreateDepositSchemeDto) {
     return this.service.createScheme(req.user, dto);
+  }
+
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT)
+  @Patch("schemes/:id")
+  updateScheme(
+    @Req() req: Request & { user: RequestUser },
+    @Param("id") id: string,
+    @Body() dto: CreateDepositSchemeDto
+  ) {
+    return this.service.updateScheme(req.user, id, dto);
+  }
+
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT)
+  @Delete("schemes/:id")
+  deleteScheme(@Req() req: Request & { user: RequestUser }, @Param("id") id: string) {
+    return this.service.deleteScheme(req.user, id);
   }
 
   @Roles(UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)

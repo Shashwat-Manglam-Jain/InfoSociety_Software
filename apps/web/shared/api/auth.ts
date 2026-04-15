@@ -18,10 +18,10 @@ export type RegisterAgentPayload = {
 };
 
 export type RegisterSocietyPayload = {
-  username: string;
+  username?: string;
   password: string;
   fullName: string;
-  societyCode: string;
+  societyCode?: string;
   societyName: string;
   billingEmail?: string;
   billingPhone?: string;
@@ -107,5 +107,12 @@ export async function changePassword(token: string, currentPassword: string, new
     method: "POST",
     path: "/auth/change-password",
     body: { currentPassword, newPassword }
+  });
+}
+
+export async function logout() {
+  return requestJson<{ success: boolean }>({
+    method: "POST",
+    path: "/auth/logout"
   });
 }

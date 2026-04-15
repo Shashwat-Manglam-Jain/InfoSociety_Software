@@ -14,7 +14,14 @@ describe("AuthService", () => {
         findUnique: jest.fn(),
         findFirst: jest.fn(),
         findMany: jest.fn(),
-        create: jest.fn()
+        create: jest.fn(),
+        updateMany: jest.fn()
+      },
+      branch: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn()
       },
       society: {
         findUnique: jest.fn()
@@ -22,6 +29,9 @@ describe("AuthService", () => {
       customer: {
         count: jest.fn(),
         create: jest.fn()
+      },
+      depositScheme: {
+        upsert: jest.fn()
       },
       subscription: {
         create: jest.fn()
@@ -48,8 +58,12 @@ describe("AuthService", () => {
       })
     };
 
+    const cache = {
+      getOrSet: jest.fn((_key: string, _ttlMs: number, factory: () => unknown) => factory())
+    };
+
     return {
-      service: new AuthService(prisma as never, jwtService as never, configService as never),
+      service: new AuthService(prisma as never, jwtService as never, configService as never, cache as never),
       prisma,
       jwtService
     };
@@ -221,10 +235,20 @@ describe("AuthService", () => {
     const tx = {
       user: {
         create: jest.fn().mockResolvedValue({ id: "user-2" }),
-        findUnique: jest.fn()
+        findUnique: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 })
+      },
+      branch: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: "branch-ho" }),
+        update: jest.fn().mockResolvedValue({ id: "branch-ho" })
       },
       subscription: {
         create: jest.fn().mockResolvedValue(undefined)
+      },
+      customer: {
+        count: jest.fn().mockResolvedValue(0),
+        create: jest.fn().mockResolvedValue({ id: "cust-2" })
       },
       $executeRaw: jest.fn().mockResolvedValue(1)
     };
@@ -305,10 +329,19 @@ describe("AuthService", () => {
       },
       user: {
         create: jest.fn().mockResolvedValue({ id: "user-3" }),
-        findUnique: jest.fn()
+        findUnique: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 })
+      },
+      branch: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: "branch-ho" }),
+        update: jest.fn().mockResolvedValue({ id: "branch-ho" })
       },
       subscription: {
         create: jest.fn().mockResolvedValue(undefined)
+      },
+      depositScheme: {
+        upsert: jest.fn().mockResolvedValue(undefined)
       },
       $executeRaw: jest.fn().mockResolvedValue(1)
     };

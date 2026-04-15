@@ -1,4 +1,5 @@
 import { PaymentMethod, PaymentPurpose, PaymentRequestStatus, PaymentTransactionStatus, UserRole } from "@prisma/client";
+import { CASH_PAYMENT_METHOD, supportsCashPaymentMethod } from "../shared/payment-methods";
 import { PaymentsService } from "./payments.service";
 
 describe("PaymentsService", () => {
@@ -187,5 +188,98 @@ describe("PaymentsService", () => {
       })
     );
     expect(result.transaction.status).toBe(PaymentTransactionStatus.SUCCESS);
+  });
+
+  (supportsCashPaymentMethod ? it : it.skip)("allows agents to record cash collection even when digital payments are disabled", async () => {
+    const { service, prisma } = buildService();
+
+    prisma.paymentRequest.findUnique.mockResolvedValue({
+      id: "req-2",
+      societyId: "soc-1",
+      customerId: "cust-1",
+      title: "Collection Visit",
+      purpose: PaymentPurpose.DEPOSIT_INSTALLMENT,
+      amount: 800,
+      status: PaymentRequestStatus.OPEN,
+      dueDate: null,
+      society: {
+        id: "soc-1",
+        code: "SOC-HO",
+        name: "Head Office",
+        acceptsDigitalPayments: false,
+        upiId: null
+      },
+      customer: {
+        id: "cust-1",
+        customerCode: "SOC-HO-C00001",
+        firstName: "Demo",
+        lastName: "Client"
+      }
+    });
+    prisma.paymentTransaction.create.mockResolvedValue({
+      id: "txn-2",
+      purpose: PaymentPurpose.DEPOSIT_INSTALLMENT,
+      method: CASH_PAYMENT_METHOD,
+      status: PaymentTransactionStatus.SUCCESS,
+      amount: 800,
+      gatewayReference: "PAY-REF-2",
+      remark: "Collected by field agent",
+      processedAt: new Date("2026-03-03T00:00:00.000Z"),
+      createdAt: new Date("2026-03-03T00:00:00.000Z"),
+      customer: {
+        customerCode: "SOC-HO-C00001",
+        firstName: "Demo",
+        lastName: "Client"
+      },
+      society: {
+        code: "SOC-HO",
+        name: "Head Office"
+      }
+    });
+    prisma.paymentRequest.update.mockResolvedValue({
+      id: "req-2",
+      title: "Collection Visit",
+      description: null,
+      purpose: PaymentPurpose.DEPOSIT_INSTALLMENT,
+      amount: 800,
+      status: PaymentRequestStatus.PAID,
+      dueDate: null,
+      paidAt: new Date("2026-03-03T00:00:00.000Z"),
+      createdAt: new Date("2026-03-03T00:00:00.000Z"),
+      customer: {
+        customerCode: "SOC-HO-C00001",
+        firstName: "Demo",
+        lastName: "Client"
+      },
+      society: {
+        code: "SOC-HO",
+        name: "Head Office"
+      }
+    });
+
+    const result = await service.payRequest(
+      "req-2",
+      {
+        sub: "agent-1",
+        username: "agent1",
+        role: UserRole.AGENT,
+        societyId: "soc-1",
+        customerId: null
+      },
+      {
+        method: CASH_PAYMENT_METHOD,
+        remark: "Collected by field agent"
+      }
+    );
+
+    expect(prisma.paymentTransaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          method: CASH_PAYMENT_METHOD,
+          remark: "Collected by field agent"
+        })
+      })
+    );
+    expect(result.paymentInstructions.acceptedMethods).toEqual([CASH_PAYMENT_METHOD]);
   });
 });

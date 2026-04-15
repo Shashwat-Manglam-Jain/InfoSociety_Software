@@ -1,10 +1,13 @@
 import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { Prisma, SocietyStatus, SubscriptionPlan, SubscriptionStatus, UserRole } from "@prisma/client";
+import { AccountStatus, AccountType, Prisma, SocietyStatus, SubscriptionPlan, SubscriptionStatus, UserRole } from "@prisma/client";
 import { compare, hash } from "bcryptjs";
 import { RequestUser } from "../../common/auth/request-user.interface";
+import { MemoryCacheService } from "../../common/cache/memory-cache.service";
+import { ensureDefaultDepositSchemes } from "../../common/database/default-product-plans";
 import { PrismaService } from "../../common/database/prisma.service";
+import { UserExtraFieldAvailability, loadUserExtraFieldAvailability } from "../../common/database/user-extra-fields";
 import { resolveUserAllowedModules, updateUserAllowedModules } from "../../common/database/user-module-access";
 import { getDefaultAllowedModules } from "../banking/shared/module-access";
 import { LoginDto } from "./dto/login.dto";
@@ -75,12 +78,19 @@ type RegistrationPayload = {
   username: string;
 };
 
+const DEFAULT_HEAD_OFFICE_NAME = "Head Office";
+const DEFAULT_HEAD_OFFICE_CODE = "HO-001";
+const PUBLIC_DIRECTORY_CACHE_TTL_MS = 60_000;
+
 @Injectable()
 export class AuthService {
+  private userExtraFieldAvailability?: Promise<UserExtraFieldAvailability>;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly cache: MemoryCacheService
   ) {}
 
   async login(dto: LoginDto) {
@@ -220,40 +230,45 @@ export class AuthService {
   }
 
   async listActiveSocieties() {
-    return this.prisma.society.findMany({
-      where: {
-        isActive: true,
-        status: SocietyStatus.ACTIVE
-      },
-      select: {
-        id: true,
-        code: true,
-        name: true
-      },
-      orderBy: {
-        name: "asc"
-      }
-    });
+    return this.cache.getOrSet("public:societies", PUBLIC_DIRECTORY_CACHE_TTL_MS, async () =>
+      this.prisma.society.findMany({
+        where: {
+          isActive: true,
+          status: SocietyStatus.ACTIVE
+        },
+        select: {
+          id: true,
+          code: true,
+          name: true
+        },
+        orderBy: {
+          name: "asc"
+        }
+      })
+    );
   }
 
   async listActiveSocietyBranches(societyCode: string) {
     const society = await this.findActiveSocietyByCode(societyCode);
+    return this.cache.getOrSet(`public:branches:${society.id}`, PUBLIC_DIRECTORY_CACHE_TTL_MS, async () => {
+      await this.ensureHeadOfficeBranch(this.prisma, society.id);
 
-    return this.prisma.branch.findMany({
-      where: {
-        societyId: society.id,
-        isActive: true
-      },
-      select: {
-        id: true,
-        code: true,
-        name: true,
-        isHead: true
-      },
-      orderBy: [
-        { isHead: "desc" },
-        { name: "asc" }
-      ]
+      return this.prisma.branch.findMany({
+        where: {
+          societyId: society.id,
+          isActive: true
+        },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          isHead: true
+        },
+        orderBy: [
+          { isHead: "desc" },
+          { name: "asc" }
+        ]
+      });
     });
   }
 
@@ -267,6 +282,7 @@ export class AuthService {
     const passwordHash = await hash(dto.password, 10);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      const headOfficeBranch = await this.ensureHeadOfficeBranch(tx, society.id);
       const customer = await tx.customer.create({
         data: {
           customerCode,
@@ -285,6 +301,7 @@ export class AuthService {
           fullName: identity.fullName,
           role: UserRole.CLIENT,
           societyId: society.id,
+          branchId: headOfficeBranch.id,
           customerId: customer.id,
           requiresPasswordChange: true
         }
@@ -292,6 +309,12 @@ export class AuthService {
 
       await this.updateAllowedModules(tx, user.id, getDefaultAllowedModules(UserRole.CLIENT));
       await this.createFreeSubscription(tx, user.id);
+      await this.createProvisionedZeroBalanceAccount(tx, {
+        societyId: society.id,
+        customerId: customer.id,
+        branchId: headOfficeBranch.id,
+        role: UserRole.CLIENT
+      });
       return this.loadUserProfile(tx, user.id, "Failed to provision subscription profile");
     });
 
@@ -305,22 +328,7 @@ export class AuthService {
 
   async registerSociety(dto: RegisterSocietyDto) {
     try {
-      const societyCode = dto.societyCode.trim().toUpperCase();
-
-      // Avoid selecting `status` when DB may not have that column yet (legacy/migration gap)
-      const existingSociety = await this.prisma.society.findUnique({
-        where: { code: societyCode },
-        select: {
-          id: true,
-          code: true,
-          name: true,
-          isActive: true
-        }
-      });
-
-      if (existingSociety) {
-        throw new ConflictException("Society code already exists");
-      }
+      const societyCode = await this.resolveAvailableSocietyCode(dto.societyCode, dto.societyName);
 
       // Autogenerate username from society code if not provided or to ensure consistent naming
       const autoUsername = this.createInitialSocietyAdminUsername(dto.fullName, societyCode);
@@ -355,6 +363,7 @@ export class AuthService {
             registrationAuthority: dto.registrationAuthority?.trim() || null
           }
         });
+        const headOfficeBranch = await this.ensureHeadOfficeBranch(tx, society.id);
 
         const user = await tx.user.create({
           data: {
@@ -362,9 +371,11 @@ export class AuthService {
             passwordHash,
             fullName: identity.fullName,
             role: UserRole.SUPER_USER,
-            societyId: society.id
+            societyId: society.id,
+            branchId: headOfficeBranch.id
           }
         });
+        await this.updateUserAdminFlag(tx, user.id, true);
 
         await this.updateAllowedModules(tx, user.id, getDefaultAllowedModules(UserRole.SUPER_USER));
         await tx.subscription.create({
@@ -375,6 +386,7 @@ export class AuthService {
             monthlyPrice: 0
           }
         });
+        await ensureDefaultDepositSchemes(tx);
 
         return this.loadUserProfile(tx, user.id, "Failed to provision society profile");
       });
@@ -409,8 +421,10 @@ export class AuthService {
       throw new UnauthorizedException("User not found");
     }
 
+    const extras = await this.getUserExtraFields(user.id);
+
     return {
-      ...this.buildUserProfile(user),
+      ...this.buildUserProfile(user, extras),
       isActive: user.isActive,
       allowedModuleSlugs: await this.resolveUserAllowedModules(user.id, user.role)
     };
@@ -474,24 +488,71 @@ export class AuthService {
     return `adm_${societyCode.toLowerCase()}`;
   }
 
+  private async resolveAvailableSocietyCode(rawSocietyCode: string | undefined, societyName: string) {
+    const baseCode = this.buildSocietyCode(rawSocietyCode?.trim() || societyName);
+    let candidate = baseCode;
+    let sequence = 2;
+
+    while (true) {
+      const existingSociety = await this.prisma.society.findUnique({
+        where: { code: candidate },
+        select: {
+          id: true
+        }
+      });
+
+      if (!existingSociety) {
+        return candidate;
+      }
+
+      candidate = `${baseCode.slice(0, 9)}-${sequence}`.replace(/-+$/, "");
+      sequence += 1;
+    }
+  }
+
+  private buildSocietyCode(value: string) {
+    const normalized = value
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    return (normalized || "SOCIETY").slice(0, 12);
+  }
+
   private async buildLoginResponse(user: UserProfileRecord) {
     const allowedModuleSlugs = await this.resolveUserAllowedModules(user.id, user.role);
+    if (user.societyId) {
+      await ensureDefaultDepositSchemes(this.prisma);
+    }
+    const extras = await this.getUserExtraFields(user.id);
 
     return {
-      accessToken: this.signToken(this.toRequestUser(user)),
+      accessToken: this.signToken(this.toRequestUser(user, allowedModuleSlugs)),
       user: {
-        ...this.buildUserProfile(user),
+        ...this.buildUserProfile(user, extras),
         allowedModuleSlugs
       }
     };
   }
 
-  private buildUserProfile(user: UserProfileRecord) {
+  private buildUserProfile(
+    user: UserProfileRecord,
+    extras: {
+      aadhaarNumber: string | null;
+      isSocietyAdmin: boolean;
+    } = {
+      aadhaarNumber: null,
+      isSocietyAdmin: false
+    }
+  ) {
     return {
       id: user.id,
       username: user.username,
       fullName: user.fullName,
+      aadhaarNumber: extras.aadhaarNumber,
       role: user.role,
+      isSocietyAdmin: extras.isSocietyAdmin,
       branchId: user.branchId ?? null,
       society: user.society
         ? {
@@ -530,13 +591,17 @@ export class AuthService {
     };
   }
 
-  private toRequestUser(user: Pick<UserProfileRecord, "id" | "username" | "role" | "societyId" | "customerId">): RequestUser {
+  private toRequestUser(
+    user: Pick<UserProfileRecord, "id" | "username" | "role" | "societyId" | "customerId">,
+    allowedModuleSlugs?: string[]
+  ): RequestUser {
     return {
       sub: user.id,
       username: user.username,
       role: user.role,
       societyId: user.societyId ?? null,
-      customerId: user.customerId ?? null
+      customerId: user.customerId ?? null,
+      allowedModuleSlugs
     };
   }
 
@@ -551,6 +616,20 @@ export class AuthService {
     const passwordHash = await hash(dto.password, 10);
 
     return this.prisma.$transaction(async (tx) => {
+      const headOfficeBranch = await this.ensureHeadOfficeBranch(tx, society.id);
+      let customerId: string | undefined;
+
+      if (role === UserRole.AGENT) {
+        const { firstName, lastName } = this.splitFullName(identity.fullName);
+        customerId = await this.createLinkedCustomerProfile(tx, {
+          societyId: society.id,
+          societyCode: society.code,
+          role,
+          firstName,
+          lastName
+        });
+      }
+
       const user = await tx.user.create({
         data: {
           username: identity.username,
@@ -558,14 +637,58 @@ export class AuthService {
           fullName: identity.fullName,
           role,
           societyId: society.id,
+          branchId: headOfficeBranch.id,
+          customerId,
           requiresPasswordChange: true
         }
       });
 
       await this.updateAllowedModules(tx, user.id, getDefaultAllowedModules(role));
       await this.createFreeSubscription(tx, user.id);
+
+      if (user.customerId) {
+        await this.createProvisionedZeroBalanceAccount(tx, {
+          societyId: society.id,
+          customerId: user.customerId,
+          branchId: headOfficeBranch.id,
+          role
+        });
+      }
+
       return this.loadUserProfile(tx, user.id, errorMessage);
     });
+  }
+
+  private async createLinkedCustomerProfile(
+    tx: Prisma.TransactionClient,
+    input: {
+      societyId: string;
+      societyCode: string;
+      role: UserRole;
+      firstName: string;
+      lastName?: string;
+    }
+  ) {
+    const prefix = input.role === UserRole.AGENT ? "A" : "C";
+    const count = await tx.customer.count({
+      where: {
+        societyId: input.societyId
+      }
+    });
+
+    const customer = await tx.customer.create({
+      data: {
+        customerCode: `${input.societyCode}-${prefix}${String(count + 1).padStart(5, "0")}`,
+        societyId: input.societyId,
+        firstName: input.firstName,
+        lastName: input.lastName
+      },
+      select: {
+        id: true
+      }
+    });
+
+    return customer.id;
   }
 
   private async createFreeSubscription(tx: Prisma.TransactionClient, userId: string) {
@@ -575,6 +698,59 @@ export class AuthService {
         plan: SubscriptionPlan.FREE,
         status: SubscriptionStatus.ACTIVE,
         monthlyPrice: 0
+      }
+    });
+  }
+
+  private async createProvisionedZeroBalanceAccount(
+    tx: Prisma.TransactionClient,
+    input: {
+      societyId: string;
+      customerId: string;
+      branchId: string;
+      role: UserRole;
+    }
+  ) {
+    if (input.role !== UserRole.CLIENT && input.role !== UserRole.AGENT) {
+      return;
+    }
+
+    const type = input.role === UserRole.AGENT ? AccountType.PIGMY : AccountType.SAVINGS;
+    const existingAccount = await tx.account.findFirst({
+      where: {
+        customerId: input.customerId,
+        type
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (existingAccount) {
+      return;
+    }
+
+    const [branch, accountNumber] = await Promise.all([
+      tx.branch.findUnique({
+        where: { id: input.branchId },
+        select: {
+          code: true
+        }
+      }),
+      this.generateProvisionedAccountNumber(tx, input.societyId, input.branchId, type)
+    ]);
+
+    await tx.account.create({
+      data: {
+        accountNumber,
+        societyId: input.societyId,
+        customerId: input.customerId,
+        type,
+        status: AccountStatus.ACTIVE,
+        currentBalance: 0,
+        branchId: input.branchId,
+        branchCode: branch?.code ?? null,
+        isPassbookEnabled: input.role === UserRole.CLIENT
       }
     });
   }
@@ -751,5 +927,180 @@ export class AuthService {
 
   private async updateAllowedModules(tx: Prisma.TransactionClient | PrismaService, userId: string, allowedModuleSlugs: string[]) {
     await updateUserAllowedModules(tx, userId, allowedModuleSlugs);
+  }
+
+  private async updateUserAdminFlag(tx: Prisma.TransactionClient | PrismaService, userId: string, isSocietyAdmin: boolean) {
+    const { isSocietyAdmin: supportsSocietyAdmin } = await this.getUserExtraFieldAvailability();
+
+    if (!supportsSocietyAdmin) {
+      return;
+    }
+
+    await tx.$executeRaw`
+      UPDATE "User"
+      SET "isSocietyAdmin" = ${isSocietyAdmin}
+      WHERE "id" = ${userId}
+    `;
+  }
+
+  private async getUserExtraFields(userId: string) {
+    const columnAvailability = await this.getUserExtraFieldAvailability();
+
+    if (!columnAvailability.aadhaarNumber && !columnAvailability.isSocietyAdmin) {
+      return { aadhaarNumber: null, isSocietyAdmin: false };
+    }
+
+    const aadhaarNumberSelect = columnAvailability.aadhaarNumber
+      ? Prisma.sql`"aadhaarNumber"`
+      : Prisma.sql`NULL::TEXT AS "aadhaarNumber"`;
+    const societyAdminSelect = columnAvailability.isSocietyAdmin
+      ? Prisma.sql`"isSocietyAdmin"`
+      : Prisma.sql`FALSE AS "isSocietyAdmin"`;
+    const rows = await this.prisma.$queryRaw<Array<{ aadhaarNumber: string | null; isSocietyAdmin: boolean }>>(
+      Prisma.sql`
+        SELECT ${aadhaarNumberSelect}, ${societyAdminSelect}
+        FROM "User"
+        WHERE "id" = ${userId}
+        LIMIT 1
+      `
+    );
+
+    return rows[0] ?? { aadhaarNumber: null, isSocietyAdmin: false };
+  }
+
+  private getUserExtraFieldAvailability() {
+    this.userExtraFieldAvailability ??= loadUserExtraFieldAvailability(this.prisma);
+
+    return this.userExtraFieldAvailability;
+  }
+
+  private async ensureHeadOfficeBranch(tx: Prisma.TransactionClient | PrismaService, societyId: string) {
+    const existingHeadOffice = await tx.branch.findFirst({
+      where: {
+        societyId,
+        isHead: true
+      },
+      select: {
+        id: true,
+        isActive: true
+      }
+    });
+
+    if (existingHeadOffice) {
+      if (!existingHeadOffice.isActive) {
+        await tx.branch.update({
+          where: { id: existingHeadOffice.id },
+          data: { isActive: true }
+        });
+      }
+
+      await tx.user.updateMany({
+        where: {
+          societyId,
+          branchId: null
+        },
+        data: {
+          branchId: existingHeadOffice.id
+        }
+      });
+
+      return {
+        id: existingHeadOffice.id
+      };
+    }
+
+    const existingBranch = await tx.branch.findFirst({
+      where: { societyId },
+      select: { id: true }
+    });
+
+    if (existingBranch) {
+      await tx.branch.update({
+        where: { id: existingBranch.id },
+        data: {
+          isHead: true,
+          isActive: true
+        }
+      });
+
+      await tx.user.updateMany({
+        where: {
+          societyId,
+          branchId: null
+        },
+        data: {
+          branchId: existingBranch.id
+        }
+      });
+
+      return existingBranch;
+    }
+
+    const createdBranch = await tx.branch.create({
+      data: {
+        code: DEFAULT_HEAD_OFFICE_CODE,
+        name: DEFAULT_HEAD_OFFICE_NAME,
+        isHead: true,
+        isActive: true,
+        societyId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    return createdBranch;
+  }
+
+  private splitFullName(fullName: string) {
+    const [firstName, ...restName] = fullName.trim().split(/\s+/);
+    return {
+      firstName,
+      lastName: restName.join(" ") || undefined
+    };
+  }
+
+  private async generateProvisionedAccountNumber(
+    tx: Prisma.TransactionClient | PrismaService,
+    societyId: string,
+    branchId: string,
+    type: AccountType
+  ) {
+    const [society, branch, count] = await Promise.all([
+      tx.society.findUnique({
+        where: { id: societyId },
+        select: {
+          code: true
+        }
+      }),
+      tx.branch.findUnique({
+        where: { id: branchId },
+        select: {
+          code: true
+        }
+      }),
+      tx.account.count({
+        where: {
+          societyId,
+          type
+        }
+      })
+    ]);
+
+    const accountCodeByType: Record<AccountType, string> = {
+      SAVINGS: "101",
+      CURRENT: "102",
+      FIXED_DEPOSIT: "201",
+      RECURRING_DEPOSIT: "202",
+      LOAN: "301",
+      PIGMY: "401",
+      GENERAL: "501"
+    };
+
+    const societyCode = (society?.code ?? "001").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3).padStart(3, "0");
+    const branchCode = (branch?.code ?? "001").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3).padStart(3, "0");
+    const sequence = String(count + 1).padStart(8, "0");
+
+    return `${societyCode}${branchCode}${accountCodeByType[type]}${sequence}`;
   }
 }

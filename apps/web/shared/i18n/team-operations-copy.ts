@@ -8,17 +8,11 @@ type TeamOperationsCopy = {
     searchPlaceholder: string;
     addStaffUser: string;
   };
-  filters: {
-    allAccounts: string;
-    staff: string;
-    client: string;
-    agent: string;
-  };
   metrics: {
-    accounts: { label: string; caption: string };
     staff: { label: string; caption: string };
-    agents: { label: string; caption: string };
-    clients: { label: string; caption: string };
+    active: { label: string; caption: string };
+    admins: { label: string; caption: string };
+    branches: { label: string; caption: string };
   };
   table: {
     user: string;
@@ -41,45 +35,37 @@ type TeamOperationsCopy = {
     inactive: string;
   };
   actions: {
-    edit: string;
     editAccount: string;
     manageAccess: string;
-    removeAccount: string;
   };
 };
 
 const teamOperationsCopy: Record<AppLocale, TeamOperationsCopy> = {
   en: {
     hero: {
-      eyebrow: "Directory",
-      title: "Team operations",
-      description: "Manage staff, agents, and client-linked accounts that can access this society dashboard.",
-      searchPlaceholder: "Search users",
+      eyebrow: "Society Staff",
+      title: "Society staff",
+      description: "Manage staff accounts here. Agents and client logins are handled from their own sections.",
+      searchPlaceholder: "Search staff",
       addStaffUser: "Add staff user"
     },
-    filters: {
-      allAccounts: "All Accounts",
-      staff: "Staff",
-      client: "Client",
-      agent: "Agent"
-    },
     metrics: {
-      accounts: { label: "Accounts", caption: "All login-enabled society accounts." },
-      staff: { label: "Staff", caption: "Internal operational accounts." },
-      agents: { label: "Agents", caption: "Field agents and collections staff." },
-      clients: { label: "Clients", caption: "Client member portal accounts." }
+      staff: { label: "Staff", caption: "All staff logins linked to this society." },
+      active: { label: "Active", caption: "Staff accounts currently enabled." },
+      admins: { label: "Admins", caption: "Primary administrator accounts." },
+      branches: { label: "Branches", caption: "Branches covered by staff assignments." }
     },
     table: {
-      user: "User",
-      accountType: "Account type",
+      user: "Staff member",
+      accountType: "Access level",
       branch: "Branch",
       modules: "Modules",
       status: "Status",
       actions: "Actions"
     },
-    emptyState: "No matching users found.",
+    emptyState: "No matching staff accounts found.",
     fallback: {
-      defaultAvatar: "U",
+      defaultAvatar: "S",
       headOffice: "Head office",
       noBranchCode: "No branch code",
       controlledFromAccessSettings: "Controlled from access settings"
@@ -90,43 +76,35 @@ const teamOperationsCopy: Record<AppLocale, TeamOperationsCopy> = {
       inactive: "Inactive"
     },
     actions: {
-      edit: "Edit",
       editAccount: "Edit account",
-      manageAccess: "Manage access",
-      removeAccount: "Remove account"
+      manageAccess: "Manage access"
     }
   },
   hi: {
     hero: {
-      eyebrow: "डायरेक्टरी",
-      title: "टीम संचालन",
-      description: "स्टाफ, एजेंट और क्लाइंट से जुड़े खातों का प्रबंधन करें जो इस सोसायटी डैशबोर्ड तक पहुँच सकते हैं।",
-      searchPlaceholder: "उपयोगकर्ता खोजें",
+      eyebrow: "सोसायटी स्टाफ",
+      title: "सोसायटी स्टाफ",
+      description: "यहाँ स्टाफ खाते प्रबंधित करें। एजेंट और क्लाइंट लॉगिन उनके अलग सेक्शन से संभाले जाते हैं।",
+      searchPlaceholder: "स्टाफ खोजें",
       addStaffUser: "स्टाफ उपयोगकर्ता जोड़ें"
     },
-    filters: {
-      allAccounts: "सभी खाते",
-      staff: "स्टाफ",
-      client: "क्लाइंट",
-      agent: "एजेंट"
-    },
     metrics: {
-      accounts: { label: "खाते", caption: "सोसायटी के सभी लॉगिन-सक्षम खाते।" },
-      staff: { label: "स्टाफ", caption: "आंतरिक संचालन खाते।" },
-      agents: { label: "एजेंट", caption: "फील्ड एजेंट और कलेक्शन स्टाफ।" },
-      clients: { label: "क्लाइंट", caption: "क्लाइंट सदस्य पोर्टल खाते।" }
+      staff: { label: "स्टाफ", caption: "इस सोसायटी से जुड़े सभी स्टाफ लॉगिन।" },
+      active: { label: "सक्रिय", caption: "अभी सक्षम स्टाफ खाते।" },
+      admins: { label: "एडमिन", caption: "मुख्य प्रशासक खाते।" },
+      branches: { label: "शाखाएँ", caption: "स्टाफ असाइनमेंट से कवर शाखाएँ।" }
     },
     table: {
-      user: "उपयोगकर्ता",
-      accountType: "खाते का प्रकार",
+      user: "स्टाफ सदस्य",
+      accountType: "एक्सेस स्तर",
       branch: "शाखा",
       modules: "मॉड्यूल",
       status: "स्थिति",
       actions: "कार्रवाई"
     },
-    emptyState: "कोई मेल खाते उपयोगकर्ता नहीं मिले।",
+    emptyState: "कोई मेल खाते स्टाफ खाते नहीं मिले।",
     fallback: {
-      defaultAvatar: "उ",
+      defaultAvatar: "स्",
       headOffice: "मुख्य कार्यालय",
       noBranchCode: "कोई शाखा कोड नहीं",
       controlledFromAccessSettings: "एक्सेस सेटिंग्स से नियंत्रित"
@@ -137,43 +115,35 @@ const teamOperationsCopy: Record<AppLocale, TeamOperationsCopy> = {
       inactive: "निष्क्रिय"
     },
     actions: {
-      edit: "संपादित करें",
       editAccount: "खाता संपादित करें",
-      manageAccess: "एक्सेस प्रबंधित करें",
-      removeAccount: "खाता हटाएँ"
+      manageAccess: "एक्सेस प्रबंधित करें"
     }
   },
   mr: {
     hero: {
-      eyebrow: "डायरेक्टरी",
-      title: "टीम ऑपरेशन्स",
-      description: "या सोसायटी डॅशबोर्डला प्रवेश असलेले स्टाफ, एजंट आणि क्लायंट-संबंधित खाते व्यवस्थापित करा.",
-      searchPlaceholder: "वापरकर्ते शोधा",
+      eyebrow: "सोसायटी स्टाफ",
+      title: "सोसायटी स्टाफ",
+      description: "येथे स्टाफ खाती व्यवस्थापित करा. एजंट आणि क्लायंट लॉगिन त्यांच्या वेगळ्या विभागांतून हाताळले जातात.",
+      searchPlaceholder: "स्टाफ शोधा",
       addStaffUser: "स्टाफ वापरकर्ता जोडा"
     },
-    filters: {
-      allAccounts: "सर्व खाती",
-      staff: "स्टाफ",
-      client: "क्लायंट",
-      agent: "एजंट"
-    },
     metrics: {
-      accounts: { label: "खाती", caption: "सोसायटीतील सर्व लॉगिन-सक्षम खाती." },
-      staff: { label: "स्टाफ", caption: "आतील कार्यरत खाती." },
-      agents: { label: "एजंट", caption: "फिल्ड एजंट आणि वसुली कर्मचारी." },
-      clients: { label: "क्लायंट", caption: "क्लायंट सदस्य पोर्टल खाती." }
+      staff: { label: "स्टाफ", caption: "या सोसायटीशी जोडलेली सर्व स्टाफ लॉगिन्स." },
+      active: { label: "सक्रिय", caption: "सध्या सक्षम स्टाफ खाती." },
+      admins: { label: "अॅडमिन", caption: "मुख्य प्रशासक खाती." },
+      branches: { label: "शाखा", caption: "स्टाफ नेमणुकीने कव्हर झालेल्या शाखा." }
     },
     table: {
-      user: "वापरकर्ता",
-      accountType: "खाते प्रकार",
+      user: "स्टाफ सदस्य",
+      accountType: "अॅक्सेस स्तर",
       branch: "शाखा",
       modules: "मॉड्यूल्स",
       status: "स्थिती",
       actions: "क्रिया"
     },
-    emptyState: "जुळणारे वापरकर्ते सापडले नाहीत.",
+    emptyState: "जुळणारी स्टाफ खाती सापडली नाहीत.",
     fallback: {
-      defaultAvatar: "व",
+      defaultAvatar: "स्",
       headOffice: "मुख्य कार्यालय",
       noBranchCode: "शाखा कोड नाही",
       controlledFromAccessSettings: "अॅक्सेस सेटिंग्जमधून नियंत्रित"
@@ -184,10 +154,8 @@ const teamOperationsCopy: Record<AppLocale, TeamOperationsCopy> = {
       inactive: "निष्क्रिय"
     },
     actions: {
-      edit: "संपादित करा",
       editAccount: "खाते संपादित करा",
-      manageAccess: "अॅक्सेस व्यवस्थापित करा",
-      removeAccount: "खाते काढा"
+      manageAccess: "अॅक्सेस व्यवस्थापित करा"
     }
   }
 };

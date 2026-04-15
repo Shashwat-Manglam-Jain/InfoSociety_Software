@@ -43,6 +43,7 @@ import { ChequeWorkspace } from "@/features/society/components/cheque-workspace"
 import { LedgerWorkspace } from "@/features/society/components/ledger-workspace";
 import { LoanWorkspace } from "@/features/society/components/loan-workspace";
 import { LockerWorkspace } from "@/features/society/components/locker-workspace";
+import { PaymentWorkspace } from "@/features/society/components/payment-workspace";
 import { SocietyOperationsWorkspace } from "@/features/society/components/society-operations-workspace";
 import { buildManagedUsersFromCustomers } from "@/features/society/lib/society-admin-dashboard";
 
@@ -52,6 +53,7 @@ type AgentView =
   | "plan_catalogue"
   | "account_registry"
   | "loan_workspace"
+  | "payments_workspace"
   | "transaction_workspace"
   | "ledger_workspace"
   | "cheque_workspace"
@@ -66,6 +68,7 @@ const AGENT_VIEWS = new Set<AgentView>([
   "plan_catalogue",
   "account_registry",
   "loan_workspace",
+  "payments_workspace",
   "transaction_workspace",
   "ledger_workspace",
   "cheque_workspace",
@@ -80,6 +83,7 @@ const AGENT_VIEW_PRIORITY: Array<{ view: AgentView; moduleCandidates: string[] }
   { view: "account_registry", moduleCandidates: ["accounts"] },
   { view: "plan_catalogue", moduleCandidates: ["deposits"] },
   { view: "loan_workspace", moduleCandidates: ["loans"] },
+  { view: "payments_workspace", moduleCandidates: ["payments"] },
   { view: "transaction_workspace", moduleCandidates: ["transactions"] },
   { view: "ledger_workspace", moduleCandidates: ["cashbook"] },
   { view: "cheque_workspace", moduleCandidates: ["cheque-clearing"] },
@@ -237,6 +241,13 @@ export default function AgentDashboardPage() {
         moduleCandidates: ["loans"]
       },
       {
+        label: "Payments",
+        href: "/dashboard/agent?view=payments_workspace",
+        icon: <ReceiptLongRoundedIcon />,
+        active: currentView === "payments_workspace",
+        moduleCandidates: ["payments"]
+      },
+      {
         label: "Transactions",
         href: "/dashboard/agent?view=transaction_workspace",
         icon: <ReceiptLongRoundedIcon />,
@@ -343,6 +354,17 @@ export default function AgentDashboardPage() {
           />
         ) : currentView === "loan_workspace" ? (
           <LoanWorkspace token={getSession()?.accessToken ?? ""} managedUsers={scopedManagedUsers} />
+        ) : currentView === "payments_workspace" ? (
+          <PaymentWorkspace
+            token={getSession()?.accessToken ?? ""}
+            role={user.role}
+            customers={customers.map((customer) => ({
+              id: customer.id,
+              fullName: [customer.firstName, customer.lastName].filter(Boolean).join(" ").trim() || customer.customerCode,
+              customerCode: customer.customerCode
+            }))}
+            canCreateRequests
+          />
         ) : currentView === "transaction_workspace" ? (
           <TransactionWorkspace token={getSession()?.accessToken ?? ""} canCreateTransactions canManageTransactions />
         ) : currentView === "ledger_workspace" ? (

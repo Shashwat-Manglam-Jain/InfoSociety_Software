@@ -18,17 +18,14 @@ type UserProvisioningDrawerCopy = {
     update: string;
   };
   fields: {
-    fullName: string;
-    accountType: string;
+    aadhaarNumber: string;
+    aadhaarHelper: string;
     branch: string;
     headOfficeUnassigned: string;
     username: string;
     usernameHelper: string;
     resetPasswordOptional: string;
     temporaryPassword: string;
-    phone: string;
-    email: string;
-    address: string;
   };
   password: {
     createHelper: string;
@@ -48,21 +45,18 @@ const userProvisioningDrawerCopy: Record<AppLocale, UserProvisioningDrawerCopy> 
       update: "Update account"
     },
     description: {
-      add: "Create a society admin, field agent, or client account with the right modules.",
-      update: "Update account identity, branch assignment, login reset, and contact information."
+      add: "Create a staff, field agent, or client login using Aadhaar and the right modules.",
+      update: "Update the login id, Aadhaar number, branch assignment, and password reset settings."
     },
     fields: {
-      fullName: "Full name",
-      accountType: "Account type",
+      aadhaarNumber: "Aadhaar number",
+      aadhaarHelper: "Use the 12-digit Aadhaar number so duplicate registrations are blocked.",
       branch: "Branch",
-      headOfficeUnassigned: "Head office / unassigned",
+      headOfficeUnassigned: "Head office (default)",
       username: "Username",
-      usernameHelper: "Use a clear login id. It is auto-filled from the name and can still be adjusted.",
+      usernameHelper: "Use a clear login id. Contact details and personal profile fields are completed after first login.",
       resetPasswordOptional: "Reset password (optional)",
-      temporaryPassword: "Temporary password",
-      phone: "Phone",
-      email: "Email",
-      address: "Address"
+      temporaryPassword: "Temporary password"
     },
     password: {
       createHelper: "Use 8+ chars with upper, lower, number, and special character.",
@@ -74,15 +68,15 @@ const userProvisioningDrawerCopy: Record<AppLocale, UserProvisioningDrawerCopy> 
     },
     roles: {
       SUPER_USER: {
-        label: "Society Admin",
-        shortLabel: "Admin",
-        description: "Manages society operations, administration, and privileged dashboard actions.",
-        actionNoun: "admin"
+        label: "Society Staff",
+        shortLabel: "Staff",
+        description: "Handles internal society operations. The society creator remains the admin account.",
+        actionNoun: "staff"
       },
       AGENT: {
         label: "Agent",
         shortLabel: "Agent",
-        description: "Handles field operations, member service tasks, and assigned collection workflows.",
+        description: "Handles field operations, member servicing, and collection workflows.",
         actionNoun: "agent"
       },
       CLIENT: {
@@ -105,21 +99,18 @@ const userProvisioningDrawerCopy: Record<AppLocale, UserProvisioningDrawerCopy> 
       update: "खाता अपडेट करें"
     },
     description: {
-      add: "सही मॉड्यूल्स के साथ सोसायटी एडमिन, फील्ड एजेंट या क्लाइंट खाता बनाएँ।",
-      update: "खाते की पहचान, शाखा असाइनमेंट, लॉगिन रीसेट और संपर्क जानकारी अपडेट करें।"
+      add: "आधार और सही मॉड्यूल्स के साथ स्टाफ, एजेंट या क्लाइंट लॉगिन बनाएँ।",
+      update: "लॉगिन आईडी, आधार नंबर, शाखा असाइनमेंट और पासवर्ड रीसेट सेटिंग अपडेट करें।"
     },
     fields: {
-      fullName: "पूरा नाम",
-      accountType: "खाते का प्रकार",
+      aadhaarNumber: "आधार नंबर",
+      aadhaarHelper: "12 अंकों वाला आधार नंबर दर्ज करें ताकि डुप्लिकेट रजिस्ट्रेशन रुक सके।",
       branch: "शाखा",
-      headOfficeUnassigned: "मुख्य कार्यालय / असाइन नहीं",
+      headOfficeUnassigned: "मुख्य कार्यालय (डिफ़ॉल्ट)",
       username: "यूज़रनेम",
-      usernameHelper: "स्पष्ट लॉगिन आईडी का उपयोग करें। यह नाम से अपने-आप भरता है और बदला भी जा सकता है।",
+      usernameHelper: "स्पष्ट लॉगिन आईडी का उपयोग करें। संपर्क जानकारी और प्रोफ़ाइल विवरण पहली लॉगिन के बाद भरे जाएँगे।",
       resetPasswordOptional: "पासवर्ड रीसेट करें (वैकल्पिक)",
-      temporaryPassword: "अस्थायी पासवर्ड",
-      phone: "फोन",
-      email: "ईमेल",
-      address: "पता"
+      temporaryPassword: "अस्थायी पासवर्ड"
     },
     password: {
       createHelper: "8+ अक्षरों का उपयोग करें जिसमें अपरकेस, लोअरकेस, संख्या और विशेष वर्ण हों।",
@@ -131,15 +122,15 @@ const userProvisioningDrawerCopy: Record<AppLocale, UserProvisioningDrawerCopy> 
     },
     roles: {
       SUPER_USER: {
-        label: "सोसायटी एडमिन",
-        shortLabel: "एडमिन",
-        description: "सोसायटी संचालन, प्रशासन और विशेष डैशबोर्ड क्रियाओं का प्रबंधन करता है।",
-        actionNoun: "एडमिन"
+        label: "सोसायटी स्टाफ",
+        shortLabel: "स्टाफ",
+        description: "आंतरिक सोसायटी संचालन संभालता है। सोसायटी बनाने वाला खाता एडमिन बना रहता है।",
+        actionNoun: "स्टाफ"
       },
       AGENT: {
         label: "एजेंट",
         shortLabel: "एजेंट",
-        description: "फील्ड संचालन, सदस्य सेवा कार्य और सौंपे गए कलेक्शन वर्कफ़्लो संभालता है।",
+        description: "फील्ड संचालन, सदस्य सेवा कार्य और कलेक्शन वर्कफ़्लो संभालता है।",
         actionNoun: "एजेंट"
       },
       CLIENT: {
@@ -162,21 +153,18 @@ const userProvisioningDrawerCopy: Record<AppLocale, UserProvisioningDrawerCopy> 
       update: "खाते अपडेट करा"
     },
     description: {
-      add: "योग्य मॉड्यूल्ससह सोसायटी अॅडमिन, फिल्ड एजंट किंवा क्लायंट खाते तयार करा.",
-      update: "खात्याची ओळख, शाखा नेमणूक, लॉगिन रीसेट आणि संपर्क माहिती अपडेट करा."
+      add: "आधार आणि योग्य मॉड्यूल्ससह स्टाफ, एजंट किंवा क्लायंट लॉगिन तयार करा.",
+      update: "लॉगिन आयडी, आधार क्रमांक, शाखा नेमणूक आणि पासवर्ड रीसेट सेटिंग अपडेट करा."
     },
     fields: {
-      fullName: "पूर्ण नाव",
-      accountType: "खाते प्रकार",
+      aadhaarNumber: "आधार क्रमांक",
+      aadhaarHelper: "डुप्लिकेट नोंदणी टाळण्यासाठी 12 अंकी आधार क्रमांक वापरा.",
       branch: "शाखा",
-      headOfficeUnassigned: "मुख्य कार्यालय / नियुक्त नाही",
+      headOfficeUnassigned: "मुख्य कार्यालय (डीफॉल्ट)",
       username: "यूजरनेम",
-      usernameHelper: "स्पष्ट लॉगिन आयडी वापरा. तो नावावरून आपोआप भरला जातो आणि बदलताही येतो.",
+      usernameHelper: "स्पष्ट लॉगिन आयडी वापरा. संपर्क माहिती आणि प्रोफाइल तपशील पहिल्या लॉगिननंतर भरले जातील.",
       resetPasswordOptional: "पासवर्ड रीसेट करा (ऐच्छिक)",
-      temporaryPassword: "तात्पुरता पासवर्ड",
-      phone: "फोन",
-      email: "ईमेल",
-      address: "पत्ता"
+      temporaryPassword: "तात्पुरता पासवर्ड"
     },
     password: {
       createHelper: "8+ अक्षरे वापरा ज्यात अपरकेस, लोअरकेस, संख्या आणि विशेष चिन्ह असेल.",
@@ -188,15 +176,15 @@ const userProvisioningDrawerCopy: Record<AppLocale, UserProvisioningDrawerCopy> 
     },
     roles: {
       SUPER_USER: {
-        label: "सोसायटी अॅडमिन",
-        shortLabel: "अॅडमिन",
-        description: "सोसायटी ऑपरेशन्स, प्रशासन आणि विशेष डॅशबोर्ड कृती व्यवस्थापित करतो.",
-        actionNoun: "अॅडमिन"
+        label: "सोसायटी स्टाफ",
+        shortLabel: "स्टाफ",
+        description: "आतील सोसायटी ऑपरेशन्स हाताळतो. सोसायटी तयार करणारे खाते अॅडमिन राहते.",
+        actionNoun: "स्टाफ"
       },
       AGENT: {
         label: "एजंट",
         shortLabel: "एजंट",
-        description: "फिल्ड ऑपरेशन्स, सदस्य सेवा कामे आणि नेमून दिलेले कलेक्शन वर्कफ्लो हाताळतो.",
+        description: "फिल्ड ऑपरेशन्स, सदस्य सेवा आणि कलेक्शन वर्कफ्लो हाताळतो.",
         actionNoun: "एजंट"
       },
       CLIENT: {

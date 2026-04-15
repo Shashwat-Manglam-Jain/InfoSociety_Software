@@ -94,6 +94,7 @@ export async function requestJson<T>({ body, method = "GET", path, token }: Requ
   try {
     const response = await fetch(buildUrl(path), {
       method,
+      credentials: "include",
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(hasBody ? { "Content-Type": "application/json" } : {})
@@ -132,4 +133,3 @@ export async function apiRequest<T = unknown>(
     body
   });
 }
-

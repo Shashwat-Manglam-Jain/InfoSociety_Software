@@ -20,35 +20,32 @@ export type AdministrationBranchPayload = {
 
 export type AdministrationUserPayload = {
   username: string;
-  fullName: string;
+  aadhaarNumber: string;
   password: string;
   role: UserRole;
   isActive?: boolean;
   branchId?: string;
   allowedModuleSlugs?: string[];
-  phone?: string;
-  email?: string;
-  address?: string;
 };
 
 export type AdministrationUserUpdatePayload = {
   username?: string;
   fullName?: string;
+  aadhaarNumber?: string;
   password?: string;
   isActive?: boolean;
   branchId?: string;
   allowedModuleSlugs?: string[];
-  phone?: string;
-  email?: string;
-  address?: string;
 };
 
 export type AdministrationUserRecord = {
   id: string;
   username: string;
   fullName: string;
+  aadhaarNumber?: string | null;
   role: UserRole;
   isActive: boolean;
+  isSocietyAdmin?: boolean;
   branchId?: string | null;
   allowedModuleSlugs?: string[];
   customerId?: string | null;
@@ -76,13 +73,15 @@ export type SocietyTransactionRecord = {
   transactionNumber: string;
   valueDate: string;
   amount: number;
-  type: "DEBIT" | "CREDIT";
+  type: "DEBIT" | "CREDIT" | null;
   mode: string;
   remark?: string | null;
   isPassed: boolean;
-  createdAt: string;
+  status?: string;
+  sourceModule?: string;
+  sourceAction?: string;
   account: {
-    id: string;
+    id: string | null;
     accountNumber: string;
     branchId?: string | null;
     branchCode?: string | null;
@@ -96,7 +95,7 @@ export type SocietyTransactionRecord = {
     id: string;
     username: string;
     fullName: string;
-  };
+  } | null;
 };
 
 export type AgentPerformanceRecord = {
@@ -106,6 +105,28 @@ export type AgentPerformanceRecord = {
   daily: number;
   weekly: number;
   monthly: number;
+};
+
+export type SocietyOverviewPeriodTotals = {
+  daily: number;
+  weekly: number;
+  monthly: number;
+};
+
+export type SocietyOverviewRecord = {
+  totalBranches: number;
+  totalStaff: number;
+  totalMembers: number;
+  totalCapital: number;
+  bankBalance: number;
+  cashBalance: number;
+  totalDistributed: number;
+  totalInterest: number;
+  collectionApproved: SocietyOverviewPeriodTotals;
+  collectionPending: SocietyOverviewPeriodTotals;
+  distributedApproved: SocietyOverviewPeriodTotals;
+  distributedPending: SocietyOverviewPeriodTotals;
+  totalCollected: number;
 };
 
 export type AdministrationAgentDetails = {
@@ -215,7 +236,7 @@ export async function getAgentOverview(token: string) {
 
 export async function getSocietyOverview(token: string, branchId?: string) {
   const query = branchId ? `?branchId=${branchId}` : "";
-  return apiRequest(token, "GET", `/administration/society-overview${query}`);
+  return apiRequest<SocietyOverviewRecord>(token, "GET", `/administration/society-overview${query}`);
 }
 
 export async function getCustomerDetails(token: string, id: string) {

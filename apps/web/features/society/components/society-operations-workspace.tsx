@@ -43,12 +43,15 @@ import { ShareholdingDrawer } from "./operations/drawers/ShareholdingDrawer";
 import {
   createAccount,
   listAccounts,
+  type AccountType as BankingAccountType,
   type AccountRecord as BankingAccountRecord
 } from "@/shared/api/accounts";
 import {
   createDepositScheme,
+  deleteDepositScheme,
   listDepositSchemes,
   openDepositAccount,
+  updateDepositScheme,
   type DepositSchemeRecord
 } from "@/shared/api/deposits";
 import { listHeads, type HeadRecord } from "@/shared/api/heads";
@@ -57,7 +60,6 @@ import { useLanguage } from "@/shared/i18n/language-provider";
 import { getGuarantorRegistryCopy } from "@/shared/i18n/guarantor-registry-copy";
 import { getPlanCatalogueCopy } from "@/shared/i18n/plan-catalogue-copy";
 import { getAccountRegistryCopy } from "@/shared/i18n/account-registry-copy";
-import { getClientApprovalDeskCopy } from "@/shared/i18n/client-approval-desk-copy";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
 import { toast } from "@/shared/ui/toast";
 import type { ManagedUserRow, OperationsClientRow } from "../lib/society-admin-dashboard";
@@ -131,16 +133,18 @@ type GuarantorFormState = {
   remarks: string;
 };
 
-type ClientApprovalRow = {
+type CoApplicantRow = {
   id: string;
   branchId: string;
-  clientName: string;
+  borrowerName: string;
   customerCode: string;
-  username: string;
+  loanAccountNumber: string;
   branchName: string;
-  approvalSource: string;
+  loanProfile: string;
   createdAt: string;
   status: string;
+  appliedAmount: number;
+  remarks: string;
 };
 
 function formatCurrency(value: number | string) {
@@ -188,6 +192,22 @@ function createEmptyDepositAccountForm(): DepositAccountFormState {
     openDate: today(),
     isPassbookEnabled: true
   };
+}
+
+function getNextSchemeCode(schemes: DepositSchemeRecord[], recurring: boolean) {
+  const prefix = recurring ? "RD" : "FD";
+  const nextSequence =
+    schemes.reduce((largest, scheme) => {
+      if (scheme.recurring !== recurring) {
+        return largest;
+      }
+
+      const match = scheme.code.match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
+      const sequence = match ? Number(match[1]) : 0;
+      return sequence > largest ? sequence : largest;
+    }, 0) + 1;
+
+  return `${prefix}-${String(nextSequence).padStart(3, "0")}`;
 }
 
 function createEmptyGuarantorForm(loan?: LoanRecord): GuarantorFormState {
@@ -251,7 +271,7 @@ function buildShareMembers(clientProfiles: SocietyClientProfile[]): MemberRecord
     motherName: "",
     occupation: "Client",
     memberSourceType: "Digital",
-    memberSourceName: "User Access",
+    memberSourceName: "Society Staff",
     mobileNo: "",
     email: "",
     dob: "",
@@ -347,18 +367,29 @@ function buildGuarantorRows(loans: LoanRecord[], clientProfiles: SocietyClientPr
   });
 }
 
-function buildClientApprovalRows(clientProfiles: SocietyClientProfile[]): ClientApprovalRow[] {
-  return clientProfiles.map((client) => ({
-    id: client.userId,
-    branchId: client.branchId,
-    clientName: client.fullName,
-    customerCode: client.customerCode,
-    username: client.username,
-    branchName: client.branchName,
-    approvalSource: "Society admin via User Access",
-    createdAt: client.createdAt,
-    status: client.isActive ? "Approved" : "Inactive"
-  }));
+function buildCoApplicantRows(loans: LoanRecord[], clientProfiles: SocietyClientProfile[]): CoApplicantRow[] {
+  const branchByCustomerId = new Map(
+    clientProfiles.map((client) => [client.customerId, { branchId: client.branchId, branchName: client.branchName }])
+  );
+
+  return loans.map((loan) => {
+    const borrowerBranch = branchByCustomerId.get(loan.customer.id);
+    const guarantorCount = [loan.guarantor1, loan.guarantor2, loan.guarantor3].filter(Boolean).length;
+
+    return {
+      id: loan.id,
+      branchId: borrowerBranch?.branchId ?? "",
+      borrowerName: formatPersonName(loan.customer.firstName, loan.customer.lastName),
+      customerCode: loan.customer.customerCode,
+      loanAccountNumber: loan.account.accountNumber,
+      branchName: borrowerBranch?.branchName ?? "Head office",
+      loanProfile: `${formatCurrency(loan.applicationAmount)} · ${Number(loan.interestRate)}% · ${guarantorCount} guarantor${guarantorCount === 1 ? "" : "s"}`,
+      createdAt: loan.createdAt,
+      status: loan.status,
+      appliedAmount: Number(loan.applicationAmount),
+      remarks: loan.remarks ?? "Loan application in review"
+    };
+  });
 }
 
 export function SocietyOperationsWorkspace({
@@ -376,7 +407,6 @@ export function SocietyOperationsWorkspace({
   const guarantorCopy = getGuarantorRegistryCopy(locale);
   const planCopy = getPlanCatalogueCopy(locale);
   const accountCopy = getAccountRegistryCopy(locale);
-  const approvalCopy = getClientApprovalDeskCopy(locale);
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
@@ -407,12 +437,14 @@ export function SocietyOperationsWorkspace({
   const [schemeSearch, setSchemeSearch] = useState("");
   const [schemeDrawerOpen, setSchemeDrawerOpen] = useState(false);
   const [schemeSubmitting, setSchemeSubmitting] = useState(false);
+  const [editingSchemeId, setEditingSchemeId] = useState<string | null>(null);
   const [schemeForm, setSchemeForm] = useState<DepositSchemeFormState>(createEmptySchemeForm());
 
   const [accountRows, setAccountRows] = useState<BankingAccountRecord[]>([]);
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountError, setAccountError] = useState<string | null>(null);
   const [accountSearch, setAccountSearch] = useState("");
+  const [accountTypeFilter, setAccountTypeFilter] = useState<BankingAccountType | "">("");
   const [accountPage, setAccountPage] = useState(0);
   const [accountRowsPerPage, setAccountRowsPerPage] = useState(10);
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
@@ -435,11 +467,15 @@ export function SocietyOperationsWorkspace({
   const [approvalPage, setApprovalPage] = useState(0);
   const [approvalRowsPerPage, setApprovalRowsPerPage] = useState(10);
 
-  const approvalRows = useMemo(() => buildClientApprovalRows(clientProfiles), [clientProfiles]);
+  const coApplicantRows = useMemo(() => buildCoApplicantRows(loanRows, clientProfiles), [clientProfiles, loanRows]);
 
   const selectedScheme = useMemo(
     () => schemeRows.find((scheme) => scheme.id === accountForm.schemeId) ?? null,
     [accountForm.schemeId, schemeRows]
+  );
+  const generatedSchemeCode = useMemo(
+    () => getNextSchemeCode(schemeRows, schemeForm.recurring),
+    [schemeForm.recurring, schemeRows]
   );
   const selectedClient = useMemo(
     () => clientProfiles.find((client) => client.customerId === accountForm.customerId) ?? null,
@@ -511,7 +547,7 @@ export function SocietyOperationsWorkspace({
   }, [token, view]);
 
   useEffect(() => {
-    if (view === "membership_guarantors") {
+    if (view === "membership_guarantors" || view === "membership_coapplicants") {
       void loadGuarantors();
     }
   }, [clientProfiles, token, view]);
@@ -606,26 +642,73 @@ export function SocietyOperationsWorkspace({
   }
 
   async function handleCreateScheme() {
-    if (!schemeForm.code.trim() || !schemeForm.name.trim()) {
+    if (!schemeForm.name.trim()) {
       return;
     }
 
     setSchemeSubmitting(true);
     try {
-      await createDepositScheme(token, {
-        code: schemeForm.code.trim().toUpperCase(),
+      const payload = {
+        code: generatedSchemeCode,
         name: schemeForm.name.trim(),
         minMonths: schemeForm.minMonths,
         maxMonths: schemeForm.maxMonths,
         interestRate: Number(schemeForm.interestRate),
         recurring: schemeForm.recurring
-      });
+      };
+
+      if (editingSchemeId) {
+        await updateDepositScheme(token, editingSchemeId, payload);
+      } else {
+        await createDepositScheme(token, payload);
+      }
       setSchemeDrawerOpen(false);
+      setEditingSchemeId(null);
       setSchemeForm(createEmptySchemeForm());
       await loadSchemes();
-      toast.success("Plan created.");
+      toast.success(editingSchemeId ? "Plan updated." : "Plan created.");
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Unable to create plan.");
+      toast.error(caught instanceof Error ? caught.message : editingSchemeId ? "Unable to update plan." : "Unable to create plan.");
+    } finally {
+      setSchemeSubmitting(false);
+    }
+  }
+
+  function openSchemeDrawer(scheme?: DepositSchemeRecord) {
+    if (scheme) {
+      setEditingSchemeId(scheme.id);
+      setSchemeForm({
+        code: scheme.code,
+        name: scheme.name,
+        recurring: scheme.recurring,
+        minMonths: scheme.minMonths,
+        maxMonths: scheme.maxMonths,
+        interestRate: Number(scheme.interestRate)
+      });
+    } else {
+      setEditingSchemeId(null);
+      setSchemeForm(createEmptySchemeForm());
+    }
+
+    setSchemeDrawerOpen(true);
+  }
+
+  async function handleDeleteScheme(scheme: DepositSchemeRecord) {
+    setSchemeSubmitting(true);
+
+    try {
+      await deleteDepositScheme(token, scheme.id);
+
+      if (editingSchemeId === scheme.id) {
+        setEditingSchemeId(null);
+        setSchemeDrawerOpen(false);
+        setSchemeForm(createEmptySchemeForm());
+      }
+
+      await loadSchemes();
+      toast.success("Plan removed.");
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Unable to remove plan.");
     } finally {
       setSchemeSubmitting(false);
     }
@@ -699,12 +782,15 @@ export function SocietyOperationsWorkspace({
     const branchScopedAccounts = branchFilterId
       ? accountRows.filter((account) => (account.branchId ?? "") === branchFilterId)
       : accountRows;
+    const typeScopedAccounts = accountTypeFilter
+      ? branchScopedAccounts.filter((account) => account.type === accountTypeFilter)
+      : branchScopedAccounts;
 
     if (!query) {
-      return branchScopedAccounts;
+      return typeScopedAccounts;
     }
 
-    return branchScopedAccounts.filter((account) =>
+    return typeScopedAccounts.filter((account) =>
       [
         account.accountNumber,
         account.customer?.customerCode ?? "",
@@ -712,7 +798,13 @@ export function SocietyOperationsWorkspace({
         getAccountTypeLabel(account.type)
       ].some((value) => value.toLowerCase().includes(query))
     );
-  }, [accountRows, accountSearch, branchFilterId]);
+  }, [accountRows, accountSearch, accountTypeFilter, branchFilterId]);
+
+  const accountTypeOptions = useMemo(() => {
+    const knownTypes: BankingAccountType[] = ["SAVINGS", "CURRENT", "FIXED_DEPOSIT", "RECURRING_DEPOSIT", "LOAN", "PIGMY", "GENERAL"];
+    const visibleTypes = new Set(accountRows.map((account) => account.type));
+    return knownTypes.filter((type) => visibleTypes.has(type));
+  }, [accountRows]);
 
   const filteredGuarantors = useMemo(() => {
     const query = guarantorSearch.trim().toLowerCase();
@@ -733,19 +825,19 @@ export function SocietyOperationsWorkspace({
   const filteredApprovals = useMemo(() => {
     const query = approvalSearch.trim().toLowerCase();
     const branchScopedApprovals = branchFilterId
-      ? approvalRows.filter((row) => row.branchId === branchFilterId)
-      : approvalRows;
+      ? coApplicantRows.filter((row) => row.branchId === branchFilterId)
+      : coApplicantRows;
 
     if (!query) {
       return branchScopedApprovals;
     }
 
     return branchScopedApprovals.filter((row) =>
-      [row.clientName, row.customerCode, row.username, row.approvalSource].some((value) =>
+      [row.borrowerName, row.customerCode, row.loanAccountNumber, row.loanProfile, row.remarks].some((value) =>
         value.toLowerCase().includes(query)
       )
     );
-  }, [approvalRows, approvalSearch, branchFilterId]);
+  }, [approvalSearch, branchFilterId, coApplicantRows]);
 
   const visibleShareholdings = useMemo(
     () =>
@@ -854,7 +946,7 @@ export function SocietyOperationsWorkspace({
                 <Button
                   variant="contained"
                   startIcon={<AddRoundedIcon />}
-                  onClick={() => setSchemeDrawerOpen(true)}
+                  onClick={() => openSchemeDrawer()}
                   disabled={!canCreatePlans}
                   sx={{ bgcolor: "#fff", color: "#0f172a", borderRadius: 3, fontWeight: 900, "&:hover": { bgcolor: "#f8fafc" } }}
                 >
@@ -881,22 +973,23 @@ export function SocietyOperationsWorkspace({
 
           <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
             <TableContainer>
-              <Table sx={{ minWidth: 860, tableLayout: "fixed" }}>
+              <Table sx={{ minWidth: 980, tableLayout: "fixed" }}>
                 <TableHead sx={{ bgcolor: surfaces.tableHead }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>{planCopy.table.planCode}</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "28%" }}>{planCopy.table.planName}</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>{planCopy.table.type}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "16%" }}>{planCopy.table.planCode}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "26%" }}>{planCopy.table.planName}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "16%" }}>{planCopy.table.type}</TableCell>
                     <TableCell sx={{ fontWeight: 900, width: "18%" }}>{planCopy.table.tenure}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 900, width: "18%" }}>{planCopy.table.interest}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 900, width: "12%" }}>{planCopy.table.interest}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 900, width: "12%" }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {!schemeLoading && filteredSchemes.length === 0 ? (
-                    <TableEmpty colSpan={5} label={planCopy.table.emptyState} />
+                    <TableEmpty colSpan={6} label={planCopy.table.emptyState} />
                   ) : schemeLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
+                      <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
                         <CircularProgress size={28} />
                       </TableCell>
                     </TableRow>
@@ -930,6 +1023,26 @@ export function SocietyOperationsWorkspace({
                           <Typography variant="body2" sx={{ fontWeight: 900 }}>
                             {formatLocalizedNumber(Number(scheme.interestRate), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                           </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                            <IconButton
+                              size="small"
+                              disabled={!canCreatePlans}
+                              onClick={() => openSchemeDrawer(scheme)}
+                              aria-label={`Edit ${scheme.name}`}
+                            >
+                              <EditRoundedIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              disabled={!canCreatePlans || schemeSubmitting}
+                              onClick={() => void handleDeleteScheme(scheme)}
+                              aria-label={`Delete ${scheme.name}`}
+                            >
+                              <DeleteRoundedIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
                         </TableCell>
                       </TableRow>
                     ))
@@ -972,6 +1085,31 @@ export function SocietyOperationsWorkspace({
                     startAdornment: <SearchRoundedIcon sx={{ mr: 1, fontSize: 18, color: "rgba(255,255,255,0.65)" }} />
                   }}
                 />
+                <TextField
+                  select
+                  size="small"
+                  value={accountTypeFilter}
+                  onChange={(event) => {
+                    setAccountPage(0);
+                    setAccountTypeFilter(event.target.value as BankingAccountType | "");
+                  }}
+                  sx={{
+                    minWidth: { xs: "100%", sm: 220 },
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 3,
+                      bgcolor: surfaces.input,
+                      color: "#fff",
+                      border: `1px solid ${surfaces.inputBorder}`
+                    }
+                  }}
+                >
+                  <MenuItem value="">All account types</MenuItem>
+                  {accountTypeOptions.map((type) => (
+                    <MenuItem key={type} value={type}>
+                      {getAccountTypeLabel(type)}
+                    </MenuItem>
+                  ))}
+                </TextField>
                 <Button
                   variant="contained"
                   startIcon={<AddRoundedIcon />}
@@ -1266,9 +1404,9 @@ export function SocietyOperationsWorkspace({
         <Stack spacing={3}>
           <SectionHero
             icon={<VerifiedUserRoundedIcon />}
-            eyebrow={approvalCopy.hero.eyebrow}
-            title={approvalCopy.hero.title}
-            description={approvalCopy.hero.description}
+            eyebrow="Loan application desk"
+            title="Co-applicant & applied loan visibility"
+            description="Review which members have active loan applications, their linked loan account, current status, and the guarantor coverage already assigned."
             colorScheme="violet"
             actions={
               <TextField
@@ -1278,7 +1416,7 @@ export function SocietyOperationsWorkspace({
                     setApprovalPage(0);
                     setApprovalSearch(event.target.value);
                   }}
-                placeholder={approvalCopy.hero.searchPlaceholder}
+                placeholder="Search borrower, customer code, loan account, or remarks"
                 sx={{
                   minWidth: { xs: "100%", sm: 260 },
                   "& .MuiOutlinedInput-root": {
@@ -1300,34 +1438,34 @@ export function SocietyOperationsWorkspace({
               <Table sx={{ minWidth: 1040, tableLayout: "fixed" }}>
                 <TableHead sx={{ bgcolor: surfaces.tableHead }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 900, width: "24%" }}>{approvalCopy.table.client}</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>{approvalCopy.table.customerCode}</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "16%" }}>{approvalCopy.table.loginUsername}</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>{approvalCopy.table.approvedBy}</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>{approvalCopy.table.createdOn}</TableCell>
-                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>{approvalCopy.table.status}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "24%" }}>Borrower</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>Customer Code</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "16%" }}>Loan Account</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "18%" }}>Loan Profile</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>Applied On</TableCell>
+                    <TableCell sx={{ fontWeight: 900, width: "14%" }}>Status</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredApprovals.length === 0 ? (
-                    <TableEmpty colSpan={6} label={approvalCopy.table.emptyState} />
+                    <TableEmpty colSpan={6} label="No loan applications match the current filters." />
                   ) : (
                     filteredApprovals
                       .slice(approvalPage * approvalRowsPerPage, approvalPage * approvalRowsPerPage + approvalRowsPerPage)
                       .map((row) => (
                         <TableRow key={row.id} hover>
                           <TableCell>
-                            <Typography variant="body2" sx={{ fontWeight: 800 }}>{row.clientName}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 800 }}>{row.borrowerName}</Typography>
                             <Typography variant="caption" color="text.secondary">{row.branchName}</Typography>
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" sx={{ fontWeight: 700 }}>{row.customerCode}</Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" color="text.secondary">@{row.username}</Typography>
+                            <Typography variant="body2" color="text.secondary">{row.loanAccountNumber}</Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" color="text.secondary">{row.approvalSource}</Typography>
+                            <Typography variant="body2" color="text.secondary">{row.loanProfile}</Typography>
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" color="text.secondary">{formatDate(row.createdAt)}</Typography>
@@ -1335,8 +1473,8 @@ export function SocietyOperationsWorkspace({
                           <TableCell>
                             <Chip
                               size="small"
-                              label={row.status === "Approved" ? approvalCopy.table.approved : row.status}
-                              color={row.status === "Approved" ? "success" : "default"}
+                              label={row.status}
+                              color={row.status === "DISBURSED" ? "success" : "default"}
                             />
                           </TableCell>
                         </TableRow>
@@ -1355,16 +1493,11 @@ export function SocietyOperationsWorkspace({
                 setApprovalRowsPerPage(parseInt(event.target.value, 10));
                 setApprovalPage(0);
               }}
-              labelRowsPerPage={approvalCopy.pagination.rowsPerPage}
+              labelRowsPerPage="Rows per page"
               labelDisplayedRows={({ from, to, count }) =>
-                approvalCopy.pagination.displayedRows
-                  .replace("{{from}}", formatLocalizedNumber(from))
-                  .replace("{{to}}", formatLocalizedNumber(to))
-                  .replace("{{count}}", formatLocalizedNumber(count))
+                `${formatLocalizedNumber(from)}-${formatLocalizedNumber(to)} of ${formatLocalizedNumber(count)}`
               }
-              getItemAriaLabel={(buttonType) =>
-                buttonType === "next" ? approvalCopy.pagination.nextPage : approvalCopy.pagination.previousPage
-              }
+              getItemAriaLabel={(buttonType) => (buttonType === "next" ? "Next page" : "Previous page")}
             />
           </Paper>
         </Stack>
@@ -1373,24 +1506,38 @@ export function SocietyOperationsWorkspace({
       <Drawer
         anchor="right"
         open={schemeDrawerOpen}
-        onClose={() => setSchemeDrawerOpen(false)}
+        onClose={() => {
+          setSchemeDrawerOpen(false);
+          setEditingSchemeId(null);
+          setSchemeForm(createEmptySchemeForm());
+        }}
         PaperProps={{ sx: { width: { xs: "100%", md: 480 } } }}
       >
         <Box sx={{ display: "flex", minHeight: "100%", flexDirection: "column" }}>
           <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid rgba(15, 23, 42, 0.08)", position: "relative" }}>
-            <IconButton onClick={() => setSchemeDrawerOpen(false)} sx={{ position: "absolute", right: 16, top: 16 }}>
+            <IconButton
+              onClick={() => {
+                setSchemeDrawerOpen(false);
+                setEditingSchemeId(null);
+                setSchemeForm(createEmptySchemeForm());
+              }}
+              sx={{ position: "absolute", right: 16, top: 16 }}
+            >
               <CloseRoundedIcon />
             </IconButton>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              {planCopy.drawer.createDepositPlan}
+              {editingSchemeId ? "Edit Deposit Plan" : planCopy.drawer.createDepositPlan}
             </Typography>
           </Box>
           <Stack spacing={2} sx={{ px: 3, py: 3 }}>
             <TextField
               fullWidth
               label={planCopy.drawer.planCode}
-              value={schemeForm.code}
-              onChange={(event) => setSchemeForm((previous) => ({ ...previous, code: event.target.value.toUpperCase() }))}
+              value={editingSchemeId ? schemeForm.code : generatedSchemeCode}
+              InputProps={{
+                readOnly: true
+              }}
+              helperText="Generated automatically from the selected plan type."
             />
             <TextField
               fullWidth
@@ -1438,10 +1585,10 @@ export function SocietyOperationsWorkspace({
             <Button
               variant="contained"
               onClick={() => void handleCreateScheme()}
-              disabled={schemeSubmitting || !schemeForm.code.trim() || !schemeForm.name.trim()}
+              disabled={schemeSubmitting || !schemeForm.name.trim()}
               sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
             >
-              {planCopy.drawer.submitCreatePlan}
+              {editingSchemeId ? "Save Plan Changes" : planCopy.drawer.submitCreatePlan}
             </Button>
           </Stack>
         </Box>

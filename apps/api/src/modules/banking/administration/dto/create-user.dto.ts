@@ -1,14 +1,10 @@
-import { IsArray, IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, Matches, MinLength } from "class-validator";
+import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, Matches, MinLength } from "class-validator";
 import { UserRole } from "@prisma/client";
 
 export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   username!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  fullName!: string;
 
   @IsString()
   @IsNotEmpty()
@@ -29,20 +25,15 @@ export class CreateUserDto {
   @IsOptional()
   branchId?: string;
 
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\d{12}$/, {
+    message: "Aadhaar number must be exactly 12 digits"
+  })
+  aadhaarNumber!: string;
+
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
   allowedModuleSlugs?: string[];
-
-  @IsString()
-  @IsOptional()
-  phone?: string;
-
-  @IsEmail()
-  @IsOptional()
-  email?: string;
-
-  @IsString()
-  @IsOptional()
-  address?: string;
 }

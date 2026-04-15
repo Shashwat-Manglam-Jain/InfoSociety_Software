@@ -1,9 +1,10 @@
-import { IsEnum, IsOptional, IsString } from "class-validator";
+import { IsIn, IsOptional, IsString } from "class-validator";
 import { PaymentMethod } from "@prisma/client";
+import { paymentMethodCatalog } from "../../shared/payment-methods";
 
 export class UpgradeSubscriptionDto {
   @IsOptional()
-  @IsEnum(PaymentMethod)
+  @IsIn(paymentMethodCatalog)
   paymentMethod?: PaymentMethod;
 
   @IsOptional()
