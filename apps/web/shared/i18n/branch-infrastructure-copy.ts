@@ -46,7 +46,7 @@ const branchInfrastructureCopy: Record<AppLocale, BranchInfrastructureCopy> = {
     hero: {
       eyebrow: "Infrastructure",
       title: "Branch network",
-      description: "Maintain branch identity, location, and available services for each operating point.",
+      description: "Maintain branch identity, location, and available services for each operating point. Branches can be disabled instead of deleted.",
       addBranch: "Add branch"
     },
     metrics: {
@@ -75,18 +75,18 @@ const branchInfrastructureCopy: Record<AppLocale, BranchInfrastructureCopy> = {
       secureLockerAccess: "Secure Locker Access",
       digitalBankingEnabled: "Digital Banking Enabled",
       editInfrastructure: "Edit Infrastructure",
-      decommissionBranch: "Decommission Branch"
+      decommissionBranch: "Disable Branch"
     },
     status: {
       operating: "Operating",
-      closed: "Closed"
+      closed: "Disabled"
     }
   },
   hi: {
     hero: {
       eyebrow: "इन्फ्रास्ट्रक्चर",
       title: "शाखा नेटवर्क",
-      description: "हर संचालन केंद्र के लिए शाखा की पहचान, स्थान और उपलब्ध सेवाओं का रखरखाव करें।",
+      description: "हर संचालन केंद्र के लिए शाखा की पहचान, स्थान और उपलब्ध सेवाओं का रखरखाव करें। शाखाओं को हटाने के बजाय निष्क्रिय किया जा सकता है।",
       addBranch: "शाखा जोड़ें"
     },
     metrics: {
@@ -119,14 +119,14 @@ const branchInfrastructureCopy: Record<AppLocale, BranchInfrastructureCopy> = {
     },
     status: {
       operating: "चालू",
-      closed: "बंद"
+      closed: "निष्क्रिय"
     }
   },
   mr: {
     hero: {
       eyebrow: "इन्फ्रास्ट्रक्चर",
       title: "शाखा नेटवर्क",
-      description: "प्रत्येक कार्यरत केंद्रासाठी शाखेची ओळख, स्थान आणि उपलब्ध सेवा जतन करा.",
+      description: "प्रत्येक कार्यरत केंद्रासाठी शाखेची ओळख, स्थान आणि उपलब्ध सेवा जतन करा. शाखा डिलीट करण्याऐवजी डिसेबल करता येतात.",
       addBranch: "शाखा जोडा"
     },
     metrics: {
@@ -155,11 +155,11 @@ const branchInfrastructureCopy: Record<AppLocale, BranchInfrastructureCopy> = {
       secureLockerAccess: "सुरक्षित लॉकर सुविधा",
       digitalBankingEnabled: "डिजिटल बँकिंग सक्षम",
       editInfrastructure: "इन्फ्रास्ट्रक्चर संपादित करा",
-      decommissionBranch: "शाखा बंद करा"
+      decommissionBranch: "शाखा डिसेबल करा"
     },
     status: {
       operating: "कार्यरत",
-      closed: "बंद"
+      closed: "निष्क्रिय"
     }
   }
 };

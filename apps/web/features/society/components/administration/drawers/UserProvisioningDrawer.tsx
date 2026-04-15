@@ -17,14 +17,10 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { UserAccessSelector } from "../../user-access-selector";
 import type { UserFormState } from "../../../lib/society-admin-dashboard";
-import {
-  isStrongPassword,
-  normalizeAllowedModules,
-  toAccountType
-} from "../../../lib/society-admin-dashboard";
+import { isStrongPassword, toAccountType } from "../../../lib/society-admin-dashboard";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getUserProvisioningDrawerCopy } from "@/shared/i18n/user-provisioning-drawer-copy";
-import type { Branch, UserRole } from "@/shared/types";
+import type { Branch } from "@/shared/types";
 
 type UserProvisioningDrawerProps = {
   open: boolean;
@@ -34,12 +30,9 @@ type UserProvisioningDrawerProps = {
   onSave: () => void;
   loading: boolean;
   branches: Branch[];
-  updateStaffName: (value: string) => void;
   regeneratePassword: () => void;
   mode: "create" | "edit";
 };
-
-const roleOptions: UserRole[] = ["SUPER_USER", "AGENT", "CLIENT"];
 
 export function UserProvisioningDrawer({
   open,
@@ -49,7 +42,6 @@ export function UserProvisioningDrawer({
   onSave,
   loading,
   branches,
-  updateStaffName,
   regeneratePassword,
   mode
 }: UserProvisioningDrawerProps) {
@@ -59,9 +51,7 @@ export function UserProvisioningDrawer({
   const isEditing = mode === "edit";
   const passwordProvided = form.password.trim().length > 0;
   const passwordIsValid = !passwordProvided || isStrongPassword(form.password);
-  const passwordHelperText = isEditing
-    ? copy.password.editHelper
-    : copy.password.createHelper;
+  const passwordHelperText = isEditing ? copy.password.editHelper : copy.password.createHelper;
 
   return (
     <Drawer
@@ -90,49 +80,6 @@ export function UserProvisioningDrawer({
         </Box>
 
         <Stack spacing={3} sx={{ flex: 1, overflowY: "auto", px: 3, py: 3 }}>
-          <TextField fullWidth label={copy.fields.fullName} value={form.fullName} onChange={(event) => updateStaffName(event.target.value)} />
-
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                select
-                label={copy.fields.accountType}
-                value={form.role}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    role: event.target.value as UserRole,
-                    allowedModuleSlugs: normalizeAllowedModules(event.target.value as UserRole)
-                  })
-                }
-                disabled={isEditing}
-              >
-                {roleOptions.map((role) => (
-                  <MenuItem key={role} value={role}>
-                    {copy.roles[role].label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                select
-                label={copy.fields.branch}
-                value={form.branchId}
-                onChange={(event) => setForm({ ...form, branchId: event.target.value })}
-              >
-                <MenuItem value="">{copy.fields.headOfficeUnassigned}</MenuItem>
-                {branches.map((branch) => (
-                  <MenuItem key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-          </Grid>
-
           <Stack spacing={0.75}>
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
@@ -151,6 +98,39 @@ export function UserProvisioningDrawer({
             <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
+                label={copy.fields.aadhaarNumber}
+                value={form.aadhaarNumber}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    aadhaarNumber: event.target.value.replace(/\D/g, "").slice(0, 12)
+                  })
+                }
+                helperText={copy.fields.aadhaarHelper}
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                select
+                label={copy.fields.branch}
+                value={form.branchId}
+                onChange={(event) => setForm({ ...form, branchId: event.target.value })}
+              >
+                <MenuItem value="">{copy.fields.headOfficeUnassigned}</MenuItem>
+                {branches.map((branch) => (
+                  <MenuItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          </Grid>
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
                 label={copy.fields.username}
                 value={form.username}
                 onChange={(event) => setForm({ ...form, username: event.target.value })}
@@ -164,7 +144,7 @@ export function UserProvisioningDrawer({
                 value={form.password}
                 onChange={(event) => setForm({ ...form, password: event.target.value })}
                 error={!passwordIsValid}
-                helperText={!passwordIsValid ? passwordHelperText : passwordHelperText}
+                helperText={passwordHelperText}
                 InputProps={{
                   endAdornment: (
                     <IconButton size="small" onClick={regeneratePassword}>
@@ -175,37 +155,6 @@ export function UserProvisioningDrawer({
               />
             </Grid>
           </Grid>
-
-          {form.role !== "SUPER_USER" && (
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  fullWidth
-                  label={copy.fields.phone}
-                  value={form.phone}
-                  onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  fullWidth
-                  label={copy.fields.email}
-                  value={form.email}
-                  onChange={(event) => setForm({ ...form, email: event.target.value })}
-                />
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  label={copy.fields.address}
-                  value={form.address}
-                  onChange={(event) => setForm({ ...form, address: event.target.value })}
-                />
-              </Grid>
-            </Grid>
-          )}
 
           <UserAccessSelector
             accountType={toAccountType(form.role) as "SOCIETY" | "AGENT" | "CLIENT"}
@@ -219,7 +168,7 @@ export function UserProvisioningDrawer({
               variant="contained"
               disabled={
                 loading ||
-                !form.fullName.trim() ||
+                form.aadhaarNumber.trim().length !== 12 ||
                 !form.username.trim() ||
                 (!isEditing && !form.password.trim()) ||
                 !passwordIsValid

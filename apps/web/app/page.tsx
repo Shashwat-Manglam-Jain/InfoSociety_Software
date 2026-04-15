@@ -15,6 +15,7 @@ import { getWorkspaceDefinitions, getWorkspaceUiCopy } from "@/features/roles/wo
 import { toast } from "@/shared/ui/toast";
 import { getSession, getDefaultDashboardPath } from "@/shared/auth/session";
 import { getBillingPlans } from "@/shared/api/client";
+import { getCachedBillingPlans, setCachedBillingPlans } from "@/shared/public/public-data-cache";
 import { Box } from "@mui/material";
 import SecurityRoundedIcon from "@mui/icons-material/SecurityRounded";
 import SpeedRoundedIcon from "@mui/icons-material/SpeedRounded";
@@ -28,8 +29,8 @@ export default function HomePage() {
   const homeCopy = getHomePageCopy(locale);
   const workspaceUi = getWorkspaceUiCopy(locale);
   const workspaces = getWorkspaceDefinitions(locale);
-  const [billingPlans, setBillingPlans] = useState<BillingPlansResponse["plans"]>([]);
-  const [pricingLoading, setPricingLoading] = useState(true);
+  const [billingPlans, setBillingPlans] = useState<BillingPlansResponse["plans"]>(() => getCachedBillingPlans() ?? []);
+  const [pricingLoading, setPricingLoading] = useState(billingPlans.length === 0);
   const [pricingError, setPricingError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function HomePage() {
         }
 
         setBillingPlans(response.plans);
+        setCachedBillingPlans(response.plans);
         setPricingError(null);
       } catch (caught) {
         if (!active) {

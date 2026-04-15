@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { MemoryCacheService } from "../common/cache/memory-cache.service";
 import { PrismaModule } from "../common/database/prisma.module";
 import { AuthModule } from "../modules/auth/auth.module";
 import { BillingModule } from "../modules/billing/billing.module";
@@ -27,7 +28,13 @@ import { AppController } from "./app.controller";
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true
+      isGlobal: true,
+      envFilePath: [
+        `.env.${process.env.NODE_ENV ?? "development"}.local`,
+        `.env.${process.env.NODE_ENV ?? "development"}`,
+        ".env.local",
+        ".env"
+      ]
     }),
     PrismaModule,
     AuthModule,
@@ -52,6 +59,8 @@ import { AppController } from "./app.controller";
     BranchesModule,
     HeadsModule
   ],
-  controllers: [AppController]
+  controllers: [AppController],
+  providers: [MemoryCacheService],
+  exports: [MemoryCacheService]
 })
 export class AppModule {}

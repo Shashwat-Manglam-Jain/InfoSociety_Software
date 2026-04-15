@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { AccountType, LoanStatus, Prisma, UserRole } from "@prisma/client";
+import { AccountStatus, AccountType, LoanStatus, Prisma, UserRole } from "@prisma/client";
 import { bankingFeatureMap } from "../../shared/banking-feature-map";
 import { RequestUser } from "../../../common/auth/request-user.interface";
 import { PrismaService } from "../../../common/database/prisma.service";
@@ -38,7 +38,15 @@ export class LoansService {
               id: true,
               accountNumber: true,
               societyId: true,
-              currentBalance: true
+              currentBalance: true,
+              branchId: true,
+              branch: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true
+                }
+              }
             }
           },
           customer: {
@@ -115,35 +123,8 @@ export class LoansService {
         .map((entry) => entry?.trim())
         .filter((entry): entry is string => Boolean(entry));
 
-      if (new Set(guarantorIds).size !== guarantorIds.length) {
-        throw new BadRequestException("Guarantor accounts must be unique");
-      }
-
-      if (guarantorIds.includes(customer.id)) {
-        throw new BadRequestException("Borrower cannot be assigned as guarantor");
-      }
-
-      if (guarantorIds.length) {
-        const guarantors = await tx.customer.findMany({
-          where: {
-            id: {
-              in: guarantorIds
-            }
-          },
-          select: {
-            id: true,
-            societyId: true
-          }
-        });
-
-        if (guarantors.length !== guarantorIds.length) {
-          throw new NotFoundException("One or more guarantor customers were not found");
-        }
-
-        if (guarantors.some((entry) => entry.societyId !== customer.societyId)) {
-          throw new BadRequestException("Guarantors must belong to the same society");
-        }
-      }
+      await this.validateBorrowerEligibility(tx, customer.id, customer.societyId);
+      await this.validateGuarantorAssignments(tx, customer.id, customer.societyId, guarantorIds);
 
       let accountId = dto.accountId;
 
@@ -598,7 +579,7 @@ export class LoansService {
     }
 
     if (!guarantorIds.length) {
-      return;
+      throw new BadRequestException("At least one guarantor is required before applying for a loan");
     }
 
     const guarantors = await tx.customer.findMany({
@@ -609,7 +590,19 @@ export class LoansService {
       },
       select: {
         id: true,
-        societyId: true
+        societyId: true,
+        accounts: {
+          where: {
+            status: AccountStatus.ACTIVE,
+            type: {
+              not: AccountType.LOAN
+            }
+          },
+          select: {
+            type: true,
+            currentBalance: true
+          }
+        }
       }
     });
 
@@ -619,6 +612,39 @@ export class LoansService {
 
     if (guarantors.some((entry) => entry.societyId !== societyId)) {
       throw new BadRequestException("Guarantors must belong to the same society");
+    }
+
+    const ineligibleGuarantor = guarantors.find((entry) => {
+      const availableBalance = entry.accounts.reduce((sum, account) => sum + Number(account.currentBalance ?? 0), 0);
+      return availableBalance <= 0;
+    });
+
+    if (ineligibleGuarantor) {
+      throw new BadRequestException("Each guarantor must have a positive active balance before backing a loan");
+    }
+  }
+
+  private async validateBorrowerEligibility(
+    tx: Prisma.TransactionClient | PrismaService,
+    borrowerCustomerId: string,
+    societyId: string
+  ) {
+    const borrowerAccounts = await tx.account.findMany({
+      where: {
+        customerId: borrowerCustomerId,
+        societyId,
+        status: AccountStatus.ACTIVE,
+        type: {
+          not: AccountType.LOAN
+        }
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!borrowerAccounts.length) {
+      throw new BadRequestException("Loan applicant must have an active member account or share register before applying");
     }
   }
 

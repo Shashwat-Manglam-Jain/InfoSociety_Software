@@ -175,7 +175,13 @@ export function BranchDrawer({ open, onClose, form, setForm, onSave, loading }: 
               label={copy.toggles.digitalTransfers}
             />
             <FormControlLabel
-              control={<Switch checked={form.isActive} onChange={(event) => updateField("isActive", event.target.checked)} />}
+              control={
+                <Switch
+                  checked={form.isActive}
+                  onChange={(event) => updateField("isActive", event.target.checked)}
+                  disabled={form.isHead}
+                />
+              }
               label={copy.toggles.branchActive}
             />
           </Stack>

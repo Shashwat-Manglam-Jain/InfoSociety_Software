@@ -3,13 +3,14 @@ import type { AppAccountType, UserRole } from "@/shared/types";
 
 const moduleAccessByAccountType: Record<AppAccountType, string[]> = {
   // Self-service members: only their own banking operations, no master data
-  CLIENT: ["customers", "accounts", "deposits", "loans", "transactions", "locker"],
+  CLIENT: ["customers", "accounts", "deposits", "loans", "transactions", "locker", "payments"],
   AGENT: [
     "customers",
     "accounts",
     "deposits",
     "loans",
     "transactions",
+    "payments",
     "cheque-clearing",
     "demand-drafts",
     "ibc-obc",
@@ -23,6 +24,7 @@ const moduleAccessByAccountType: Record<AppAccountType, string[]> = {
     "deposits",
     "loans",
     "transactions",
+    "payments",
     "cheque-clearing",
     "demand-drafts",
     "ibc-obc",
@@ -34,7 +36,7 @@ const moduleAccessByAccountType: Record<AppAccountType, string[]> = {
     "users",
     "monitoring"
   ],
-  PLATFORM: ["monitoring", "users", "reports"]
+  PLATFORM: ["monitoring", "users", "reports", "payments"]
 };
 
 const requiredModuleSlugsByAccountType: Record<AppAccountType, string[]> = {

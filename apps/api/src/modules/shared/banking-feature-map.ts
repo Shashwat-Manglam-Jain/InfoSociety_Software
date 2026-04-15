@@ -49,6 +49,15 @@ export const bankingFeatureMap: Record<string, BankingFeatureGroup> = {
       "Pigmy agent and client transaction operations"
     ]
   },
+  payments: {
+    description: "Member payment requests, digital collections, and agent cash collection tracking.",
+    workflows: [
+      "Create member payment requests",
+      "Collect UPI, card, net banking, or cash payments",
+      "Track pending and successful collections",
+      "Review payment-wise audit activity"
+    ]
+  },
   "cheque-clearing": {
     description: "Cheque clearing house entries and return/cancel handling.",
     workflows: [

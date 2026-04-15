@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Reflector } from "@nestjs/core";
 import { Request } from "express";
+import { getAuthCookieName, parseCookieHeader } from "./auth-cookie";
 import { IS_PUBLIC_KEY } from "./public.decorator";
 import { RequestUser } from "./request-user.interface";
 
@@ -22,13 +23,11 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<Request & { user?: RequestUser }>();
-    const authorization = request.headers.authorization;
+    const token = this.resolveToken(request);
 
-    if (!authorization || !authorization.startsWith("Bearer ")) {
-      throw new UnauthorizedException("Missing bearer token");
+    if (!token) {
+      throw new UnauthorizedException("Missing authentication token");
     }
-
-    const token = authorization.slice(7);
 
     try {
       const payload = this.jwtService.verify<RequestUser>(token, {
@@ -40,5 +39,15 @@ export class JwtAuthGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException("Invalid or expired token");
     }
+  }
+
+  private resolveToken(request: Request) {
+    const authorization = request.headers.authorization;
+
+    if (authorization?.startsWith("Bearer ")) {
+      return authorization.slice(7);
+    }
+
+    return parseCookieHeader(request.headers.cookie, getAuthCookieName(this.configService));
   }
 }

@@ -38,16 +38,13 @@ export type BranchFormState = {
 
 
 export type UserFormState = {
-  fullName: string;
+  aadhaarNumber: string;
   role: UserRole;
   branchId: string;
   username: string;
   password: string;
   allowedModuleSlugs: string[];
   isActive: boolean;
-  phone: string;
-  email: string;
-  address: string;
 };
 
 export type ManagedUserRow = AdministrationUserRecord & {
@@ -87,7 +84,7 @@ export type TreasuryTransactionRow = {
   date: string;
   reference: string;
   category: string;
-  type: "DEBIT" | "CREDIT";
+  type: "DEBIT" | "CREDIT" | null;
   amount: number;
   accountNumber: string;
   customerName: string;
@@ -95,13 +92,24 @@ export type TreasuryTransactionRow = {
   branchName: string;
   branchCode: string;
   enteredBy: string;
+  module: string;
+  action: string;
+  status: string;
+  detail: string;
+};
+
+const SOCIETY_ADMIN_META: RoleMeta = {
+  label: "Society Admin",
+  shortLabel: "Admin",
+  description: "Primary society administrator account created during society onboarding.",
+  accountType: "SOCIETY"
 };
 
 export const ROLE_META: Record<UserRole, RoleMeta> = {
   SUPER_USER: {
-    label: "Staff",
+    label: "Society Staff",
     shortLabel: "Staff",
-    description: "Accesses internal society operations, handles daily transactions and records.",
+    description: "Handles internal society operations, branch work, and day-to-day records.",
     accountType: "SOCIETY"
   },
   AGENT: {
@@ -210,16 +218,13 @@ export function createBranchForm(branch?: Branch | null): BranchFormState {
 
 export function createEmptyUserForm(role: UserRole = "SUPER_USER"): UserFormState {
   return {
-    fullName: "",
+    aadhaarNumber: "",
     role,
     branchId: "",
     username: "",
     password: createTemporaryPassword(),
     allowedModuleSlugs: sanitizeAllowedModuleSlugs(resolveAccountTypeByRole(role)),
-    isActive: true,
-    phone: "",
-    email: "",
-    address: ""
+    isActive: true
   };
 }
 
@@ -229,20 +234,21 @@ export function createUserForm(role: UserRole = "SUPER_USER") {
 
 export function createUserFormFromManagedUser(user: ManagedUserRow): UserFormState {
   return {
-    fullName: user.fullName,
+    aadhaarNumber: user.aadhaarNumber ?? "",
     role: user.role,
     branchId: user.branchId ?? "",
     username: user.username,
     password: "",
     allowedModuleSlugs: normalizeAllowedModules(user.role, user.allowedModuleSlugs),
-    isActive: user.isActive,
-    phone: user.customerProfile?.phone ?? "",
-    email: user.customerProfile?.email ?? "",
-    address: user.customerProfile?.address ?? ""
+    isActive: user.isActive
   };
 }
 
-export function getRoleMeta(role: UserRole) {
+export function getRoleMeta(role: UserRole, isSocietyAdmin = false) {
+  if (role === "SUPER_USER" && isSocietyAdmin) {
+    return SOCIETY_ADMIN_META;
+  }
+
   return ROLE_META[role];
 }
 
@@ -290,7 +296,7 @@ export function buildManagedUsers(users: AdministrationUserRecord[], branches: B
     ...user,
     allowedModuleSlugs: normalizeAllowedModules(user.role, user.allowedModuleSlugs),
     branch: user.branchId ? branchMap.get(user.branchId) ?? null : null,
-    roleMeta: getRoleMeta(user.role)
+    roleMeta: getRoleMeta(user.role, Boolean(user.isSocietyAdmin))
   }));
 }
 
@@ -343,7 +349,11 @@ export function buildTreasuryRows(
       branchId: transaction.account.branchId ?? null,
       branchName: branch?.name ?? transaction.account.branchCode ?? "Head Office",
       branchCode: branch?.code ?? transaction.account.branchCode ?? "-",
-      enteredBy: transaction.createdBy.fullName || transaction.createdBy.username
+      enteredBy: transaction.createdBy?.fullName || transaction.createdBy?.username || "System",
+      module: transaction.sourceModule ?? "transactions",
+      action: transaction.sourceAction ?? "Activity",
+      status: transaction.status ?? (transaction.isPassed ? "PASSED" : "PENDING"),
+      detail: transaction.remark ?? "-"
     };
   });
 }

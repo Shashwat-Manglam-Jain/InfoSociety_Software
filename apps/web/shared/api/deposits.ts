@@ -13,7 +13,7 @@ export type DepositSchemeRecord = {
 };
 
 export type CreateDepositSchemePayload = {
-  code: string;
+  code?: string;
   name: string;
   minMonths: number;
   maxMonths: number;
@@ -35,6 +35,14 @@ export async function listDepositSchemes(token: string) {
 
 export async function createDepositScheme(token: string, payload: CreateDepositSchemePayload) {
   return apiRequest<DepositSchemeRecord>(token, "POST", "/deposits/schemes", payload);
+}
+
+export async function updateDepositScheme(token: string, schemeId: string, payload: CreateDepositSchemePayload) {
+  return apiRequest<DepositSchemeRecord>(token, "PATCH", `/deposits/schemes/${schemeId}`, payload);
+}
+
+export async function deleteDepositScheme(token: string, schemeId: string) {
+  return apiRequest<{ success: boolean }>(token, "DELETE", `/deposits/schemes/${schemeId}`);
 }
 
 export async function openDepositAccount(token: string, payload: OpenDepositAccountPayload) {

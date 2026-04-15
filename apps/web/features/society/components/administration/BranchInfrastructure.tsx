@@ -17,7 +17,7 @@ import {
   Typography
 } from "@mui/material";
 import AddLocationAltRoundedIcon from "@mui/icons-material/AddLocationAltRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
@@ -335,19 +335,21 @@ export function BranchInfrastructure({ branches, handleOpenDrawer, handleDeleteB
                             <EditRoundedIcon sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title={copy.tooltips.decommissionBranch}>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleDeleteBranch(branch.id)}
-                            sx={{
-                              borderRadius: 1,
-                              "&:hover": { bgcolor: alpha(theme.palette.error.main, isDark ? 0.16 : 0.08) }
-                            }}
-                          >
-                            <DeleteOutlineRoundedIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        </Tooltip>
+                        {!branch.isHead && branch.isActive ? (
+                          <Tooltip title={copy.tooltips.decommissionBranch}>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteBranch(branch.id)}
+                              sx={{
+                                borderRadius: 1,
+                                "&:hover": { bgcolor: alpha(theme.palette.error.main, isDark ? 0.16 : 0.08) }
+                              }}
+                            >
+                              <BlockRoundedIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </Tooltip>
+                        ) : null}
                       </Stack>
                     </TableCell>
                   </TableRow>

@@ -1,256 +1,342 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
+import AccountBalanceRoundedIcon from "@mui/icons-material/AccountBalanceRounded";
+import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+import CurrencyRupeeRoundedIcon from "@mui/icons-material/CurrencyRupeeRounded";
+import GavelRoundedIcon from "@mui/icons-material/GavelRounded";
+import InventoryRoundedIcon from "@mui/icons-material/InventoryRounded";
+import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
+import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
+import TodayRoundedIcon from "@mui/icons-material/TodayRounded";
 import {
   alpha,
   Avatar,
   Box,
   Card,
   CardContent,
-  Grid,
   Paper,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Typography,
   useTheme
 } from "@mui/material";
-import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
-import AssignmentTurnedInRoundedIcon from "@mui/icons-material/AssignmentTurnedInRounded";
-import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
-import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
-import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
-import { useLanguage } from "@/shared/i18n/language-provider";
-import { getSocietyDashboardOverviewCopy } from "@/shared/i18n/society-dashboard-overview-copy";
+import Grid from "@mui/material/Grid";
+import type { SocietyOverviewRecord } from "@/shared/api/administration";
+import type { LoanRecord } from "@/shared/api/loans";
+import type { Branch } from "@/shared/types";
+import {
+  buildBranchCollectionRows,
+  buildLoanApplicationSummaryRows,
+  countOpenLoanApplications,
+  getMonthlyNetEarnings
+} from "@/features/society/lib/dashboard-overview";
+import { TableEmpty } from "@/features/society/components/operations/shared/TableEmpty";
+import { StatusChip, type StatusTone } from "@/features/society/components/operations/shared/StatusChip";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
 
-function MockBarChart({ isDark }: { isDark: boolean }) {
-  const bars = [40, 65, 45, 80, 55, 90, 75];
-  const max = 100;
+type DashboardOverviewProps = {
+  societyForm: {
+    name?: string;
+  };
+  branches: Branch[];
+  overview: SocietyOverviewRecord;
+  branchOverviews: Record<string, SocietyOverviewRecord>;
+  loans: LoanRecord[];
+  formatCurrency: (value: number) => string;
+  formatDate: (value: string) => string;
+};
 
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "flex-end",
-        height: 200,
-        gap: 2,
-        pt: 2,
-        borderBottom: `1px solid ${isDark ? "#334155" : "#cbd5e1"}`
-      }}
-    >
-      {bars.map((value, index) => (
-        <Box
-          key={index}
-          sx={{
-            flex: 1,
-            height: `${(value / max) * 100}%`,
-            bgcolor: DESIGN_SYSTEM.COLORS.blue,
-            borderRadius: "4px 4px 0 0",
-            transition: "height 1s ease",
-            opacity: 0.85,
-            "&:hover": { opacity: 1 }
-          }}
-        />
-      ))}
-    </Box>
-  );
+type MetricDefinition = {
+  label: string;
+  value: string;
+  caption: string;
+  icon: React.ReactNode;
+  color: string;
+};
+
+function getLoanStatusTone(status: LoanRecord["status"]): StatusTone {
+  switch (status) {
+    case "APPLIED":
+      return "warning";
+    case "SANCTIONED":
+      return "info";
+    case "DISBURSED":
+      return "success";
+    case "OVERDUE":
+      return "error";
+    default:
+      return "default";
+  }
 }
 
-function interpolate(template: string, vars: Record<string, string | number>) {
-  return Object.entries(vars).reduce((result, [key, value]) => {
-    return result.replaceAll(`{{${key}}}`, String(value));
-  }, template);
-}
-
-function formatCurrency(value: number, localeTag: string) {
-  return new Intl.NumberFormat(localeTag, {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0
-  }).format(value);
-}
-
-export function DashboardOverview({ societyForm, transactions, agents, managedUsers }: any) {
+export function DashboardOverview({
+  societyForm,
+  branches,
+  overview,
+  branchOverviews,
+  loans,
+  formatCurrency,
+  formatDate
+}: DashboardOverviewProps) {
   const theme = useTheme();
-  const { locale } = useLanguage();
-  const copy = getSocietyDashboardOverviewCopy(locale);
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
 
-  void transactions;
+  const branchRows = useMemo(
+    () => buildBranchCollectionRows(branches, branchOverviews),
+    [branches, branchOverviews]
+  );
+  const loanRows = useMemo(
+    () => buildLoanApplicationSummaryRows(loans).filter((loan) => loan.status !== "CLOSED").slice(0, 8),
+    [loans]
+  );
+  const monthlyNetEarnings = getMonthlyNetEarnings(overview);
+  const openLoanApplications = countOpenLoanApplications(loans);
 
-  const todayCollection = 12500;
-  const weeklyCollection = 85400;
-  const monthlyCollection = 320000;
-  const pendingCheques = 45000;
-  const clearedCheques = 280000;
+  const metrics: MetricDefinition[] = [
+    {
+      label: "Today collection",
+      value: formatCurrency(overview.collectionApproved.daily),
+      caption: "Approved collection posted today",
+      icon: <TodayRoundedIcon />,
+      color: DESIGN_SYSTEM.COLORS.blue
+    },
+    {
+      label: "Weekly collection",
+      value: formatCurrency(overview.collectionApproved.weekly),
+      caption: "Approved collection in the last 7 days",
+      icon: <CurrencyRupeeRoundedIcon />,
+      color: DESIGN_SYSTEM.COLORS.sky
+    },
+    {
+      label: "Monthly collection",
+      value: formatCurrency(overview.collectionApproved.monthly),
+      caption: "Approved collection in the current month",
+      icon: <PaidRoundedIcon />,
+      color: DESIGN_SYSTEM.COLORS.emerald
+    },
+    {
+      label: "Bank balance",
+      value: formatCurrency(overview.bankBalance),
+      caption: "Amount currently available in bank accounts",
+      icon: <AccountBalanceRoundedIcon />,
+      color: DESIGN_SYSTEM.COLORS.amber
+    },
+    {
+      label: "Loan amount given",
+      value: formatCurrency(overview.totalDistributed),
+      caption: "Total amount disbursed as loans",
+      icon: <GavelRoundedIcon />,
+      color: DESIGN_SYSTEM.COLORS.violet
+    },
+    {
+      label: "Total amount in society",
+      value: formatCurrency(overview.totalCapital),
+      caption: "Current value across non-loan society accounts",
+      icon: <InventoryRoundedIcon />,
+      color: DESIGN_SYSTEM.COLORS.blue
+    },
+    {
+      label: "Monthly net earnings",
+      value: formatCurrency(monthlyNetEarnings),
+      caption: "This month collections minus loan disbursals",
+      icon: <AccountBalanceWalletRoundedIcon />,
+      color: DESIGN_SYSTEM.COLORS.emerald
+    },
+    {
+      label: "Open loan applications",
+      value: String(openLoanApplications),
+      caption: "Applied or sanctioned requests still in progress",
+      icon: <PendingActionsRoundedIcon />,
+      color: DESIGN_SYSTEM.COLORS.amber
+    }
+  ];
 
   return (
-    <Stack spacing={4}>
+    <Stack spacing={3}>
       <Paper
         elevation={0}
         sx={{
-          p: 4,
+          p: 3,
           borderRadius: 1,
-          bgcolor: isDark ? alpha(DESIGN_SYSTEM.COLORS.blue, 0.1) : alpha(DESIGN_SYSTEM.COLORS.blue, 0.05),
-          border: `1px solid ${alpha(DESIGN_SYSTEM.COLORS.blue, 0.2)}`,
-          display: "flex",
-          alignItems: "center",
-          gap: 3
+          border: `1px solid ${surfaces.border}`,
+          bgcolor: surfaces.paper
         }}
       >
-        <Avatar
-          src={societyForm?.logoUrl}
-          sx={{ width: 80, height: 80, border: `2px solid ${DESIGN_SYSTEM.COLORS.blue}` }}
-        />
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 900, color: "text.primary", mb: 0.5 }}>
-            {interpolate(copy.welcomeTitle, {
-              name: societyForm?.name || copy.fallbackSocietyName
-            })}
+        <Stack spacing={1}>
+          <Typography variant="h5" sx={{ fontWeight: 900, color: "text.primary" }}>
+            Dashboard
           </Typography>
-          <Typography variant="body1" sx={{ color: "text.secondary", fontWeight: 500 }}>
-            {copy.welcomeSubtitle}
+          <Typography variant="body2" sx={{ color: "text.secondary", maxWidth: 760 }}>
+            {societyForm?.name || "Society"} snapshot focused on branch collections, loan demand, bank position, and monthly earnings.
           </Typography>
-        </Box>
+        </Stack>
       </Paper>
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card elevation={0} sx={{ borderRadius: 1, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-                <Avatar sx={{ bgcolor: alpha(DESIGN_SYSTEM.COLORS.emerald, 0.1), color: DESIGN_SYSTEM.COLORS.emerald }}>
-                  <TrendingUpRoundedIcon />
-                </Avatar>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "text.secondary", textTransform: "uppercase" }}>
-                  {copy.stats.today}
-                </Typography>
-              </Stack>
-              <Typography variant="h4" sx={{ fontWeight: 900 }}>
-                {formatCurrency(todayCollection, copy.localeTag)}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card elevation={0} sx={{ borderRadius: 1, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-                <Avatar sx={{ bgcolor: alpha(DESIGN_SYSTEM.COLORS.sky, 0.1), color: DESIGN_SYSTEM.COLORS.sky }}>
-                  <AccountBalanceWalletRoundedIcon />
-                </Avatar>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "text.secondary", textTransform: "uppercase" }}>
-                  {copy.stats.weekly}
-                </Typography>
-              </Stack>
-              <Typography variant="h4" sx={{ fontWeight: 900 }}>
-                {formatCurrency(weeklyCollection, copy.localeTag)}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card elevation={0} sx={{ borderRadius: 1, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-                <Avatar sx={{ bgcolor: alpha(DESIGN_SYSTEM.COLORS.amber, 0.1), color: DESIGN_SYSTEM.COLORS.amber }}>
-                  <PendingActionsRoundedIcon />
-                </Avatar>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "text.secondary", textTransform: "uppercase" }}>
-                  {copy.stats.pending}
-                </Typography>
-              </Stack>
-              <Typography variant="h4" sx={{ fontWeight: 900 }}>
-                {formatCurrency(pendingCheques, copy.localeTag)}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card elevation={0} sx={{ borderRadius: 1, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
-                <Avatar sx={{ bgcolor: alpha(DESIGN_SYSTEM.COLORS.emerald, 0.1), color: DESIGN_SYSTEM.COLORS.emerald }}>
-                  <AssignmentTurnedInRoundedIcon />
-                </Avatar>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "text.secondary", textTransform: "uppercase" }}>
-                  {copy.stats.cleared}
-                </Typography>
-              </Stack>
-              <Typography variant="h4" sx={{ fontWeight: 900 }}>
-                {formatCurrency(clearedCheques, copy.localeTag)}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+      <Grid container spacing={2}>
+        {metrics.map((metric) => (
+          <Grid key={metric.label} size={{ xs: 12, sm: 6, lg: 3 }}>
+            <Card
+              elevation={0}
+              sx={{
+                height: "100%",
+                borderRadius: 1,
+                border: `1px solid ${surfaces.border}`,
+                bgcolor: surfaces.paper
+              }}
+            >
+              <CardContent sx={{ height: "100%" }}>
+                <Stack spacing={2} sx={{ height: "100%" }}>
+                  <Stack direction="row" alignItems="center" spacing={1.5}>
+                    <Avatar
+                      sx={{
+                        bgcolor: alpha(metric.color, isDark ? 0.2 : 0.12),
+                        color: metric.color,
+                        width: 44,
+                        height: 44
+                      }}
+                    >
+                      {metric.icon}
+                    </Avatar>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "text.secondary" }}>
+                      {metric.label}
+                    </Typography>
+                  </Stack>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 900, color: "text.primary", mb: 0.75 }}>
+                      {metric.value}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      {metric.caption}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
       </Grid>
 
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12, lg: 7 }}>
           <Paper
             elevation={0}
-            sx={{ p: 4, borderRadius: 1, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper, height: "100%" }}
+            sx={{
+              borderRadius: 1,
+              border: `1px solid ${surfaces.border}`,
+              bgcolor: surfaces.paper,
+              overflow: "hidden"
+            }}
           >
-            <Typography variant="h6" sx={{ fontWeight: 900, mb: 1 }}>
-              {copy.growthTitle}
-            </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary", mb: 4 }}>
-              {copy.growthSubtitle}
-            </Typography>
-            <MockBarChart isDark={isDark} />
-            <Stack direction="row" spacing={4} sx={{ mt: 2 }} justifyContent="space-between">
-              {copy.weekDays.map((day) => (
-                <Typography key={day} variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
-                  {day}
-                </Typography>
-              ))}
-            </Stack>
+            <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${surfaces.border}` }}>
+              <Typography variant="h6" sx={{ fontWeight: 900, color: "text.primary" }}>
+                Branch collection history
+              </Typography>
+              <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                Daily, weekly, and monthly collection for each visible branch.
+              </Typography>
+            </Box>
+
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 800 }}>Branch</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Today</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Last 7 days</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>This month</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {branchRows.length === 0 ? (
+                    <TableEmpty colSpan={4} label="No branch collections are available yet." />
+                  ) : (
+                    branchRows.map((branch) => (
+                      <TableRow key={branch.id} hover>
+                        <TableCell>
+                          <Stack spacing={0.25}>
+                            <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>
+                              {branch.name}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                              {branch.code}
+                            </Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{formatCurrency(branch.todayCollection)}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{formatCurrency(branch.weeklyCollection)}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{formatCurrency(branch.monthlyCollection)}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, lg: 5 }}>
           <Paper
             elevation={0}
-            sx={{ p: 4, borderRadius: 1, border: `1px solid ${surfaces.border}`, bgcolor: surfaces.paper, height: "100%" }}
+            sx={{
+              borderRadius: 1,
+              border: `1px solid ${surfaces.border}`,
+              bgcolor: surfaces.paper,
+              overflow: "hidden"
+            }}
           >
-            <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
-              <Avatar sx={{ bgcolor: alpha(DESIGN_SYSTEM.COLORS.violet, 0.1), color: DESIGN_SYSTEM.COLORS.violet }}>
-                <PeopleAltRoundedIcon />
-              </Avatar>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                {copy.networkPulseTitle}
+            <Box sx={{ px: 3, py: 2.5, borderBottom: `1px solid ${surfaces.border}` }}>
+              <Typography variant="h6" sx={{ fontWeight: 900, color: "text.primary" }}>
+                Loan applications
               </Typography>
-            </Stack>
+              <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                Latest member loan requests with amount and processing status.
+              </Typography>
+            </Box>
 
-            <Stack spacing={3}>
-              <Box>
-                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700, textTransform: "uppercase" }}>
-                  {copy.networkPulseStats.agents}
-                </Typography>
-                <Typography variant="h3" sx={{ fontWeight: 900, color: DESIGN_SYSTEM.COLORS.blue }}>
-                  {agents?.length || 0}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700, textTransform: "uppercase" }}>
-                  {copy.networkPulseStats.users}
-                </Typography>
-                <Typography variant="h3" sx={{ fontWeight: 900, color: DESIGN_SYSTEM.COLORS.sky }}>
-                  {managedUsers?.length || 0}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700, textTransform: "uppercase" }}>
-                  {copy.networkPulseStats.monthlyCollection}
-                </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 900, color: DESIGN_SYSTEM.COLORS.emerald }}>
-                  {formatCurrency(monthlyCollection, copy.localeTag)}
-                </Typography>
-              </Box>
-            </Stack>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 800 }}>Applicant</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Amount</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Applied on</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {loanRows.length === 0 ? (
+                    <TableEmpty colSpan={4} label="No loan applications are available for this view." />
+                  ) : (
+                    loanRows.map((loan) => (
+                      <TableRow key={loan.id} hover>
+                        <TableCell>
+                          <Stack spacing={0.25}>
+                            <Typography variant="body2" sx={{ fontWeight: 800, color: "text.primary" }}>
+                              {loan.applicantName}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                              {loan.customerCode} · {loan.branchName}
+                            </Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{formatCurrency(loan.applicationAmount)}</TableCell>
+                        <TableCell>
+                          <StatusChip label={loan.status} tone={getLoanStatusTone(loan.status)} />
+                        </TableCell>
+                        <TableCell sx={{ color: "text.secondary" }}>{formatDate(loan.createdAt)}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Paper>
         </Grid>
       </Grid>
