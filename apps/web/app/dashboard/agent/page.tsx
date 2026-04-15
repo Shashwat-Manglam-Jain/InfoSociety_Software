@@ -27,7 +27,7 @@ import {
   Stack,
   Typography
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { CustomerWorkspace } from "@/features/banking/workspaces/customer-workspace";
 import { DemandDraftWorkspace } from "@/features/banking/workspaces/demand-draft-workspace";
@@ -127,6 +127,7 @@ function buildLockerClients(customers: CustomerListRecord[], branchId?: string |
 export default function AgentDashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const theme = useTheme();
   const requestedView = searchParams.get("view");
   const currentView: AgentView =
     requestedView && AGENT_VIEWS.has(requestedView as AgentView) ? (requestedView as AgentView) : "overview";
@@ -138,6 +139,12 @@ export default function AgentDashboardPage() {
   const [sessionBranchName, setSessionBranchName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isDark = theme.palette.mode === "dark";
+  const panelBg = alpha(theme.palette.background.paper, isDark ? 0.8 : 0.97);
+  const panelBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.9 : 1)}`;
+  const panelShadow = isDark ? "0 10px 28px rgba(2,6,23,0.42)" : "0 8px 24px -12px rgba(15,23,42,0.08)";
+  const pageTitleSx = { fontWeight: 900, letterSpacing: "-0.025em", fontSize: { xs: "1.8rem", md: "2.2rem" } } as const;
+  const sectionTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.02em", fontSize: { xs: "1.1rem", md: "1.3rem" } } as const;
 
   useEffect(() => {
     async function loadData() {
@@ -373,28 +380,28 @@ export default function AgentDashboardPage() {
                     <Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="space-between">
                       <Box>
                         <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 1.2 }}>
-                          <Chip label="AGENT ACCESS" size="small" sx={{ bgcolor: "rgba(255,255,255,0.16)", color: "#fff", fontWeight: 900 }} />
-                          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.72)", fontWeight: 800, letterSpacing: 1.2 }}>
+                          <Chip label="AGENT ACCESS" size="small" sx={{ bgcolor: alpha(theme.palette.common.white, 0.16), color: "#fff", fontWeight: 900 }} />
+                          <Typography variant="caption" sx={{ color: alpha(theme.palette.common.white, 0.72), fontWeight: 800, letterSpacing: 1.2, fontSize: { xs: "0.72rem", md: "0.78rem" } }}>
                             {user.society?.name?.toUpperCase()} · {user.customerProfile?.customerCode ?? user.username}
                           </Typography>
                         </Stack>
-                        <Typography variant="h4" sx={{ fontWeight: 900 }}>
+                        <Typography variant="h4" sx={pageTitleSx}>
                           Agent Workstation
                         </Typography>
-                        <Typography sx={{ mt: 1.2, maxWidth: 720, color: "rgba(255,255,255,0.82)" }}>
+                        <Typography sx={{ mt: 1.2, maxWidth: 720, color: alpha(theme.palette.common.white, 0.82), fontSize: { xs: "0.95rem", md: "1rem" }, lineHeight: 1.65 }}>
                           This workspace now opens real banking desks directly. Pick a service from the sidebar or jump in from the live cards below.
                         </Typography>
                       </Box>
 
-                      <Card sx={{ minWidth: 250, borderRadius: 2, bgcolor: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.12)" }}>
+                      <Card sx={{ minWidth: 250, borderRadius: 2, bgcolor: alpha(theme.palette.common.white, 0.08), color: "#fff", border: `1px solid ${alpha(theme.palette.common.white, 0.12)}` }}>
                         <CardContent>
-                          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.65)", fontWeight: 900 }}>
+                          <Typography variant="caption" sx={{ color: alpha(theme.palette.common.white, 0.65), fontWeight: 900, fontSize: { xs: "0.72rem", md: "0.78rem" } }}>
                             SESSION BRANCH
                           </Typography>
-                          <Typography variant="h6" sx={{ mt: 0.8, fontWeight: 900 }}>
+                          <Typography variant="h6" sx={{ mt: 0.8, fontWeight: 900, fontSize: { xs: "1.05rem", md: "1.2rem" } }}>
                             {branchLabel}
                           </Typography>
-                          <Typography variant="body2" sx={{ mt: 0.8, color: "rgba(255,255,255,0.74)" }}>
+                          <Typography variant="body2" sx={{ mt: 0.8, color: alpha(theme.palette.common.white, 0.74), fontSize: { xs: "0.88rem", md: "0.92rem" } }}>
                             Live services: {serviceCount}
                           </Typography>
                         </CardContent>
@@ -412,7 +419,7 @@ export default function AgentDashboardPage() {
                   { label: "Status", value: user.isActive === false ? "Inactive" : "Active", icon: <FactCheckRoundedIcon /> }
                 ].map((item) => (
                   <Grid key={item.label} size={{ xs: 12, sm: 6, xl: 3 }}>
-                    <Card sx={{ borderRadius: 1.5, border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, height: "100%" }}>
+                    <Card sx={{ borderRadius: 1.5, border: panelBorder, bgcolor: panelBg, boxShadow: panelShadow, height: "100%" }}>
                       <CardContent>
                         <Stack direction="row" spacing={1.5} alignItems="center">
                           <Avatar sx={{ bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14), color: "primary.main" }}>{item.icon}</Avatar>
@@ -420,7 +427,7 @@ export default function AgentDashboardPage() {
                             <Typography variant="caption" sx={{ fontWeight: 900, color: "text.secondary", letterSpacing: 0.8 }}>
                               {item.label.toUpperCase()}
                             </Typography>
-                            <Typography variant="h6" sx={{ mt: 0.6, fontWeight: 900, color: "text.primary" }}>
+                            <Typography variant="h6" sx={{ mt: 0.6, ...sectionTitleSx }}>
                               {item.value}
                             </Typography>
                           </Box>
@@ -437,17 +444,17 @@ export default function AgentDashboardPage() {
                   .filter((item) => item.href !== "/dashboard/agent")
                   .map((item) => (
                     <Grid key={item.href} size={{ xs: 12, md: 6, xl: 4 }}>
-                      <Card sx={{ borderRadius: 1, border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.9)}`, height: "100%" }}>
+                      <Card sx={{ borderRadius: 1, border: panelBorder, bgcolor: panelBg, boxShadow: panelShadow, height: "100%" }}>
                         <CardContent sx={{ p: 2.5 }}>
                           <Stack spacing={2}>
                             <Avatar sx={{ bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14), color: "primary.main", width: 48, height: 48 }}>
                               {item.icon}
                             </Avatar>
                             <Box>
-                              <Typography variant="h6" sx={{ fontWeight: 900, color: "text.primary" }}>
+                              <Typography variant="h6" sx={sectionTitleSx}>
                                 {item.label}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: "0.9rem", md: "0.95rem" } }}>
                                 Open the live {item.label.toLowerCase()} desk and work with real society data.
                               </Typography>
                             </Box>
@@ -461,7 +468,7 @@ export default function AgentDashboardPage() {
                   ))}
               </Grid>
 
-              <Alert severity="success" sx={{ borderRadius: 2 }}>
+              <Alert severity="success" sx={{ borderRadius: 2, "& .MuiAlert-message": { fontWeight: 700, fontSize: { xs: "0.9rem", md: "0.95rem" } } }}>
                 The old module wrapper has been removed from the agent dashboard. Every sidebar item now opens a real working component.
               </Alert>
             </Stack>

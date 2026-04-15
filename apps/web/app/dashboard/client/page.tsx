@@ -26,7 +26,7 @@ import {
   Stack,
   Typography
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { TransactionWorkspace } from "@/features/banking/workspaces/transaction-workspace";
 import { getMe } from "@/shared/api/client";
@@ -115,6 +115,7 @@ function buildLockerClients(profile: ClientProfile, branchId?: string | null) {
 export default function ClientDashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const theme = useTheme();
   const { t } = useLanguage();
   const requestedView = searchParams.get("view");
   const currentView: ClientView =
@@ -174,6 +175,12 @@ export default function ClientDashboardPage() {
     () => (profile ? buildLockerClients(profile, sessionBranchId) : []),
     [profile, sessionBranchId]
   );
+  const isDark = theme.palette.mode === "dark";
+  const panelBg = alpha(theme.palette.background.paper, isDark ? 0.8 : 0.97);
+  const panelBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.9 : 1)}`;
+  const panelShadow = isDark ? "0 10px 28px rgba(2,6,23,0.42)" : "0 8px 24px -12px rgba(15,23,42,0.08)";
+  const pageTitleSx = { fontWeight: 900, letterSpacing: "-0.025em", fontSize: { xs: "1.8rem", md: "2.2rem" } } as const;
+  const sectionTitleSx = { fontWeight: 900, color: "text.primary", letterSpacing: "-0.02em", fontSize: { xs: "1.1rem", md: "1.3rem" } } as const;
 
   const sidebarGroups = useMemo(() => {
     const baseItems = [
@@ -261,14 +268,14 @@ export default function ClientDashboardPage() {
       t={t as any}
       accessibleModules={sidebarGroups}
     >
-      <Box sx={{ minHeight: "100vh", bgcolor: "#f8fafc", px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 } }}>
+      <Box sx={{ minHeight: "100vh", bgcolor: "background.default", px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 } }}>
         {currentView === "profile" ? (
           <Container maxWidth="lg" disableGutters>
             <Stack spacing={3}>
-              <Card sx={{ borderRadius: 5, border: "1px solid rgba(15, 23, 42, 0.06)" }}>
+              <Card sx={{ borderRadius: 5, border: panelBorder, bgcolor: panelBg, boxShadow: panelShadow }}>
                 <CardContent sx={{ p: { xs: 3, md: 4 } }}>
                   <Stack spacing={2.5}>
-                    <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>
+                    <Typography variant="h4" sx={{ ...pageTitleSx, color: "text.primary" }}>
                       Client Profile
                     </Typography>
                     <Grid container spacing={2}>
@@ -279,7 +286,7 @@ export default function ClientDashboardPage() {
                         { label: "Portal Username", value: user.username }
                       ].map((item) => (
                         <Grid key={item.label} size={{ xs: 12, md: 6 }}>
-                          <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                          <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: panelBorder, bgcolor: alpha(theme.palette.background.paper, isDark ? 0.84 : 0.99) }}>
                             <Typography variant="caption" sx={{ fontWeight: 900, color: "text.secondary", letterSpacing: 0.8 }}>
                               {item.label.toUpperCase()}
                             </Typography>
@@ -291,9 +298,9 @@ export default function ClientDashboardPage() {
                       ))}
                     </Grid>
                     {profile.allottedAgent ? (
-                      <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+                      <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: panelBorder, bgcolor: alpha(theme.palette.background.paper, isDark ? 0.84 : 0.99) }}>
                         <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Avatar sx={{ bgcolor: alpha("#1d4ed8", 0.12), color: "#1d4ed8" }}>
+                          <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: "primary.main" }}>
                             <SupportAgentRoundedIcon />
                           </Avatar>
                           <Box>
@@ -356,8 +363,8 @@ export default function ClientDashboardPage() {
               <Card
                 sx={{
                   borderRadius: 5,
-                  border: "1px solid rgba(15, 23, 42, 0.06)",
-                  background: "linear-gradient(135deg, #1e3a8a 0%, #172554 100%)",
+                  border: (theme) => `1px solid ${alpha(theme.palette.common.white, theme.palette.mode === "dark" ? 0.08 : 0.12)}`,
+                  background: "var(--hero-gradient)",
                   color: "#fff"
                 }}
               >
@@ -366,28 +373,28 @@ export default function ClientDashboardPage() {
                     <Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="space-between">
                       <Box>
                         <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 1.2 }}>
-                          <Chip label="CLIENT ACCESS" size="small" sx={{ bgcolor: "rgba(255,255,255,0.16)", color: "#fff", fontWeight: 900 }} />
-                          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.72)", fontWeight: 800, letterSpacing: 1.2 }}>
+                          <Chip label="CLIENT ACCESS" size="small" sx={{ bgcolor: alpha(theme.palette.common.white, 0.16), color: "#fff", fontWeight: 900 }} />
+                          <Typography variant="caption" sx={{ color: alpha(theme.palette.common.white, 0.72), fontWeight: 800, letterSpacing: 1.2, fontSize: { xs: "0.72rem", md: "0.78rem" } }}>
                             {user.society?.name?.toUpperCase()} · {profile.customerCode}
                           </Typography>
                         </Stack>
-                        <Typography variant="h4" sx={{ fontWeight: 900 }}>
+                        <Typography variant="h4" sx={pageTitleSx}>
                           Welcome, {user.fullName.split(" ")[0]}
                         </Typography>
-                        <Typography sx={{ mt: 1.2, maxWidth: 720, color: "rgba(255,255,255,0.82)" }}>
+                        <Typography sx={{ mt: 1.2, maxWidth: 720, color: alpha(theme.palette.common.white, 0.82), fontSize: { xs: "0.95rem", md: "1rem" }, lineHeight: 1.65 }}>
                           This dashboard now opens real account, plan, loan, transaction, and locker screens directly instead of the old module wrapper.
                         </Typography>
                       </Box>
 
-                      <Card sx={{ minWidth: 250, borderRadius: 4, bgcolor: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.12)" }}>
+                      <Card sx={{ minWidth: 250, borderRadius: 4, bgcolor: alpha(theme.palette.common.white, 0.08), color: "#fff", border: `1px solid ${alpha(theme.palette.common.white, 0.12)}` }}>
                         <CardContent>
-                          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.65)", fontWeight: 900 }}>
+                          <Typography variant="caption" sx={{ color: alpha(theme.palette.common.white, 0.65), fontWeight: 900, fontSize: { xs: "0.72rem", md: "0.78rem" } }}>
                             ACTIVE BRANCH
                           </Typography>
-                          <Typography variant="h6" sx={{ mt: 0.8, fontWeight: 900 }}>
+                          <Typography variant="h6" sx={{ mt: 0.8, fontWeight: 900, fontSize: { xs: "1.05rem", md: "1.2rem" } }}>
                             {branchLabel}
                           </Typography>
-                          <Typography variant="body2" sx={{ mt: 0.8, color: "rgba(255,255,255,0.74)" }}>
+                          <Typography variant="body2" sx={{ mt: 0.8, color: alpha(theme.palette.common.white, 0.74), fontSize: { xs: "0.88rem", md: "0.92rem" } }}>
                             Self-service access ready
                           </Typography>
                         </CardContent>
@@ -395,18 +402,18 @@ export default function ClientDashboardPage() {
                     </Stack>
 
                     {profile.allottedAgent ? (
-                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ p: 2, borderRadius: 3.5, bgcolor: "rgba(255,255,255,0.08)" }}>
-                        <Avatar sx={{ bgcolor: "rgba(255,255,255,0.14)", color: "#fff" }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ p: 2, borderRadius: 3.5, bgcolor: alpha(theme.palette.common.white, 0.08) }}>
+                        <Avatar sx={{ bgcolor: alpha(theme.palette.common.white, 0.14), color: "#fff" }}>
                           <SupportAgentRoundedIcon />
                         </Avatar>
                         <Box>
-                          <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.65)", fontWeight: 900 }}>
+                          <Typography variant="caption" sx={{ color: alpha(theme.palette.common.white, 0.65), fontWeight: 900, fontSize: { xs: "0.72rem", md: "0.78rem" } }}>
                             RELATIONSHIP AGENT
                           </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 800 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 800, fontSize: { xs: "0.98rem", md: "1.02rem" } }}>
                             {[profile.allottedAgent.firstName, profile.allottedAgent.lastName].filter(Boolean).join(" ")}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.74)" }}>
+                          <Typography variant="body2" sx={{ color: alpha(theme.palette.common.white, 0.74), fontSize: { xs: "0.88rem", md: "0.92rem" } }}>
                             {profile.allottedAgent.phone || "Phone not available"}
                           </Typography>
                         </Box>
@@ -424,12 +431,12 @@ export default function ClientDashboardPage() {
                   { label: "Current Balance", value: formatCurrency(stats.netBalance) }
                 ].map((item) => (
                   <Grid key={item.label} size={{ xs: 12, sm: 6, xl: 3 }}>
-                    <Card sx={{ borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.06)" }}>
+                    <Card sx={{ borderRadius: 4, border: panelBorder, bgcolor: panelBg, boxShadow: panelShadow }}>
                       <CardContent>
                         <Typography variant="caption" sx={{ fontWeight: 900, color: "text.secondary", letterSpacing: 0.8 }}>
                           {item.label.toUpperCase()}
                         </Typography>
-                        <Typography variant="h5" sx={{ mt: 1, fontWeight: 900, color: "#0f172a" }}>
+                        <Typography variant="h5" sx={{ mt: 1, fontWeight: 900, color: "text.primary", fontSize: { xs: "1.2rem", md: "1.4rem" }, letterSpacing: "-0.02em" }}>
                           {item.value}
                         </Typography>
                       </CardContent>
@@ -444,17 +451,17 @@ export default function ClientDashboardPage() {
                   .filter((item) => item.href !== "/dashboard/client")
                   .map((item) => (
                     <Grid key={item.href} size={{ xs: 12, md: 6, xl: 4 }}>
-                      <Card sx={{ borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.06)", height: "100%" }}>
+                      <Card sx={{ borderRadius: 4, border: panelBorder, bgcolor: panelBg, boxShadow: panelShadow, height: "100%" }}>
                         <CardContent sx={{ p: 2.5 }}>
                           <Stack spacing={2}>
-                            <Avatar sx={{ bgcolor: alpha("#1d4ed8", 0.12), color: "#1d4ed8", width: 48, height: 48 }}>
+                            <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: "primary.main", width: 48, height: 48 }}>
                               {item.icon}
                             </Avatar>
                             <Box>
-                              <Typography variant="h6" sx={{ fontWeight: 900, color: "#0f172a" }}>
+                              <Typography variant="h6" sx={sectionTitleSx}>
                                 {item.label}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: "0.9rem", md: "0.95rem" } }}>
                                 Open the live {item.label.toLowerCase()} screen and work with your real banking data.
                               </Typography>
                             </Box>

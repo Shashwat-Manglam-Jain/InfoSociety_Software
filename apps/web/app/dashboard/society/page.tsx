@@ -11,7 +11,7 @@ import MapRoundedIcon from "@mui/icons-material/MapRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
 import { Alert, Box, Button, CircularProgress, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { ModuleWorkspace } from "@/features/banking/operations/module-workspace";
 import { modules as bankingModules } from "@/features/banking/module-registry";
@@ -349,6 +349,8 @@ export default function SocietyDashboard() {
     ? (requestedView as SocietyView)
     : "overview";
   const theme = useTheme();
+  const branchScopeTitleSx = { color: "primary.main", fontWeight: 900, letterSpacing: "0.08em", fontSize: { xs: "0.74rem", md: "0.8rem" } } as const;
+  const branchScopeBodySx = { color: "text.secondary", fontWeight: 600, fontSize: { xs: "0.9rem", md: "0.95rem" }, lineHeight: 1.6 } as const;
   const isDark = theme.palette.mode === "dark";
   const surfaces = isDark ? DESIGN_SYSTEM.SURFACES.DARK : DESIGN_SYSTEM.SURFACES.LIGHT;
   const localeTag = copy.localeTag;
@@ -1164,10 +1166,10 @@ export default function SocietyDashboard() {
           >
             <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} justifyContent="space-between">
               <Box>
-                <Typography variant="overline" sx={{ color: "primary.main", fontWeight: 900 }}>
+                <Typography variant="overline" sx={branchScopeTitleSx}>
                   {copy.branchScope.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={branchScopeBodySx}>
                   {copy.branchScope.description}
                 </Typography>
               </Box>
@@ -1176,7 +1178,7 @@ export default function SocietyDashboard() {
                 size="small"
                 value={selectedBranchFilter}
                 onChange={(event) => setSelectedBranchFilter(event.target.value)}
-                sx={{ minWidth: { xs: "100%", md: 280 } }}
+                sx={{ minWidth: { xs: "100%", md: 280 }, "& .MuiOutlinedInput-root": { bgcolor: alpha(theme.palette.background.paper, isDark ? 0.84 : 0.98), fontWeight: 700 } }}
               >
                 <MenuItem value={ALL_BRANCHES_FILTER}>{copy.branchScope.allBranches}</MenuItem>
                 {branches.map((branch) => (
