@@ -34,8 +34,10 @@ export type MainAdministrationWorkspaceProps = {
   handleToggleUserStatus: (id: string, current: boolean) => void;
   setSelectedUserAccess: (user: any) => void;
   handleEditUser: (user: any) => void;
-  handleDeleteUser: (user: any) => void;
   transactions: any[];
+  dashboardOverview: any;
+  branchOverviews: Record<string, any>;
+  loanApplications: any[];
   transactionSearch: string;
   setTransactionSearch: (v: string) => void;
   formatCurrency: (v: number) => string;
@@ -58,9 +60,12 @@ export function MainAdministrationWorkspace(props: MainAdministrationWorkspacePr
       return (
         <DashboardOverview
           societyForm={props.societyForm}
-          transactions={props.transactions}
-          agents={props.agents}
-          managedUsers={props.managedUsers}
+          branches={props.branches}
+          overview={props.dashboardOverview}
+          branchOverviews={props.branchOverviews}
+          loans={props.loanApplications}
+          formatCurrency={props.formatCurrency}
+          formatDate={props.formatDate}
         />
       );
 
@@ -96,7 +101,6 @@ export function MainAdministrationWorkspace(props: MainAdministrationWorkspacePr
           handleToggleUserStatus={props.handleToggleUserStatus} 
           setSelectedUserAccess={props.setSelectedUserAccess} 
           handleEditUser={props.handleEditUser}
-          handleDeleteUser={props.handleDeleteUser}
         />
       );
 

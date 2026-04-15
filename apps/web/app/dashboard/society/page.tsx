@@ -26,6 +26,7 @@ import { LedgerWorkspace } from "@/features/society/components/ledger-workspace"
 import { LockerWorkspace } from "@/features/society/components/locker-workspace";
 import { LoanWorkspace } from "@/features/society/components/loan-workspace";
 import { ChequeWorkspace } from "@/features/society/components/cheque-workspace";
+import { PaymentWorkspace } from "@/features/society/components/payment-workspace";
 import { InvestmentsWorkspace } from "@/features/society/components/investments-workspace";
 import { DemandDraftsWorkspace } from "@/features/society/components/demand-drafts-workspace";
 import { IbcObcWorkspace } from "@/features/society/components/ibc-obc-workspace";
@@ -41,15 +42,18 @@ import {
   deleteStaffUser,
   getAgentDetails,
   getAgentPerformance,
+  getSocietyOverview,
   listSocietyTransactions,
   listStaffUsers,
   updateStaffUser,
   updateSociety,
   updateUserAccess,
   updateUserStatus,
-  type AdministrationAgentDetails
+  type AdministrationAgentDetails,
+  type SocietyOverviewRecord
 } from "@/shared/api/administration";
 import { listCustomers, updateCustomer } from "@/shared/api/customers";
+import { listLoans, type LoanRecord } from "@/shared/api/loans";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import { getMe } from "@/shared/api/client";
 import { clearSession, getDefaultDashboardPath, getSession } from "@/shared/auth/session";
@@ -64,7 +68,6 @@ import {
   buildManagedUsers,
   buildOperationsClientRows,
   buildTreasuryRows,
-  buildUsername,
   createBranchForm,
   createEmptyBranchForm,
   createEmptyUserForm,
@@ -78,6 +81,7 @@ import {
   type TreasuryTransactionRow,
   type UserFormState
 } from "@/features/society/lib/society-admin-dashboard";
+import { EMPTY_SOCIETY_OVERVIEW } from "@/features/society/lib/dashboard-overview";
 
 type SocietyFormState = {
   name: string;
@@ -104,6 +108,7 @@ type SocietyView =
   | "ledger_workspace"
   | "locker_workspace"
   | "loan_workspace"
+  | "payments_workspace"
   | "cheque_workspace"
   | "membership_clients"
   | "plan_catalogue"
@@ -126,6 +131,9 @@ type DashboardSnapshot = {
   agents: SocietyAgentRow[];
   transactions: TreasuryTransactionRow[];
   lockerClients: ReturnType<typeof buildLockerClients>;
+  overview: SocietyOverviewRecord;
+  branchOverviews: Record<string, SocietyOverviewRecord>;
+  loans: LoanRecord[];
 };
 
 const SOCIETY_VIEWS = new Set<SocietyView>([
@@ -138,6 +146,7 @@ const SOCIETY_VIEWS = new Set<SocietyView>([
   "ledger_workspace",
   "locker_workspace",
   "loan_workspace",
+  "payments_workspace",
   "cheque_workspace",
   "membership_clients",
   "plan_catalogue",
@@ -160,6 +169,7 @@ const SOCIETY_CUSTOM_MODULE_HREF_BY_SLUG: Record<string, string> = {
   accounts: "/dashboard/society?view=account_registry",
   deposits: "/dashboard/society?view=plan_catalogue",
   loans: "/dashboard/society?view=loan_workspace",
+  payments: "/dashboard/society?view=payments_workspace",
   transactions: "/dashboard/society?view=ledger_workspace",
   "cheque-clearing": "/dashboard/society?view=cheque_workspace",
   locker: "/dashboard/society?view=locker_workspace",
@@ -182,6 +192,7 @@ const SOCIETY_VIEW_ACCESS: Record<SocietyView, string[]> = {
   ledger_workspace: ["transactions", "cashbook"],
   locker_workspace: ["locker"],
   loan_workspace: ["loans"],
+  payments_workspace: ["payments"],
   cheque_workspace: ["cheque-clearing"],
   membership_clients: ["customers"],
   plan_catalogue: ["deposits"],
@@ -308,7 +319,9 @@ async function loadDashboardSnapshot(token: string): Promise<DashboardSnapshot> 
     listStaffUsers(token),
     getAgentPerformance(token),
     listSocietyTransactions(token),
-    listCustomers(token)
+    listCustomers(token),
+    getSocietyOverview(token),
+    listLoans(token, { page: 1, limit: 100 })
   ]);
 
   if (results[0].status !== "fulfilled") {
@@ -321,11 +334,25 @@ async function loadDashboardSnapshot(token: string): Promise<DashboardSnapshot> 
   const performance = (results[3].status === "fulfilled" ? results[3].value : []) as any[];
   const transactionsRaw = (results[4].status === "fulfilled" ? results[4].value : []) as any[];
   const customersRaw = (results[5].status === "fulfilled" ? results[5].value : { rows: [] as any[] }) as { rows: any[] };
+  const overview = (results[6].status === "fulfilled" ? results[6].value : EMPTY_SOCIETY_OVERVIEW) as SocietyOverviewRecord;
+  const loansResponse = (results[7].status === "fulfilled"
+    ? results[7].value
+    : { rows: [] as LoanRecord[] }) as { rows: LoanRecord[] };
 
   const managedUsers = buildManagedUsers(users, branches);
   const agents = buildAgentRows(managedUsers, performance);
   const transactions = buildTreasuryRows(transactionsRaw, branches);
   const lockerClients = buildLockerClients(customersRaw.rows || []);
+  const branchOverviewResults = await Promise.allSettled(
+    branches.map(async (branch) => [branch.id, await getSocietyOverview(token, branch.id)] as const)
+  );
+  const branchOverviews = Object.fromEntries(
+    branchOverviewResults
+      .filter(
+        (result): result is PromiseFulfilledResult<readonly [string, SocietyOverviewRecord]> => result.status === "fulfilled"
+      )
+      .map((result) => result.value)
+  );
 
   return {
     user: profile,
@@ -333,7 +360,10 @@ async function loadDashboardSnapshot(token: string): Promise<DashboardSnapshot> 
     managedUsers,
     agents,
     transactions,
-    lockerClients
+    lockerClients,
+    overview,
+    branchOverviews,
+    loans: loansResponse.rows || []
   };
 }
 
@@ -358,6 +388,9 @@ export default function SocietyDashboard() {
   const [agents, setAgents] = useState<SocietyAgentRow[]>([]);
   const [transactions, setTransactions] = useState<TreasuryTransactionRow[]>([]);
   const [lockerClients, setLockerClients] = useState<ReturnType<typeof buildLockerClients>>([]);
+  const [societyOverview, setSocietyOverview] = useState<SocietyOverviewRecord>(EMPTY_SOCIETY_OVERVIEW);
+  const [branchOverviews, setBranchOverviews] = useState<Record<string, SocietyOverviewRecord>>({});
+  const [loans, setLoans] = useState<LoanRecord[]>([]);
   const [shellUser, setShellUser] = useState<AuthUser | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -405,6 +438,9 @@ export default function SocietyDashboard() {
       setAgents(snapshot.agents);
       setTransactions(snapshot.transactions);
       setLockerClients(snapshot.lockerClients);
+      setSocietyOverview(snapshot.overview);
+      setBranchOverviews(snapshot.branchOverviews);
+      setLoans(snapshot.loans);
       setError(null);
       return true;
     } catch (caught) {
@@ -565,6 +601,13 @@ export default function SocietyDashboard() {
         icon: <MapRoundedIcon />,
         active: !requestedModuleSlug && currentView === "plan_catalogue",
         moduleCandidates: ["deposits"]
+      },
+      {
+        label: copy.nav.payments,
+        href: "/dashboard/society?view=payments_workspace",
+        icon: <ReceiptLongRoundedIcon />,
+        active: !requestedModuleSlug && currentView === "payments_workspace",
+        moduleCandidates: ["payments"]
       },
       {
         label: copy.nav.ledger,
@@ -813,8 +856,8 @@ export default function SocietyDashboard() {
     }
 
     try {
-      await adminDeleteBranch(session.accessToken, branchId);
-      setBranches((previous) => previous.filter((branch) => branch.id !== branchId));
+      const updatedBranch = await adminDeleteBranch(session.accessToken, branchId);
+      setBranches((previous) => previous.map((branch) => (branch.id === branchId ? updatedBranch : branch)));
       toast.success(copy.feedback.deleteBranchSuccess);
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : copy.feedback.deleteBranchError);
@@ -834,14 +877,11 @@ export default function SocietyDashboard() {
 
     try {
       const payload = {
-        fullName: userForm.fullName.trim(),
-        username: userForm.username,
+        username: userForm.username.trim(),
+        aadhaarNumber: userForm.aadhaarNumber.trim(),
         isActive: userForm.isActive,
         branchId: userForm.branchId || undefined,
-        allowedModuleSlugs: normalizeAllowedModules(userForm.role, userForm.allowedModuleSlugs),
-        phone: userForm.phone.trim() || undefined,
-        email: userForm.email.trim() || undefined,
-        address: userForm.address.trim() || undefined
+        allowedModuleSlugs: normalizeAllowedModules(userForm.role, userForm.allowedModuleSlugs)
       };
 
       if (editingManagedUser) {
@@ -1064,6 +1104,7 @@ export default function SocietyDashboard() {
   const isLedgerView = currentView === "ledger_workspace";
   const isLockerView = currentView === "locker_workspace";
   const isLoanView = currentView === "loan_workspace";
+  const isPaymentsView = currentView === "payments_workspace";
   const isChequeView = currentView === "cheque_workspace";
   const isInvestmentsView = currentView === "investments_workspace";
   const isDemandDraftsView = currentView === "demand_drafts_workspace";
@@ -1096,6 +1137,15 @@ export default function SocietyDashboard() {
         ? transactions.filter((transaction) => (transaction.branchId ?? "") === selectedBranchFilter)
         : transactions,
     [branchFilterActive, selectedBranchFilter, transactions]
+  );
+  const filteredLoans = useMemo(
+    () =>
+      branchFilterActive ? loans.filter((loan) => (loan.account.branchId ?? "") === selectedBranchFilter) : loans,
+    [branchFilterActive, loans, selectedBranchFilter]
+  );
+  const activeDashboardOverview = useMemo(
+    () => (branchFilterActive ? branchOverviews[selectedBranchFilter] ?? EMPTY_SOCIETY_OVERVIEW : societyOverview),
+    [branchFilterActive, branchOverviews, selectedBranchFilter, societyOverview]
   );
   const visibleCustomerIds = useMemo(
     () =>
@@ -1204,6 +1254,19 @@ export default function SocietyDashboard() {
           <LockerWorkspace token={session.accessToken} clients={filteredLockerClients} branches={visibleBranches} />
         ) : isLoanView && session ? (
           <LoanWorkspace token={session.accessToken} managedUsers={filteredManagedUsers} />
+        ) : isPaymentsView && session ? (
+          <PaymentWorkspace
+            token={session.accessToken}
+            role={shellUser?.role ?? "SUPER_USER"}
+            customers={filteredManagedUsers
+              .filter((user) => user.role === "CLIENT" && user.customerProfile?.id)
+              .map((user) => ({
+                id: user.customerProfile!.id,
+                fullName: user.fullName,
+                customerCode: user.customerProfile!.customerCode
+              }))}
+            canCreateRequests
+          />
         ) : isChequeView && session ? (
           <ChequeWorkspace token={session.accessToken} />
         ) : isInvestmentsView && session ? (
@@ -1252,8 +1315,10 @@ export default function SocietyDashboard() {
             handleToggleUserStatus={handleToggleManagedUserStatus}
             setSelectedUserAccess={setSelectedUserAccess}
             handleEditUser={handleEditManagedUser}
-            handleDeleteUser={handleDeleteManagedUser}
             transactions={filteredTransactions}
+            dashboardOverview={activeDashboardOverview}
+            branchOverviews={branchOverviews}
+            loanApplications={filteredLoans}
             transactionSearch={transactionSearch}
             setTransactionSearch={setTransactionSearch}
             formatCurrency={formatCurrency}
@@ -1289,18 +1354,6 @@ export default function SocietyDashboard() {
         onSave={() => void handleSaveUser()}
         loading={userSaving}
         branches={branches}
-        updateStaffName={(value) =>
-          setUserForm((previous) => {
-            const previousGeneratedUsername = buildUsername(previous.fullName);
-            const shouldKeepUsernameInSync = !previous.username.trim() || previous.username === previousGeneratedUsername;
-
-            return {
-              ...previous,
-              fullName: value,
-              username: shouldKeepUsernameInSync ? buildUsername(value) : previous.username
-            };
-          })
-        }
         regeneratePassword={() => setUserForm({ ...userForm, password: createTemporaryPassword() })}
         mode={editingManagedUser ? "edit" : "create"}
       />

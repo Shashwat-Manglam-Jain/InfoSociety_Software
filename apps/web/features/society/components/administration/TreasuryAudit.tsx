@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import { SectionHero } from "../operations/SectionHero";
 import { MetricCard } from "../operations/MetricCard";
 import { useLanguage } from "@/shared/i18n/language-provider";
@@ -55,7 +55,12 @@ export function TreasuryAudit({
       transaction.accountNumber,
       transaction.customerName,
       transaction.branchName,
-      transaction.category
+      transaction.category,
+      transaction.module,
+      transaction.action,
+      transaction.status,
+      transaction.detail,
+      transaction.enteredBy
     ].some((value) => value.toLowerCase().includes(query));
   });
 
@@ -65,6 +70,25 @@ export function TreasuryAudit({
   const totalDebits = filteredTransactions
     .filter((transaction) => transaction.type === "DEBIT")
     .reduce((total, transaction) => total + transaction.amount, 0);
+
+  const groupedTransactions = filteredTransactions.reduce<Array<{ day: string; rows: TreasuryTransactionRow[] }>>(
+    (groups, transaction) => {
+      const day = formatDate(transaction.date);
+      const existingGroup = groups.find((group) => group.day === day);
+
+      if (existingGroup) {
+        existingGroup.rows.push(transaction);
+        return groups;
+      }
+
+      groups.push({
+        day,
+        rows: [transaction]
+      });
+      return groups;
+    },
+    []
+  );
 
   const metrics = [
     { label: copy.metrics.entries.label, value: String(filteredTransactions.length), caption: copy.metrics.entries.caption },
@@ -117,91 +141,136 @@ export function TreasuryAudit({
 
       <Paper elevation={0} sx={{ borderRadius: 1.5, border: `1px solid ${surfaces.border}`, overflow: "hidden", bgcolor: surfaces.paper }}>
         <TableContainer>
-          <Table size="small" sx={{ minWidth: 920, tableLayout: "fixed" }}>
+          <Table size="small" sx={{ minWidth: 1120, tableLayout: "fixed" }}>
             <TableHead sx={{ bgcolor: surfaces.tableHead }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 800, width: "12%" }}>{copy.table.date}</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "16%" }}>{copy.table.reference}</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "18%" }}>{copy.table.account}</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "18%" }}>{copy.table.customer}</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "16%" }}>{copy.table.branch}</TableCell>
-                <TableCell sx={{ fontWeight: 800, width: "10%" }}>{copy.table.type}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "15%" }}>Module</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "14%" }}>{copy.table.reference}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "14%" }}>{copy.table.account}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "14%" }}>{copy.table.customer}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "11%" }}>Status</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 800, width: "10%" }}>
                   {copy.table.amount}
                 </TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "10%" }}>{copy.table.type}</TableCell>
+                <TableCell sx={{ fontWeight: 800, width: "20%" }}>Details</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filteredTransactions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
                     <Typography variant="body2" color="text.secondary">
                       {copy.emptyState}
                     </Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredTransactions.map((transaction) => (
-                  <TableRow key={transaction.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {formatDate(transaction.date)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {transaction.enteredBy}
+                groupedTransactions.flatMap((group) => [
+                  <TableRow key={`day-${group.day}`}>
+                    <TableCell colSpan={9} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.04), py: 1.5 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: "primary.main" }}>
+                        {group.day}
                       </Typography>
                     </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                        {transaction.reference}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {transaction.category}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                        {transaction.accountNumber}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {transaction.customerName}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {transaction.branchName}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {transaction.branchCode}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 700,
-                          color: transaction.type === "CREDIT" ? "#15803d" : "#b91c1c"
-                        }}
-                      >
-                        {transaction.type === "CREDIT" ? copy.transactionType.credit : copy.transactionType.debit}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 700,
-                          color: transaction.type === "CREDIT" ? "#15803d" : "#b91c1c"
-                        }}
-                      >
-                        {transaction.type === "CREDIT" ? "+ " : "- "}
-                        {formatCurrency(transaction.amount)}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ))
+                  </TableRow>,
+                  ...group.rows.map((transaction) => (
+                    <TableRow key={transaction.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {formatDate(transaction.date)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {transaction.enteredBy}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700, textTransform: "capitalize" }}>
+                          {transaction.module.replace(/-/g, " ")}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {transaction.action}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {transaction.reference}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {transaction.category}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {transaction.accountNumber}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {transaction.branchName}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {transaction.customerName}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {transaction.branchCode}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {transaction.status}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 700,
+                            color:
+                              transaction.type === "CREDIT"
+                                ? "#15803d"
+                                : transaction.type === "DEBIT"
+                                  ? "#b91c1c"
+                                  : "text.primary"
+                          }}
+                        >
+                          {transaction.type === "CREDIT"
+                            ? "+ "
+                            : transaction.type === "DEBIT"
+                              ? "- "
+                              : ""}
+                          {formatCurrency(transaction.amount)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 700,
+                            color:
+                              transaction.type === "CREDIT"
+                                ? "#15803d"
+                                : transaction.type === "DEBIT"
+                                  ? "#b91c1c"
+                                  : "text.secondary"
+                          }}
+                        >
+                          {transaction.type === "CREDIT"
+                            ? copy.transactionType.credit
+                            : transaction.type === "DEBIT"
+                              ? copy.transactionType.debit
+                              : "Info"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {transaction.detail}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ])
               )}
             </TableBody>
           </Table>

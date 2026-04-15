@@ -27,6 +27,12 @@ export type LoanRecord = {
     id: string;
     accountNumber: string;
     currentBalance?: number | string;
+    branchId?: string | null;
+    branch?: {
+      id: string;
+      name: string;
+      code: string;
+    } | null;
   };
   customer: LoanPartyRecord;
   guarantor1?: LoanPartyRecord | null;

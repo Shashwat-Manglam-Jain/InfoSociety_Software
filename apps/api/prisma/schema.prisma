@@ -84,8 +84,10 @@ model User {
   username                     String               @unique
   passwordHash                 String
   fullName                     String
+  aadhaarNumber                String?              @unique
   role                         UserRole             @default(CLIENT)
   isActive                     Boolean              @default(true)
+  isSocietyAdmin               Boolean              @default(false)
   societyId                    String?
   customerId                   String?              @unique
   createdAt                    DateTime             @default(now())
@@ -723,6 +725,7 @@ enum ReportStatus {
 }
 
 enum PaymentMethod {
+  CASH
   UPI
   DEBIT_CARD
   CREDIT_CARD
@@ -750,5 +753,3 @@ enum PaymentTransactionStatus {
   REFUNDED
   CANCELLED
 }
-
-

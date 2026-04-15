@@ -366,6 +366,15 @@ export function ChequeWorkspace({ token }: ChequeWorkspaceProps) {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" color="text.secondary">{formatDate(row.entryDate, locale)}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {row.status === "CLEARED"
+                          ? `Approved on ${formatDate(row.clearedDate, locale)}`
+                          : row.status === "RETURNED"
+                            ? `Rejected on ${formatDate(row.clearedDate, locale)}`
+                            : row.status === "CANCELLED"
+                              ? "Cancelled"
+                              : "Awaiting bank action"}
+                      </Typography>
                     </TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => openEditDrawer(row)}>

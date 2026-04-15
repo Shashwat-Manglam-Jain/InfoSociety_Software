@@ -37,6 +37,7 @@ import { useLanguage } from "@/shared/i18n/language-provider";
 import type { AuthUser, Branch } from "@/shared/types";
 import { LoanWorkspace } from "@/features/society/components/loan-workspace";
 import { LockerWorkspace } from "@/features/society/components/locker-workspace";
+import { PaymentWorkspace } from "@/features/society/components/payment-workspace";
 import { SocietyOperationsWorkspace } from "@/features/society/components/society-operations-workspace";
 import { buildManagedUsersFromCustomers } from "@/features/society/lib/society-admin-dashboard";
 
@@ -72,6 +73,7 @@ type ClientView =
   | "plan_catalogue"
   | "account_registry"
   | "loan_workspace"
+  | "payments_workspace"
   | "transaction_workspace"
   | "locker_workspace";
 
@@ -81,6 +83,7 @@ const CLIENT_VIEWS = new Set<ClientView>([
   "plan_catalogue",
   "account_registry",
   "loan_workspace",
+  "payments_workspace",
   "transaction_workspace",
   "locker_workspace"
 ]);
@@ -214,6 +217,13 @@ export default function ClientDashboardPage() {
         moduleCandidates: ["loans"]
       },
       {
+        label: "Payments",
+        href: "/dashboard/client?view=payments_workspace",
+        icon: <ReceiptLongRoundedIcon />,
+        active: currentView === "payments_workspace",
+        moduleCandidates: ["payments"]
+      },
+      {
         label: "Transactions",
         href: "/dashboard/client?view=transaction_workspace",
         icon: <ReceiptLongRoundedIcon />,
@@ -340,6 +350,8 @@ export default function ClientDashboardPage() {
             canApplyLoan
             canManageLoanActions={false}
           />
+        ) : currentView === "payments_workspace" ? (
+          <PaymentWorkspace token={getSession()?.accessToken ?? ""} role={user.role} />
         ) : currentView === "transaction_workspace" ? (
           <TransactionWorkspace token={getSession()?.accessToken ?? ""} canCreateTransactions={false} canManageTransactions={false} />
         ) : currentView === "locker_workspace" ? (

@@ -1,8 +1,9 @@
 import { PaymentMethod } from "@prisma/client";
-import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { paymentMethodCatalog } from "../../shared/payment-methods";
 
 export class PayPaymentRequestDto {
-  @IsEnum(PaymentMethod)
+  @IsIn(paymentMethodCatalog)
   method!: PaymentMethod;
 
   @IsOptional()

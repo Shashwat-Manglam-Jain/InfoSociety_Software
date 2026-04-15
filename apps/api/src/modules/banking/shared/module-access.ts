@@ -1,13 +1,14 @@
 import { UserRole } from "@prisma/client";
 
 export const moduleAccessByRole: Record<UserRole, string[]> = {
-  CLIENT: ["customers", "accounts", "deposits", "loans", "transactions", "locker"],
+  CLIENT: ["customers", "accounts", "deposits", "loans", "transactions", "locker", "payments"],
   AGENT: [
     "customers",
     "accounts",
     "deposits",
     "loans",
     "transactions",
+    "payments",
     "cheque-clearing",
     "demand-drafts",
     "ibc-obc",
@@ -21,6 +22,7 @@ export const moduleAccessByRole: Record<UserRole, string[]> = {
     "deposits",
     "loans",
     "transactions",
+    "payments",
     "cheque-clearing",
     "demand-drafts",
     "ibc-obc",
@@ -32,7 +34,7 @@ export const moduleAccessByRole: Record<UserRole, string[]> = {
     "users",
     "monitoring"
   ],
-  SUPER_ADMIN: ["monitoring", "users", "reports"]
+  SUPER_ADMIN: ["monitoring", "users", "reports", "payments"]
 };
 
 const requiredModuleAccessByRole: Record<UserRole, string[]> = {

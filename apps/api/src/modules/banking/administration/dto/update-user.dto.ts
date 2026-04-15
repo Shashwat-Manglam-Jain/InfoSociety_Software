@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsEmail, IsOptional, IsString, Matches, MinLength, ValidateIf } from "class-validator";
+import { IsArray, IsBoolean, IsOptional, IsString, Matches, MinLength, ValidateIf } from "class-validator";
 
 export class UpdateUserDto {
   @IsString()
@@ -26,20 +26,15 @@ export class UpdateUserDto {
   @IsOptional()
   branchId?: string;
 
+  @IsString()
+  @IsOptional()
+  @Matches(/^\d{12}$/, {
+    message: "Aadhaar number must be exactly 12 digits"
+  })
+  aadhaarNumber?: string;
+
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
   allowedModuleSlugs?: string[];
-
-  @IsString()
-  @IsOptional()
-  phone?: string;
-
-  @IsEmail()
-  @IsOptional()
-  email?: string;
-
-  @IsString()
-  @IsOptional()
-  address?: string;
 }

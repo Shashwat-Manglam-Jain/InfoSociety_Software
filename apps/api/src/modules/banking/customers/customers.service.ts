@@ -239,7 +239,9 @@ export class CustomersService {
   }
 
   private async getScopedWhere(currentUser: RequestUser, query: ListCustomersQueryDto): Promise<Prisma.CustomerWhereInput> {
-    const where: Prisma.CustomerWhereInput = {};
+    const where: Prisma.CustomerWhereInput = {
+      OR: [{ user: null }, { user: { role: UserRole.CLIENT } }]
+    };
 
     if (currentUser.role === UserRole.CLIENT) {
       where.id = currentUser.customerId ?? "";
@@ -250,11 +252,15 @@ export class CustomersService {
     }
 
     if (query.q) {
-      where.OR = [
-        { customerCode: { contains: query.q, mode: "insensitive" } },
-        { firstName: { contains: query.q, mode: "insensitive" } },
-        { lastName: { contains: query.q, mode: "insensitive" } },
-        { phone: { contains: query.q, mode: "insensitive" } }
+      where.AND = [
+        {
+          OR: [
+            { customerCode: { contains: query.q, mode: "insensitive" } },
+            { firstName: { contains: query.q, mode: "insensitive" } },
+            { lastName: { contains: query.q, mode: "insensitive" } },
+            { phone: { contains: query.q, mode: "insensitive" } }
+          ]
+        }
       ];
     }
 

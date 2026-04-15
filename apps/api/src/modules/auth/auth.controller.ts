@@ -1,7 +1,9 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Post, Req, Res } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { UserRole } from "@prisma/client";
-import { Request } from "express";
+import { Request, Response } from "express";
+import { getAuthCookieName, getAuthCookieOptions } from "../../common/auth/auth-cookie";
 import { Public } from "../../common/auth/public.decorator";
 import { RequestUser } from "../../common/auth/request-user.interface";
 import { Roles } from "../../common/auth/roles.decorator";
@@ -15,31 +17,42 @@ import { ChangePasswordDto } from "./dto/change-password.dto";
 @ApiTags("auth")
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService
+  ) {}
 
   @Public()
   @HttpCode(200)
   @Post("login")
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
+    const result = await this.authService.login(dto);
+    this.attachAuthCookie(response, result.accessToken);
+    return result;
   }
 
   @Public()
   @Post("register/client")
-  registerClient(@Body() dto: RegisterClientDto) {
-    return this.authService.registerClient(dto);
+  async registerClient(@Body() dto: RegisterClientDto, @Res({ passthrough: true }) response: Response) {
+    const result = await this.authService.registerClient(dto);
+    this.attachAuthCookie(response, result.accessToken);
+    return result;
   }
 
   @Public()
   @Post("register/agent/self")
-  registerAgentSelf(@Body() dto: RegisterAgentDto) {
-    return this.authService.registerAgentSelf(dto);
+  async registerAgentSelf(@Body() dto: RegisterAgentDto, @Res({ passthrough: true }) response: Response) {
+    const result = await this.authService.registerAgentSelf(dto);
+    this.attachAuthCookie(response, result.accessToken);
+    return result;
   }
 
   @Public()
   @Post("register/society")
-  registerSociety(@Body() dto: RegisterSocietyDto) {
-    return this.authService.registerSociety(dto);
+  async registerSociety(@Body() dto: RegisterSocietyDto, @Res({ passthrough: true }) response: Response) {
+    const result = await this.authService.registerSociety(dto);
+    this.attachAuthCookie(response, result.accessToken);
+    return result;
   }
 
   @Public()
@@ -71,5 +84,22 @@ export class AuthController {
   @Get("me")
   me(@Req() req: Request & { user: RequestUser }) {
     return this.authService.me(req.user);
+  }
+
+  @Public()
+  @Post("logout")
+  logout(@Res({ passthrough: true }) response: Response) {
+    response.clearCookie(getAuthCookieName(this.configService), {
+      ...getAuthCookieOptions(this.configService),
+      maxAge: undefined
+    });
+
+    return {
+      success: true
+    };
+  }
+
+  private attachAuthCookie(response: Response, accessToken: string) {
+    response.cookie(getAuthCookieName(this.configService), accessToken, getAuthCookieOptions(this.configService));
   }
 }

@@ -37,6 +37,12 @@ export const modules: BankingModule[] = [
     endpoints: ["/transactions", "/transactions/:id/pass", "/transactions/:id/cancel", "/transactions/:id"]
   },
   {
+    slug: "payments",
+    name: "Payments & Collections",
+    summary: "Payment requests, cash collection, digital settlement, and collection audit visibility.",
+    endpoints: ["/payments/overview", "/payments/requests", "/payments/transactions", "/payments/requests/:id/pay"]
+  },
+  {
     slug: "cheque-clearing",
     name: "Cheque Clearing House",
     summary: "Cheque entry, return/cancellation, and clearing lifecycle management.",
