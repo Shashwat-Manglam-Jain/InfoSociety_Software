@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { MemoryCacheService } from "../common/cache/memory-cache.service";
+import { MemoryCacheModule } from "../common/cache/memory-cache.module";
 import { PrismaModule } from "../common/database/prisma.module";
 import { AuthModule } from "../modules/auth/auth.module";
 import { BillingModule } from "../modules/billing/billing.module";
@@ -36,6 +36,7 @@ import { AppController } from "./app.controller";
         ".env"
       ]
     }),
+    MemoryCacheModule,
     PrismaModule,
     AuthModule,
     BillingModule,
@@ -59,8 +60,6 @@ import { AppController } from "./app.controller";
     BranchesModule,
     HeadsModule
   ],
-  controllers: [AppController],
-  providers: [MemoryCacheService],
-  exports: [MemoryCacheService]
+  controllers: [AppController]
 })
 export class AppModule {}

@@ -26,6 +26,58 @@ const userRoles = new Set<UserRole>(["CLIENT", "AGENT", "SUPER_USER", "SUPER_ADM
 const accountTypes = new Set<AppAccountType>(["CLIENT", "AGENT", "SOCIETY", "PLATFORM"]);
 const subscriptionPlans = new Set<SubscriptionPlan>(["FREE", "PREMIUM"]);
 
+function decodeBase64Url(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const paddingLength = normalized.length % 4 === 0 ? 0 : 4 - (normalized.length % 4);
+  const encoded = `${normalized}${"=".repeat(paddingLength)}`;
+
+  try {
+    if (typeof Buffer !== "undefined") {
+      return Buffer.from(encoded, "base64").toString("utf8");
+    }
+
+    if (typeof atob === "function") {
+      return atob(encoded);
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+export function getAccessTokenExpiryTimestamp(accessToken: string) {
+  const [, payloadSegment] = accessToken.split(".");
+
+  if (!payloadSegment) {
+    return null;
+  }
+
+  const payloadText = decodeBase64Url(payloadSegment);
+
+  if (!payloadText) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(payloadText) as { exp?: unknown };
+
+    if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) {
+      return null;
+    }
+
+    return payload.exp * 1000;
+  } catch {
+    return null;
+  }
+}
+
+export function isAccessTokenExpired(accessToken: string, now = Date.now()) {
+  const expiryTimestamp = getAccessTokenExpiryTimestamp(accessToken);
+
+  return expiryTimestamp !== null && expiryTimestamp <= now;
+}
+
 export function inferAccountType(role: UserRole): AppAccountType {
   if (role === "SUPER_ADMIN") {
     return "PLATFORM";
@@ -54,6 +106,10 @@ export function parseSessionPayload(payload: unknown): Session | null {
   const parsed = payload as Partial<Session>;
 
   if (!parsed.accessToken || !parsed.username || !parsed.fullName || !isUserRole(parsed.role)) {
+    return null;
+  }
+
+  if (isAccessTokenExpired(parsed.accessToken)) {
     return null;
   }
 

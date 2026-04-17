@@ -75,7 +75,7 @@ export default function StaffLoginPage() {
     try {
       const response = await login(username, password, normalizedSocietyCode, "SUPER_USER");
 
-      setSession({
+      await setSession({
         accessToken: response.accessToken,
         role: response.user.role,
         accountType: "SOCIETY",
