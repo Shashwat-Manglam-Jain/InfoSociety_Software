@@ -64,6 +64,14 @@ function findExactSocietyMatch(societies: Society[], query: string) {
   );
 }
 
+function resolveSafeRedirect(target: string | null) {
+  if (!target || !target.startsWith("/") || target.startsWith("//")) {
+    return null;
+  }
+
+  return target;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -76,12 +84,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [societyCode, setSocietyCode] = useState("");
   const [societySearch, setSocietySearch] = useState("");
-  const [societies, setSocieties] = useState<Society[]>(() => getCachedPublicSocieties() ?? []);
+  const [societies, setSocieties] = useState<Society[]>([]);
   const [selectedSociety, setSelectedSociety] = useState<Society | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRole>("SUPER_USER");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [societiesLoading, setSocietiesLoading] = useState(societies.length === 0);
+  const [societiesLoading, setSocietiesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [societyLookupError, setSocietyLookupError] = useState<string | null>(null);
   const [usernameError, setUsernameError] = useState("");
@@ -90,21 +98,32 @@ export default function LoginPage() {
 
   useEffect(() => {
     const session = getSession();
+    const redirectTarget = resolveSafeRedirect(searchParams.get("redirect"));
 
     if (session?.role === "SUPER_USER") {
-      router.replace(getDefaultDashboardPath("SOCIETY", session.requiresPasswordChange, session.allowedModuleSlugs));
+      router.replace(
+        redirectTarget ?? getDefaultDashboardPath("SOCIETY", session.requiresPasswordChange, session.allowedModuleSlugs)
+      );
       return;
     }
 
     router.prefetch("/dashboard/society");
     router.prefetch("/register");
     router.prefetch("/admin");
-  }, [router]);
+  }, [router, searchParams]);
 
   useEffect(() => {
     let active = true;
 
     async function loadSocieties() {
+      const cachedSocieties = getCachedPublicSocieties();
+
+      if (cachedSocieties && active) {
+        setSocieties([...cachedSocieties].sort((left, right) => left.name.localeCompare(right.name)));
+        setSocietiesLoading(false);
+        setSocietyLookupError(null);
+      }
+
       try {
         const response = await getPublicSocieties();
 
@@ -230,7 +249,7 @@ export default function LoginPage() {
     try {
       const response = await login(username, password, societyCode.trim().toUpperCase(), selectedRole);
 
-      setSession({
+      await setSession({
         accessToken: response.accessToken,
         role: response.user.role,
         accountType: "SOCIETY",
@@ -243,9 +262,11 @@ export default function LoginPage() {
         allowedModuleSlugs: response.user.allowedModuleSlugs ?? []
       });
 
+      const redirectTarget = resolveSafeRedirect(searchParams.get("redirect"));
       toast.success(copy.submitSuccess.replace("{{name}}", response.user.fullName));
       router.replace(
-        getDefaultDashboardPath("SOCIETY", response.user.requiresPasswordChange, response.user.allowedModuleSlugs)
+        redirectTarget ??
+          getDefaultDashboardPath("SOCIETY", response.user.requiresPasswordChange, response.user.allowedModuleSlugs)
       );
     } catch (caught) {
       const status = (caught as { status?: number })?.status ? `[${(caught as { status: number }).status}] ` : "";

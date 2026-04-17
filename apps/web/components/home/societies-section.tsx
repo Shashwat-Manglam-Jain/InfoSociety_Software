@@ -30,12 +30,20 @@ import type { Society } from "@/shared/types";
 export function SocietiesSection() {
   const { locale } = useLanguage();
   const copy = getSiteCopy(locale).societyDirectory;
-  const [societies, setSocieties] = useState<Society[]>(() => getCachedPublicSocieties() ?? []);
-  const [loading, setLoading] = useState(societies.length === 0);
+  const [societies, setSocieties] = useState<Society[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadSocieties() {
+      const cachedSocieties = getCachedPublicSocieties();
+
+      if (cachedSocieties) {
+        setSocieties(cachedSocieties);
+        setLoading(false);
+        setError(null);
+      }
+
       try {
         const data = await listSocieties();
         setSocieties(data);

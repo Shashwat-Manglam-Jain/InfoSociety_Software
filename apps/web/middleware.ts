@@ -37,19 +37,42 @@ function matchesDashboardRole(pathname: string, role: string) {
   return true;
 }
 
+function clearAuthSessionCookie(response: NextResponse) {
+  response.cookies.set(AUTH_SESSION_COOKIE_KEY, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0
+  });
+}
+
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const sessionCookie = request.cookies.get(AUTH_SESSION_COOKIE_KEY)?.value;
   const session = sessionCookie ? parseStoredSession(sessionCookie) : null;
+  const hasInvalidSessionCookie = Boolean(sessionCookie && !session);
 
   if (!session && isProtectedRoute(pathname)) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+
+    if (hasInvalidSessionCookie) {
+      clearAuthSessionCookie(response);
+    }
+
+    return response;
   }
 
   if (!session) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+
+    if (hasInvalidSessionCookie) {
+      clearAuthSessionCookie(response);
+    }
+
+    return response;
   }
 
   const defaultPath = getDefaultDashboardPath(

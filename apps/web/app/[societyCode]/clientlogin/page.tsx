@@ -76,7 +76,7 @@ export default function ClientLoginPage() {
     try {
       const response = await login(username, password, normalizedSocietyCode, "CLIENT");
 
-      setSession({
+      await setSession({
         accessToken: response.accessToken,
         role: response.user.role,
         accountType: "CLIENT",
