@@ -84,12 +84,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [societyCode, setSocietyCode] = useState("");
   const [societySearch, setSocietySearch] = useState("");
-  const [societies, setSocieties] = useState<Society[]>([]);
+  const [societies, setSocieties] = useState<Society[]>(() => getCachedPublicSocieties() ?? []);
   const [selectedSociety, setSelectedSociety] = useState<Society | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRole>("SUPER_USER");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [societiesLoading, setSocietiesLoading] = useState(true);
+  const [societiesLoading, setSocietiesLoading] = useState(societies.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [societyLookupError, setSocietyLookupError] = useState<string | null>(null);
   const [usernameError, setUsernameError] = useState("");

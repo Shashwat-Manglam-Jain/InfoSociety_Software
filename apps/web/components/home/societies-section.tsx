@@ -30,8 +30,8 @@ import type { Society } from "@/shared/types";
 export function SocietiesSection() {
   const { locale } = useLanguage();
   const copy = getSiteCopy(locale).societyDirectory;
-  const [societies, setSocieties] = useState<Society[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [societies, setSocieties] = useState<Society[]>(() => getCachedPublicSocieties() ?? []);
+  const [loading, setLoading] = useState(societies.length === 0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
