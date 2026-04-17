@@ -80,7 +80,7 @@ export default function ClientLoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(username, password, normalizedSocietyCode, "CLIENT", aadhaarLast4.trim() || undefined);
+      const response = await login(username, password, normalizedSocietyCode, "CLIENT", aadhaarLast4.trim() || undefined, "CLIENT");
 
       await setSession({
         accessToken: response.accessToken,

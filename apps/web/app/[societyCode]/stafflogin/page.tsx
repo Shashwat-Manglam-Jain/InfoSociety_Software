@@ -79,7 +79,7 @@ export default function StaffLoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(username, password, normalizedSocietyCode, "SUPER_USER", aadhaarLast4.trim() || undefined);
+      const response = await login(username, password, normalizedSocietyCode, "SUPER_USER", aadhaarLast4.trim() || undefined, "STAFF");
 
       await setSession({
         accessToken: response.accessToken,

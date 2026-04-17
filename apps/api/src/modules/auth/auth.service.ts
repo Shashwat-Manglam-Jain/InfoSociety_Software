@@ -240,6 +240,20 @@ export class AuthService {
       }
     }
 
+    // 6. Portal-Specific Access Enforcement
+    // If logging in via the main Administrative portal, ensure the user is indeed a Society Admin.
+    if (dto.portalSource === 'ADMIN') {
+      const extras = await this.getUserExtraFields(user.id);
+      
+      // We check both the Prisma-fetched property and the manual extra fields query for maximum reliability
+      const isSocietyAdmin = (user as any).isSocietyAdmin === true || extras.isSocietyAdmin === true;
+      const isPlatformAdmin = user.role === UserRole.SUPER_ADMIN;
+
+      if (!isSocietyAdmin && !isPlatformAdmin) {
+        throw new UnauthorizedException("Institutional Access Denied: This portal is reserved for society administrators. Staff members must use their designated society staff login portal.");
+      }
+    }
+
     return this.buildLoginResponse(user);
   }
 
@@ -1091,10 +1105,10 @@ export class AuthService {
     }
 
     const aadhaarNumberSelect = columnAvailability.aadhaarNumber
-      ? Prisma.sql`"aadhaarNumber"`
+      ? Prisma.sql`"aadhaarNumber" AS "aadhaarNumber"`
       : Prisma.sql`NULL::TEXT AS "aadhaarNumber"`;
     const societyAdminSelect = columnAvailability.isSocietyAdmin
-      ? Prisma.sql`"isSocietyAdmin"`
+      ? Prisma.sql`"isSocietyAdmin" AS "isSocietyAdmin"`
       : Prisma.sql`FALSE AS "isSocietyAdmin"`;
     const rows = await this.prisma.$queryRaw<Array<{ aadhaarNumber: string | null; isSocietyAdmin: boolean }>>(
       Prisma.sql`
@@ -1105,7 +1119,11 @@ export class AuthService {
       `
     );
 
-    return rows[0] ?? { aadhaarNumber: null, isSocietyAdmin: false };
+    const rawRow = rows[0] ?? { aadhaarNumber: null, isSocietyAdmin: false };
+    return {
+      aadhaarNumber: rawRow.aadhaarNumber,
+      isSocietyAdmin: rawRow.isSocietyAdmin === true || String(rawRow.isSocietyAdmin).toLowerCase() === 't' || String(rawRow.isSocietyAdmin) === '1'
+    };
   }
 
   private getUserExtraFieldAvailability() {

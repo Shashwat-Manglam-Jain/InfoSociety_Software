@@ -50,7 +50,7 @@ export async function resolveUserAllowedModules(db: DatabaseClient, userId: stri
 
   try {
     const rows = await db.$queryRaw<Array<{ allowedModuleSlugs: string[] | null }>>(
-      Prisma.sql`SELECT "allowedModuleSlugs" FROM "User" WHERE id = ${userId} LIMIT 1`
+      Prisma.sql`SELECT "allowedModuleSlugs" AS "allowedModuleSlugs" FROM "User" WHERE id = ${userId} LIMIT 1`
     );
 
     markAllowedModulesColumnPresent();
@@ -102,7 +102,7 @@ export async function getUserAllowedModuleMap(db: DatabaseClient, userIds: strin
   try {
     const rows = await db.$queryRaw<Array<{ id: string; allowedModuleSlugs: string[] | null }>>(
       Prisma.sql`
-        SELECT id, "allowedModuleSlugs"
+        SELECT id, "allowedModuleSlugs" AS "allowedModuleSlugs"
         FROM "User"
         WHERE id IN (${Prisma.join(userIds)})
       `

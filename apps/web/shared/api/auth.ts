@@ -48,12 +48,20 @@ export async function login(
   password: string,
   societyCode?: string,
   expectedRole?: UserRole,
-  aadhaarLast4?: string
+  aadhaarLast4?: string,
+  portalSource?: 'ADMIN' | 'STAFF' | 'AGENT' | 'CLIENT'
 ): Promise<LoginResponse> {
   return requestJson<LoginResponse>({
     method: "POST",
     path: "/auth/login",
-    body: { username, password, societyCode, expectedRole, ...(aadhaarLast4 ? { aadhaarLast4 } : {}) }
+    body: { 
+      username, 
+      password, 
+      societyCode, 
+      expectedRole, 
+      ...(aadhaarLast4 ? { aadhaarLast4 } : {}),
+      ...(portalSource ? { portalSource } : {})
+    }
   });
 }
 
