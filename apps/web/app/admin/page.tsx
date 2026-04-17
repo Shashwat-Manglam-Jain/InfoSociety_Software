@@ -56,7 +56,7 @@ export default function AdminLoginPage() {
     try {
       const response = await login(username, password, undefined, "SUPER_ADMIN");
 
-      setSession({
+      await setSession({
         accessToken: response.accessToken,
         role: "SUPER_ADMIN",
         accountType: "PLATFORM",

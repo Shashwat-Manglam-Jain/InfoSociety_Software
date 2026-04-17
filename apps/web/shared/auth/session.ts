@@ -53,34 +53,42 @@ export function getSession(): Session | null {
 
     if (!parsed) {
       window.localStorage.removeItem(SESSION_KEY);
+      void syncServerSessionCookie(null);
       return null;
     }
 
     return parsed;
   } catch {
     window.localStorage.removeItem(SESSION_KEY);
+    void syncServerSessionCookie(null);
     return null;
   }
 }
 
-export function setSession(session: Session) {
+export async function setSession(session: Session) {
   if (typeof window === "undefined") {
     return;
   }
 
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  void syncServerSessionCookie(session);
+  const normalizedSession = parseSessionPayload(session);
+
+  if (!normalizedSession) {
+    await clearSession();
+    return;
+  }
+
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify(normalizedSession));
+  await syncServerSessionCookie(normalizedSession);
   emitSessionChange();
 }
 
-export function clearSession() {
+export async function clearSession() {
   if (typeof window === "undefined") {
     return;
   }
 
   window.localStorage.removeItem(SESSION_KEY);
-  void syncServerSessionCookie(null);
-  void logoutFromApi().catch(() => undefined);
+  await Promise.allSettled([syncServerSessionCookie(null), logoutFromApi().catch(() => undefined)]);
   emitSessionChange();
 }
 

@@ -76,7 +76,7 @@ export default function AgentLoginPage() {
     try {
       const response = await login(username, password, normalizedSocietyCode, "AGENT");
 
-      setSession({
+      await setSession({
         accessToken: response.accessToken,
         role: response.user.role,
         accountType: "AGENT",

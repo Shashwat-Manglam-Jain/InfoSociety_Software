@@ -73,7 +73,7 @@ export default function ChangePasswordPage() {
       
       // Update session to reflect password change
       const updatedSession = { ...session, requiresPasswordChange: false };
-      setSession(updatedSession);
+      await setSession(updatedSession);
       
       toast.success(copy.success);
       router.replace(getDefaultDashboardPath(session.accountType, false, session.allowedModuleSlugs));

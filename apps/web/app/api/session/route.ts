@@ -1,17 +1,26 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { Session } from "@/shared/types";
-import { AUTH_SESSION_COOKIE_KEY, parseSessionPayload } from "@/shared/auth/session-payload";
+import {
+  AUTH_SESSION_COOKIE_KEY,
+  getAccessTokenExpiryTimestamp,
+  parseSessionPayload,
+  parseStoredSession
+} from "@/shared/auth/session-payload";
 
 const SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 14;
 
-function buildCookieOptions() {
+function buildCookieOptions(session: Session) {
+  const tokenExpiryTimestamp = getAccessTokenExpiryTimestamp(session.accessToken);
+  const tokenMaxAgeSeconds =
+    tokenExpiryTimestamp === null ? SESSION_COOKIE_MAX_AGE : Math.max(0, Math.floor((tokenExpiryTimestamp - Date.now()) / 1000));
+
   return {
     httpOnly: true,
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: SESSION_COOKIE_MAX_AGE
+    maxAge: Math.min(SESSION_COOKIE_MAX_AGE, tokenMaxAgeSeconds)
   };
 }
 
@@ -23,12 +32,7 @@ export async function GET() {
     return NextResponse.json({ session: null });
   }
 
-  try {
-    const parsed = JSON.parse(sessionValue) as unknown;
-    return NextResponse.json({ session: parseSessionPayload(parsed) });
-  } catch {
-    return NextResponse.json({ session: null });
-  }
+  return NextResponse.json({ session: parseStoredSession(sessionValue) });
 }
 
 export async function POST(request: Request) {
@@ -42,11 +46,11 @@ export async function POST(request: Request) {
   const response = NextResponse.json({ success: true });
   response.cookies.set(
     AUTH_SESSION_COOKIE_KEY,
-    JSON.stringify({
-      ...session,
-      avatarDataUrl: null
-    }),
-    buildCookieOptions()
+      JSON.stringify({
+        ...session,
+        avatarDataUrl: null
+      }),
+    buildCookieOptions(session)
   );
 
   return response;
