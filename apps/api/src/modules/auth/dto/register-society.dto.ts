@@ -82,4 +82,13 @@ export class RegisterSocietyDto {
   @IsOptional()
   @IsString()
   registrationAuthority?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(12)
+  aadhaarNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  planId?: string;
 }

@@ -60,6 +60,24 @@ function fromToday(days: number) {
 }
 
 async function main() {
+  // 0) Create Banking Heads (required for account number generation logic)
+  const headTypes = [
+    { code: "SAV", name: "Savings Accounts", group: "Liabilities", relatedType: "SAVINGS", accountCode: "201" },
+    { code: "CUR", name: "Current Accounts", group: "Liabilities", relatedType: "CURRENT", accountCode: "202" },
+    { code: "FDR", name: "Fixed Deposits", group: "Liabilities", relatedType: "FIXED_DEPOSIT", accountCode: "203" },
+    { code: "REC", name: "Recurring Deposits", group: "Liabilities", relatedType: "RECURRING_DEPOSIT", accountCode: "204" },
+    { code: "LON", name: "Loan Accounts", group: "Assets", relatedType: "LOAN", accountCode: "101" },
+    { code: "PGM", name: "Pigmy Deposits", group: "Liabilities", relatedType: "PIGMY", accountCode: "205" }
+  ];
+
+  for (const h of headTypes) {
+    await prisma.head.upsert({
+      where: { code: h.code },
+      update: h,
+      create: h
+    });
+  }
+
   // 1) Base societies that all master/module data will map to.
   const hoSociety = await prisma.society.upsert({
     where: { code: "SOC-HO" },
@@ -144,13 +162,16 @@ async function main() {
 
   // 2) Staff and client users (demo credentials remain stable for local testing).
   // Platform superadmin is provisioned from backend env during application bootstrap.
+  // "superuser" is the society OWNER/ADMIN - isSocietyAdmin: true keeps them out of the staff list.
   const superUser = await prisma.user.upsert({
     where: { username: "superuser" },
     update: {
       passwordHash: password("Super@123"),
       fullName: "Head Office Society Admin",
       role: UserRole.SUPER_USER,
+      aadhaarNumber: "123456789012",
       isActive: true,
+      isSocietyAdmin: true,
       societyId: hoSociety.id,
       customerId: null
     },
@@ -159,6 +180,31 @@ async function main() {
       passwordHash: password("Super@123"),
       fullName: "Head Office Society Admin",
       role: UserRole.SUPER_USER,
+      aadhaarNumber: "123456789012",
+      isSocietyAdmin: true,
+      societyId: hoSociety.id
+    }
+  });
+
+  // HO Staff (non-admin SUPER_USER - appears in staff list, no permission to change permissions)
+  const hoStaff = await prisma.user.upsert({
+    where: { username: "staff1" },
+    update: {
+      passwordHash: password("Staff@123"),
+      fullName: "HO Teller Staff",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "666677778888",
+      isActive: true,
+      isSocietyAdmin: false,
+      societyId: hoSociety.id
+    },
+    create: {
+      username: "staff1",
+      passwordHash: password("Staff@123"),
+      fullName: "HO Teller Staff",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "666677778888",
+      isSocietyAdmin: false,
       societyId: hoSociety.id
     }
   });
@@ -169,6 +215,7 @@ async function main() {
       passwordHash: password("Agent@123"),
       fullName: "Society Agent",
       role: UserRole.AGENT,
+      aadhaarNumber: "111122223333",
       societyId: hoSociety.id,
       isActive: true
     },
@@ -177,6 +224,7 @@ async function main() {
       passwordHash: password("Agent@123"),
       fullName: "Society Agent",
       role: UserRole.AGENT,
+      aadhaarNumber: "111122223333",
       societyId: hoSociety.id
     }
   });
@@ -187,6 +235,7 @@ async function main() {
       passwordHash: password("Agent2@123"),
       fullName: "Western Region Agent",
       role: UserRole.AGENT,
+      aadhaarNumber: "444455556666",
       societyId: westSociety.id,
       isActive: true
     },
@@ -195,6 +244,7 @@ async function main() {
       passwordHash: password("Agent2@123"),
       fullName: "Western Region Agent",
       role: UserRole.AGENT,
+      aadhaarNumber: "444455556666",
       societyId: westSociety.id
     }
   });
@@ -205,15 +255,132 @@ async function main() {
       passwordHash: password("Society@123"),
       fullName: "Society Administrator",
       role: UserRole.SUPER_USER,
+      aadhaarNumber: "987654321098",
       societyId: hoSociety.id,
-      isActive: true
+      isActive: true,
+      isSocietyAdmin: true
     },
     create: {
       username: "societyadmin1",
       passwordHash: password("Society@123"),
       fullName: "Society Administrator",
       role: UserRole.SUPER_USER,
+      aadhaarNumber: "987654321098",
+      isSocietyAdmin: true,
       societyId: hoSociety.id
+    }
+  });
+
+  // West Staff
+  const westStaff = await prisma.user.upsert({
+    where: { username: "staffwest1" },
+    update: {
+      passwordHash: password("StaffWest@123"),
+      fullName: "West Branch Teller",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "101010101010",
+      isActive: true,
+      isSocietyAdmin: false,
+      societyId: westSociety.id
+    },
+    create: {
+      username: "staffwest1",
+      passwordHash: password("StaffWest@123"),
+      fullName: "West Branch Teller",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "101010101010",
+      isSocietyAdmin: false,
+      societyId: westSociety.id
+    }
+  });
+
+  const southAdmin = await prisma.user.upsert({
+    where: { username: "southadmin" },
+    update: {
+      passwordHash: password("South@123"),
+      fullName: "South Regional Admin",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "222233334444",
+      societyId: southSociety.id,
+      isActive: true,
+      isSocietyAdmin: true
+    },
+    create: {
+      username: "southadmin",
+      passwordHash: password("South@123"),
+      fullName: "South Regional Admin",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "222233334444",
+      isSocietyAdmin: true,
+      societyId: southSociety.id
+    }
+  });
+
+  // South Staff
+  const southStaff = await prisma.user.upsert({
+    where: { username: "staffsouth1" },
+    update: {
+      passwordHash: password("StaffSouth@123"),
+      fullName: "South Teller Staff",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "121212121212",
+      isActive: true,
+      isSocietyAdmin: false,
+      societyId: southSociety.id
+    },
+    create: {
+      username: "staffsouth1",
+      passwordHash: password("StaffSouth@123"),
+      fullName: "South Teller Staff",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "121212121212",
+      isSocietyAdmin: false,
+      societyId: southSociety.id
+    }
+  });
+
+  const centralAdmin = await prisma.user.upsert({
+    where: { username: "centraladmin" },
+    update: {
+      passwordHash: password("Central@123"),
+      fullName: "Central Credit Admin",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "888899990000",
+      societyId: centralSociety.id,
+      isActive: true,
+      isSocietyAdmin: true
+    },
+    create: {
+      username: "centraladmin",
+      passwordHash: password("Central@123"),
+      fullName: "Central Credit Admin",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "888899990000",
+      isSocietyAdmin: true,
+      societyId: centralSociety.id
+    }
+  });
+
+  // Central Staff
+  const centralStaff = await prisma.user.upsert({
+    where: { username: "staffcentral1" },
+    update: {
+      passwordHash: password("StaffCentral@123"),
+      fullName: "Central Teller Staff",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "131313131313",
+      isActive: true,
+      isSocietyAdmin: false,
+      societyId: centralSociety.id
+    },
+    create: {
+      username: "staffcentral1",
+      passwordHash: password("StaffCentral@123"),
+      fullName: "Central Teller Staff",
+      role: UserRole.SUPER_USER,
+      aadhaarNumber: "131313131313",
+      isSocietyAdmin: false,
+      societyId: centralSociety.id
     }
   });
 
@@ -316,6 +483,7 @@ async function main() {
       passwordHash: password("Client@123"),
       fullName: "Demo Client",
       role: UserRole.CLIENT,
+      aadhaarNumber: "777788889999",
       societyId: hoSociety.id,
       customerId: demoCustomer.id,
       isActive: true
@@ -325,6 +493,7 @@ async function main() {
       passwordHash: password("Client@123"),
       fullName: "Demo Client",
       role: UserRole.CLIENT,
+      aadhaarNumber: "777788889999",
       societyId: hoSociety.id,
       customerId: demoCustomer.id
     }
@@ -336,6 +505,7 @@ async function main() {
       passwordHash: password("Premium@123"),
       fullName: "Premium Client",
       role: UserRole.CLIENT,
+      aadhaarNumber: "000011112222",
       societyId: hoSociety.id,
       customerId: premiumCustomer.id,
       isActive: true
@@ -345,6 +515,7 @@ async function main() {
       passwordHash: password("Premium@123"),
       fullName: "Premium Client",
       role: UserRole.CLIENT,
+      aadhaarNumber: "000011112222",
       societyId: hoSociety.id,
       customerId: premiumCustomer.id
     }
@@ -356,6 +527,7 @@ async function main() {
       passwordHash: password("Client2@123"),
       fullName: "Western Client",
       role: UserRole.CLIENT,
+      aadhaarNumber: "333344445555",
       societyId: westSociety.id,
       customerId: westCustomer.id,
       isActive: true
@@ -365,6 +537,7 @@ async function main() {
       passwordHash: password("Client2@123"),
       fullName: "Western Client",
       role: UserRole.CLIENT,
+      aadhaarNumber: "333344445555",
       societyId: westSociety.id,
       customerId: westCustomer.id
     }

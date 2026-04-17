@@ -10,6 +10,7 @@ import ManageAccountsRoundedIcon from "@mui/icons-material/ManageAccountsRounded
 import MapRoundedIcon from "@mui/icons-material/MapRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ShieldRoundedIcon from "@mui/icons-material/ShieldRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import { Alert, Box, Button, CircularProgress, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
@@ -18,7 +19,6 @@ import { modules as bankingModules } from "@/features/banking/module-registry";
 import { MainAdministrationWorkspace, type AdminView } from "@/features/society/components/administration/MainAdministrationWorkspace";
 import { AgentDetailDrawer } from "@/features/society/components/administration/drawers/AgentDetailDrawer";
 import { BranchDrawer } from "@/features/society/components/administration/drawers/BranchDrawer";
-
 import { UserAccessDrawer } from "@/features/society/components/administration/drawers/UserAccessDrawer";
 import { UserProvisioningDrawer } from "@/features/society/components/administration/drawers/UserProvisioningDrawer";
 import { SocietyOperationsWorkspace } from "@/features/society/components/society-operations-workspace";
@@ -33,6 +33,7 @@ import { IbcObcWorkspace } from "@/features/society/components/ibc-obc-workspace
 import { ReportsWorkspace } from "@/features/society/components/reports-workspace";
 import { UserDirectoryWorkspace } from "@/features/society/components/user-directory-workspace";
 import { SocietyMonitoringWorkspace } from "@/features/society/components/society-monitoring-workspace";
+import { ProfileEditWorkspace } from "@/features/shared/components/profile-edit-workspace";
 import {
   adminCreateBranch,
   adminDeleteBranch,
@@ -122,6 +123,7 @@ type SocietyView =
   | "reports_workspace"
   | "user_directory_workspace"
   | "monitoring_workspace"
+  | "my_profile"
   | AdminView;
 
 type DashboardSnapshot = {
@@ -159,7 +161,8 @@ const SOCIETY_VIEWS = new Set<SocietyView>([
   "ibc_obc_workspace",
   "reports_workspace",
   "user_directory_workspace",
-  "monitoring_workspace"
+  "monitoring_workspace",
+  "my_profile"
 ]);
 
 const ALL_BRANCHES_FILTER = "__ALL_BRANCHES__";
@@ -208,21 +211,21 @@ const SOCIETY_VIEW_ACCESS: Record<SocietyView, string[]> = {
   monitoring_workspace: ["monitoring"]
 };
 
-function hasAllowedModule(allowedModuleSlugs: Set<string>, moduleCandidates: string[]) {
+function hasAllowedModule(isSocietyAdmin: boolean, allowedModuleSlugs: Set<string>, moduleCandidates: string[]) {
+  if (isSocietyAdmin) return true;
   return moduleCandidates.some((moduleSlug) => allowedModuleSlugs.has(moduleSlug));
 }
 
-function canAccessSocietyView(view: SocietyView, allowedModuleSlugs: Set<string>) {
+function canAccessSocietyView(isSocietyAdmin: boolean, view: SocietyView, allowedModuleSlugs: Set<string>) {
+  if (isSocietyAdmin) return true;
+  if (view === "overview" || view === "my_profile") return true;
+
   const rules = SOCIETY_VIEW_ACCESS[view] ?? [];
   if (rules.length === 0) {
     return true;
   }
 
-  if (allowedModuleSlugs.size === 0) {
-    return view === "overview";
-  }
-
-  return hasAllowedModule(allowedModuleSlugs, rules);
+  return hasAllowedModule(isSocietyAdmin, allowedModuleSlugs, rules);
 }
 
 function getSocietyModuleHref(slug: string) {
@@ -496,7 +499,10 @@ export default function SocietyDashboard() {
   const societyModuleWorkspaceItems = useMemo(
     () =>
       bankingModules
-        .filter((module) => (allowedModuleSet.size === 0 ? module.slug === "administration" : allowedModuleSet.has(module.slug)))
+        .filter((module) => {
+          if (shellUser?.isSocietyAdmin) return true;
+          return allowedModuleSet.has(module.slug);
+        })
         .map((module) => ({
           ...module,
           href: getSocietyModuleHref(module.slug),
@@ -540,7 +546,16 @@ export default function SocietyDashboard() {
         active: !requestedModuleSlug && currentView === "directory",
         moduleCandidates: ["administration"]
       }
-    ].filter((item) => hasAllowedModule(allowedModuleSet, item.moduleCandidates));
+    ].filter((item) => hasAllowedModule(!!shellUser?.isSocietyAdmin, allowedModuleSet, item.moduleCandidates));
+
+    const baseItems = [
+      {
+        label: "My Profile",
+        href: "/dashboard/society?view=my_profile",
+        icon: <PersonRoundedIcon />,
+        active: !requestedModuleSlug && currentView === "my_profile"
+      }
+    ];
 
     const operationItems = [
       {
@@ -585,7 +600,7 @@ export default function SocietyDashboard() {
         active: !requestedModuleSlug && currentView === "treasury_audit",
         moduleCandidates: ["administration", "transactions", "cashbook"]
       }
-    ].filter((item) => hasAllowedModule(allowedModuleSet, item.moduleCandidates));
+    ].filter((item) => hasAllowedModule(!!shellUser?.isSocietyAdmin, allowedModuleSet, item.moduleCandidates));
 
     const bankingItems = [
       {
@@ -637,7 +652,7 @@ export default function SocietyDashboard() {
         active: !requestedModuleSlug && currentView === "locker_workspace",
         moduleCandidates: ["locker"]
       }
-    ].filter((item) => hasAllowedModule(allowedModuleSet, item.moduleCandidates));
+    ].filter((item) => hasAllowedModule(!!shellUser?.isSocietyAdmin, allowedModuleSet, item.moduleCandidates));
 
     const additionalModuleItems = societyModuleWorkspaceItems
       .filter((module) => !Object.prototype.hasOwnProperty.call(SOCIETY_CUSTOM_MODULE_HREF_BY_SLUG, module.slug))
@@ -692,9 +707,10 @@ export default function SocietyDashboard() {
         active: !requestedModuleSlug && currentView === "monitoring_workspace",
         moduleCandidates: ["monitoring"]
       }
-    ].filter((item) => hasAllowedModule(allowedModuleSet, item.moduleCandidates));
+    ].filter((item) => hasAllowedModule(!!shellUser?.isSocietyAdmin, allowedModuleSet, item.moduleCandidates));
 
     return [
+      { items: baseItems },
       ...(administrationItems.length > 0 ? [{ heading: copy.sections.administration, items: administrationItems }] : []),
       ...(operationItems.length > 0 ? [{ heading: copy.sections.operations, items: operationItems }] : []),
       ...(bankingItems.length > 0 ? [{ heading: copy.sections.bankingServices, items: bankingItems }] : []),
@@ -715,7 +731,7 @@ export default function SocietyDashboard() {
       return;
     }
 
-    if (!canAccessSocietyView(currentView, allowedModuleSet)) {
+    if (!canAccessSocietyView(!!shellUser?.isSocietyAdmin, currentView, allowedModuleSet)) {
       router.replace(defaultSocietyPath);
     }
   }, [
@@ -1112,6 +1128,7 @@ export default function SocietyDashboard() {
   const isReportsView = currentView === "reports_workspace";
   const isUserDirectoryView = currentView === "user_directory_workspace";
   const isMonitoringView = currentView === "monitoring_workspace";
+  const isMyProfileView = currentView === "my_profile";
   const branchFilterActive = selectedBranchFilter !== ALL_BRANCHES_FILTER;
   const visibleBranches = useMemo(
     () => (branchFilterActive ? branches.filter((branch) => branch.id === selectedBranchFilter) : branches),
@@ -1190,7 +1207,7 @@ export default function SocietyDashboard() {
       <DashboardShell
       user={shellUser}
       accountTypeLabel={`${copy.shell.accountTypeLabel}${branchFilterActive ? ` · ${branches.find((branch) => branch.id === selectedBranchFilter)?.name ?? copy.shell.branchFallback}` : ""}`}
-      avatarDataUrl={null}
+      avatarDataUrl={shellUser?.avatarUrl}
       onLogout={() => {
         clearSession();
         router.replace("/");
@@ -1281,6 +1298,8 @@ export default function SocietyDashboard() {
           <UserDirectoryWorkspace token={session.accessToken} />
         ) : isMonitoringView && session ? (
           <SocietyMonitoringWorkspace token={session.accessToken} />
+        ) : isMyProfileView && shellUser ? (
+          <ProfileEditWorkspace user={shellUser} />
         ) : [
           "membership_clients",
           "plan_catalogue",

@@ -52,6 +52,15 @@ type RegisterCopy = {
     goToLogin: string;
     platformAdmin: string;
     useAdmin: string;
+    aadhaarLabel: string;
+    aadhaarPlaceholder: string;
+    aadhaarHelper: string;
+    planLabel: string;
+    planHelper: string;
+    plans: {
+      FREE: string;
+      PREMIUM: string;
+    };
   };
 };
 
@@ -115,7 +124,16 @@ const registerCopy: Record<AppLocale, RegisterCopy> = {
       alreadyApproved: "Already approved?",
       goToLogin: "Go to society login",
       platformAdmin: "Platform superadmin?",
-      useAdmin: "Use the admin terminal"
+      useAdmin: "Use the admin terminal",
+      aadhaarLabel: "Aadhaar Number",
+      aadhaarPlaceholder: "12-digit Aadhaar number",
+      aadhaarHelper: "This ensures the security and uniqueness of the administrative account.",
+      planLabel: "Subscription Plan",
+      planHelper: "Select the plan that fits your society's needs.",
+      plans: {
+        FREE: "Basic Plan (Free)",
+        PREMIUM: "Premium Plan"
+      }
     }
   },
   hi: {
@@ -148,20 +166,17 @@ const registerCopy: Record<AppLocale, RegisterCopy> = {
     },
     formPanel: {
       title: "सोसाइटी नामांकन फ़ॉर्म",
-      description:
-        "यहाँ केवल मुख्य विवरण आवश्यक हैं। रजिस्ट्रेशन पेज अब API से वर्तमान प्लेटफ़ॉर्म स्नैपशॉट भी लाता है ताकि नामांकन से पहले आप लाइव नेटवर्क देख सकें।",
+      description: "यहाँ केवल मुख्य विवरण आवश्यक हैं।",
       snapshotTitle: "लाइव प्लेटफ़ॉर्म स्नैपशॉट",
       approvedSocieties: "स्वीकृत सोसाइटी",
       premiumPlan: "प्रीमियम प्लान",
-      snapshotLiveNote:
-        "ये मान API से लाइव लोड किए जाते हैं, इसलिए रजिस्ट्रेशन पेज वर्तमान प्लेटफ़ॉर्म सेटअप के साथ संरेखित रहता है।",
+      snapshotLiveNote: "ये मान API से लाइव लोड किए जाते हैं।",
       generatedTitle: "जनरेट किए गए लॉगिन विवरण",
       societyCode: "सोसाइटी कोड",
       adminUsername: "एडमिन यूज़रनेम",
       waitingSociety: "सोसाइटी नाम की प्रतीक्षा में",
       waitingAdmin: "प्रशासक नाम की प्रतीक्षा में",
-      generatedNote:
-        "सोसाइटी कोड सोसाइटी नाम से बनता है, और पहला एडमिन यूज़रनेम यहाँ दर्ज किए गए प्रशासक नाम से बनता है।",
+      generatedNote: "सोसाइटी कोड सोसाइटी नाम से बनता है।",
       requiredTitle: "आवश्यक विवरण",
       societyNameLabel: "सोसाइटी नाम",
       societyNamePlaceholder: "उदा. स्काईलाइन कोऑपरेटिव क्रेडिट सोसाइटी",
@@ -177,7 +192,16 @@ const registerCopy: Record<AppLocale, RegisterCopy> = {
       alreadyApproved: "पहले से स्वीकृत?",
       goToLogin: "सोसाइटी लॉगिन पर जाएँ",
       platformAdmin: "प्लेटफ़ॉर्म सुपरएडमिन?",
-      useAdmin: "एडमिन टर्मिनल उपयोग करें"
+      useAdmin: "एडमिन टर्मिनल उपयोग करें",
+      aadhaarLabel: "आधार नंबर",
+      aadhaarPlaceholder: "12-अंकीय आधार संख्या",
+      aadhaarHelper: "यह प्रशासनिक खाते की सुरक्षा और विशिष्टता सुनिश्चित करता है।",
+      planLabel: "सब्सक्रिप्शन प्लान",
+      planHelper: "वह प्लान चुनें जो आपकी सोसाइटी की ज़रूरतों के अनुरूप हो।",
+      plans: {
+        FREE: "बेसिक प्लान (मुफ्त)",
+        PREMIUM: "प्रीमियम प्लान"
+      }
     }
   },
   mr: {
@@ -210,20 +234,17 @@ const registerCopy: Record<AppLocale, RegisterCopy> = {
     },
     formPanel: {
       title: "सोसायटी नोंदणी फॉर्म",
-      description:
-        "येथे फक्त मुख्य तपशील आवश्यक आहेत. नोंदणी पान आता API मधून वर्तमान प्लॅटफॉर्म स्नॅपशॉट देखील आणते, त्यामुळे नोंदणीपूर्वी तुम्ही लाइव्ह नेटवर्क पाहू शकता.",
+      description: "येथे फक्त मुख्य तपशील आवश्यक आहेत।",
       snapshotTitle: "लाइव्ह प्लॅटफॉर्म स्नॅपशॉट",
       approvedSocieties: "मंजूर सोसायट्या",
       premiumPlan: "प्रीमियम प्लॅन",
-      snapshotLiveNote:
-        "ही मूल्ये API मधून लाइव्ह लोड होतात, त्यामुळे नोंदणी पान सध्याच्या प्लॅटफॉर्म सेटअपशी जुळलेले राहते.",
+      snapshotLiveNote: "ही मूल्ये API मधून लाइव्ह लोड होतात।",
       generatedTitle: "तयार झालेले लॉगिन तपशील",
       societyCode: "सोसायटी कोड",
       adminUsername: "एडमिन यूजरनेम",
       waitingSociety: "सोसायटी नावाची प्रतीक्षा आहे",
       waitingAdmin: "प्रशासक नावाची प्रतीक्षा आहे",
-      generatedNote:
-        "सोसायटी कोड सोसायटीच्या नावावरून तयार होतो, आणि पहिला एडमिन यूजरनेम येथे दिलेल्या प्रशासकाच्या नावावरून तयार होतो.",
+      generatedNote: "सोसायटी कोड सोसायटीच्या नावावरून तयार होतो।",
       requiredTitle: "आवश्यक तपशील",
       societyNameLabel: "सोसायटीचे नाव",
       societyNamePlaceholder: "उदा. स्कायलाइन कोऑपरेटिव क्रेडिट सोसायटी",
@@ -239,7 +260,16 @@ const registerCopy: Record<AppLocale, RegisterCopy> = {
       alreadyApproved: "आधीच मंजूर?",
       goToLogin: "सोसायटी लॉगिनकडे जा",
       platformAdmin: "प्लॅटफॉर्म सुपरअॅडमिन?",
-      useAdmin: "एडमिन टर्मिनल वापरा"
+      useAdmin: "एडमिन टर्मिनल वापरा",
+      aadhaarLabel: "आधार नंबर",
+      aadhaarPlaceholder: "12-अंकी आधार क्रमांक",
+      aadhaarHelper: "हे प्रशासकीय खात्याची सुरक्षा आणि अद्वितीयता सुनिश्चित करते।",
+      planLabel: "सबस्क्रिप्शन प्लॅन",
+      planHelper: "तुमच्या सोसायटीच्या गरजांनुसार प्लॅन निवडा.",
+      plans: {
+        FREE: "बेसिक प्लॅन (मोफत)",
+        PREMIUM: "प्रीमियम प्लॅन"
+      }
     }
   }
 };

@@ -4,7 +4,7 @@ import { modules, type BankingModule } from "@/features/banking/module-registry"
 import { defaultLocale, type AppLocale } from "@/shared/i18n/translations";
 import type { AppAccountType } from "@/shared/types";
 
-export type WorkspaceRoleSlug = "client" | "agent" | "society-admin" | "platform-admin";
+export type WorkspaceRoleSlug = "client" | "agent" | "society-admin" | "platform-admin" | "society-staff";
 
 export type WorkspaceDefinition = {
   slug: WorkspaceRoleSlug;
@@ -284,6 +284,48 @@ const workspaceDefinitions: WorkspaceDefinition[] = [
       href: "/admin",
       label: "Platform Governance"
     }
+  },
+  {
+    slug: "society-staff",
+    href: "/workspaces/society-staff",
+    accountType: "SOCIETY",
+    navLabel: "Society Staff",
+    badge: "Staff Access",
+    title: "Society Staff Workspace",
+    subtitle:
+      "A dedicated workspace for internal society staff focused on back-office operations, report generation, and administrative assistance.",
+    audience: "Internal society employees and back-office staff.",
+    dataScope: "Internal reporting, ledger verification, and administrative tools scoped to one society.",
+    primaryResponsibility: "Daily reports, trial balance review, and back-office verification.",
+    visibleHighlights: [
+      "Access internal reports, ledgers, and cashbook without approving core transactions",
+      "Support customer queries and monitor daily society health",
+      "Operate securely without exposure to institution configuration"
+    ],
+    adminTools: [
+      "Detailed reporting modules and list views",
+      "Trial balance and financial inquiries",
+      "Customer support capabilities"
+    ],
+    dailyWork: [
+      "Generate end-of-day reports and verify internal ledgers",
+      "Assist walk-in customers and answer balancing inquiries",
+      "Provide support to the society administrators"
+    ],
+    hiddenFromRole: [
+      "Society master configuration and billing rules",
+      "High-risk administrative approvals",
+      "Platform administration tasks"
+    ],
+    provisioningNote: "Provision this role for back-office employees and general support staff within a society.",
+    primaryAction: {
+      href: "/login",
+      label: "Staff Sign-In"
+    },
+    secondaryAction: {
+      href: "/",
+      label: "Learn More"
+    }
   }
 ];
 
@@ -422,6 +464,38 @@ const localizedWorkspaceContent: Partial<Record<AppLocale, Record<WorkspaceRoleS
       provisioningNote: "यह भूमिका केवल केंद्रीय प्लेटफ़ॉर्म ऑपरेटरों के लिए दें जो कई सोसाइटी पर गवर्नेंस संभालते हैं।",
       primaryActionLabel: "प्लेटफ़ॉर्म एडमिन साइन-इन",
       secondaryActionLabel: "वर्कस्पेस ओवरव्यू देखें"
+    },
+    "society-staff": {
+      navLabel: "सोसाइटी स्टाफ",
+      badge: "स्टाफ एक्सेस",
+      title: "सोसाइटी स्टाफ वर्कस्पेस",
+      subtitle: "बैक ऑफिस ऑपरेशन, रिपोर्ट जनरेट करना और प्रशासनिक मदद के लिए एक समर्पित वर्कस्पेस।",
+      audience: "आंतरिक सोसाइटी कर्मचारी और बैक-ऑफिस स्टाफ।",
+      dataScope: "आंतरिक रिपोर्टिंग, लेजर सत्यापन और एक सोसाइटी के प्रशासनिक टूल।",
+      primaryResponsibility: "दैनिक रिपोर्ट, ट्रायल बैलेंस की समीक्षा और बैक-ऑफिस सत्यापन।",
+      visibleHighlights: [
+        "मुख्य लेनदेन को स्वीकृत किए बिना आंतरिक रिपोर्ट और कैशबुक तक पहुंचें",
+        "ग्राहक पूछताछ का समर्थन करें और दैनिक सोसाइटी स्वास्थ्य की निगरानी करें",
+        "संस्थान सेटअप के संपर्क में आए बिना सुरक्षित रूप से काम करें"
+      ],
+      adminTools: [
+        "विस्तृत रिपोर्टिंग मॉड्यूल",
+        "ट्रायल बैलेंस पूछताछ",
+        "ग्राहक सहायता क्षमताएं"
+      ],
+      dailyWork: [
+        "दैनिक रिपोर्ट उत्पन्न करें और लेजर सत्यापित करें",
+        "ग्राहकों की पूछताछ का उत्तर दें",
+        "सोसाइटी एडमिन को सहायता प्रदान करें"
+      ],
+      hiddenFromRole: [
+        "सोसाइटी मास्टर कॉन्फ़िगरेशन",
+        "उच्च जोखिम वाले प्रशासनिक अनुमोदन",
+        "प्लेटफ़ॉर्म एडमिन टास्क"
+      ],
+      provisioningNote: "सोसाइटी के भीतर बैक-ऑफिस कर्मचारियों और सामान्य सहायता कर्मचारियों के लिए इस भूमिका को प्रावधान करें।",
+      primaryActionLabel: "स्टाफ साइन-इन",
+      secondaryActionLabel: "और जानें"
     }
   },
   mr: {
@@ -558,6 +632,38 @@ const localizedWorkspaceContent: Partial<Record<AppLocale, Record<WorkspaceRoleS
       provisioningNote: "ही भूमिका फक्त त्या केंद्रीय प्लॅटफॉर्म ऑपरेटरसाठी द्या जे अनेक सोसायट्यांवरील गव्हर्नन्स हाताळतात.",
       primaryActionLabel: "प्लॅटफॉर्म अॅडमिन साइन-इन",
       secondaryActionLabel: "वर्कस्पेस आढावा पहा"
+    },
+    "society-staff": {
+      navLabel: "सोसायटी स्टाफ",
+      badge: "स्टाफ ॲक्सेस",
+      title: "सोसायटी स्टाफ वर्कस्पेस",
+      subtitle: "बॅक-ऑफिस ऑपरेशन्स आणि अहवाल तयार करण्यासाठी एक समर्पित वर्कस्पेस.",
+      audience: "सोसायटीचे अंतर्गत कर्मचारी आणि बॅक-ऑफिस स्टाफ.",
+      dataScope: "अंतर्गत रिपोर्टिंग, लेजर पडताळणी आणि एका सोसायटीची प्रशासकीय साधने.",
+      primaryResponsibility: "दैनंदिन अहवाल, ट्रायल बॅलन्सचे पुनरावलोकन आणि बॅक-ऑफिस पडताळणी.",
+      visibleHighlights: [
+        "मुख्य व्यवहारांना मान्यता न देता अंतर्गत अहवाल आणि कॅशबुकमध्ये प्रवेश करा",
+        "ग्राहकांच्या प्रश्नांना उत्तर द्या",
+        "संस्था सेटअपशिवाय सुरक्षितपणे काम करा"
+      ],
+      adminTools: [
+        "तपशीलवार रिपोर्टिंग मॉड्यूल्स",
+        "ट्रायल बॅलन्स चौकशी",
+        "ग्राहक समर्थन साधने"
+      ],
+      dailyWork: [
+        "दैनंदिन अहवाल तयार करा आणि लेजर तपासा",
+        "ग्राहकांच्या चौकशीला उत्तर द्या",
+        "सोसायटी अॅडमिनला मदत करा"
+      ],
+      hiddenFromRole: [
+        "सोसायटी मास्टर कॉन्फिगरेशन",
+        "उच्च-जोखमीची प्रशासकीय मंजुरी",
+        "प्लॅटफॉर्म अॅडमिन ऑपरेशन्स"
+      ],
+      provisioningNote: "सोसायटीमधील बॅक-ऑफिस कर्मचारी आणि सामान्य समर्थन कर्मचाऱ्यांसाठी ही भूमिका लागू करा.",
+      primaryActionLabel: "स्टाफ साइन-इन",
+      secondaryActionLabel: "अधिक शोधा"
     }
   }
 };

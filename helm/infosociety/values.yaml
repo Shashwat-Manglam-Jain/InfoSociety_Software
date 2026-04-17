@@ -1,0 +1,71 @@
+image:
+  api:
+    repository: ghcr.io/your-org/infosociety/api
+    tag: latest
+    pullPolicy: IfNotPresent
+  web:
+    repository: ghcr.io/your-org/infosociety/web
+    tag: latest
+    pullPolicy: IfNotPresent
+
+replicaCount:
+  api: 2
+  web: 2
+
+service:
+  api:
+    type: ClusterIP
+    port: 3001
+  web:
+    type: ClusterIP
+    port: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: api.infosociety.in
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+    - host: app.infosociety.in
+      paths:
+        - path: /
+          pathType: Prefix
+          service: web
+  tls:
+    - secretName: infosociety-tls
+      hosts:
+        - api.infosociety.in
+        - app.infosociety.in
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+env:
+  NODE_ENV: production
+  # Set via CI: DATABASE_URL, JWT_SECRET, REDIS_URL, etc.
+  # Use existingSecret for production secrets:
+  existingSecret: "infosociety-secrets"   # k8s Secret with DATABASE_URL, JWT_SECRET...
+
+resources:
+  api:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  web:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi

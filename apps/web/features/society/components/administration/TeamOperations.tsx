@@ -59,7 +59,7 @@ export function TeamOperations({
   const actionButtonBg = isDark ? alpha("#ffffff", 0.04) : alpha(theme.palette.primary.main, 0.06);
   const actionButtonHover = isDark ? alpha(theme.palette.primary.main, 0.18) : alpha(theme.palette.primary.main, 0.12);
 
-  const staffUsers = managedUsers.filter((user) => user.role === "SUPER_USER");
+  const staffUsers = managedUsers.filter((user) => user.role === "SUPER_USER" && !user.isSocietyAdmin);
   const filteredUsers = staffUsers.filter((user) => {
     const query = userSearch.trim().toLowerCase();
     if (!query) {

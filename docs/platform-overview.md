@@ -1,114 +1,40 @@
-# Platform Overview
+# Platform Overview & Architecture (Infopath Society Savings)
 
-## Product architecture
+**Infopath Society Savings** is a cutting-edge Core Banking System (CBS) engineered exclusively for Cooperative Credit Societies, Thrift Unions, and Urban Banks. By transforming physical, paper-based ledger systems into an interconnected, multi-tenant cloud application, the platform effectively closes the operational gap between Field Agents, Branch Managers, Society Head Offices, and their end-clients.
 
-The product is organized into four professional user-facing layers:
+## 🎯 Primary Ecosystem Goals
 
-1. Public website
-   - Home
-   - About
-   - Contact
-   - Workspace overview and role profiles
-   - Policy and disclosure pages
-2. Authentication and onboarding
-   - Login
-   - Role-based registration
-   - Subscription checkout
-3. Role-based workspace shell
-   - Shared dashboard experience for all authenticated roles
-   - Theme and language personalization
-   - Controlled access to operational modules
-   - Society administration shortcuts for institution and branch setup
-4. Operational banking modules
-   - Dedicated execution screens for module-specific workflows
+Traditional society management involves disconnected data silos. A Pigmy Agent out in the field collects cash, brings it to a teller, and the teller writes it in a physical day book. **Our platform digitizes this entirely.**
 
-## Role experience
+1. **Absolute Multi-Tenancy**: Multiple societies can onboard onto the single Infopath platform, maintaining 100% data and privacy isolation through unique `societyCode` architecture rules enforced at the database level.
+2. **Unified Role Interfaces**: Providing specialized sub-portals for different operational tiers instead of one confusing massive application.
+3. **Digitize the "Unbanked" Products**: Bring physical banking operations (like Daily Pigmy deposits, physical Locker allocations, Inland/Outward Bill clearings) onto a streamlined UI.
+4. **Cloud-First SaaS Billing**: A built-in subscription model allows Infopath (the platform owner) to automatically bill institutions for platform usage.
 
-The dashboard acts as the primary control surface after login.
+## 📱 User Experience (UX) Architecture
 
-- `CLIENT`
-  - Sees only the operational modules assigned to member self-service
-  - Works within personal records and account-level visibility
-- `AGENT`
-  - Sees society-scoped operational modules for servicing and transaction execution
-  - Uses the same personalized dashboard shell as other roles
-- `SOCIETY`
-  - Sees administration shortcuts for institution profile and branch management
-  - Retains society-wide access to operations, reports, users, and monitoring
-- `PLATFORM`
-  - Does not receive society-local setup tabs by default
-  - Focuses on monitoring, reporting, and governance across societies
+Our frontend is engineered with **Next.js 15 (App Router)** and **Material UI**. We follow strict UX paradigms:
 
-## Public workspace navigation
+### 1. Isolated Sub-Portals
+Instead of forcing all users to log into one root route and seeing a wall of restricted menus, we use contextual routing:
+- **`/[societyCode]/clientlogin`**: Clean, non-intimidating B2C interface for standard members to check their passbooks.
+- **`/[societyCode]/agentlogin`**: Rapid, high-contrast B2B interface optimized for iPad/Mobile to allow agents to punch in collections swiftly.
+- **`/login`**: The primary institutional gateway strictly for Society Admins. 
 
-The public navbar includes a `Workspaces` menu for professional pre-sales and onboarding conversations:
+### 2. High-Fidelity & Theming
+- **Vibrant Dark/Light Toggle**: Societies can toggle between high-fidelity dark themes and bright high-contrast light themes.
+- **Micro-Animations**: Uses contextual `framer-motion` and Material UI transitions so that when a teller approves a loan or creates a deposit, the system feels alive and responsive.
+- **Responsive Layout**: Agents use the application almost exclusively on tablets/mobiles, while Head Office Society Admins use it on massive desktop monitors. Our Material UI Grid layout perfectly scales between these viewports.
 
-- `/workspaces`
-  - Executive overview of the full access model
-- `/workspaces/client`
-  - Client banking profile
-- `/workspaces/agent`
-  - Agent operations profile
-- `/workspaces/society-admin`
-  - Society administration profile
-- `/workspaces/platform-admin`
-  - Platform governance profile
+---
 
-These routes provide a stable, client-friendly explanation of role boundaries before authentication.
+## 🏛️ Domain Modules (The Banking Core)
 
-## Personalization standards
+The application is heavily modularized into specialized banking concepts. Here's a quick overview of what the platform manages:
 
-The shared settings menu controls:
-
-- Theme presets: `Charcoal`, `Emerald`, `Rose`
-- Theme mode: `Light`, `Dark`
-- Language: `English`, `Hindi`, `Marathi`
-
-The current dashboard shell applies those settings consistently across:
-
-- Header labels
-- Logout button styling
-- Dashboard headings and summary cards
-- Module card presentation
-
-## Public presentation quality
-
-Public pages now use a shared layout that keeps the footer anchored cleanly on shorter pages such as `/about` and `/contact`, which makes the product feel more like production software and less like a prototype.
-
-## Society administration surfaces
-
-The product currently exposes two society administration forms through dedicated administration pages linked from the dashboard:
-
-- `SocietyForm`
-  - Persists compliance, capital, registration, and billing information through the monitoring update APIs
-- `BranchForm`
-  - Creates and updates branch records, routing details, and service flags through the live branch endpoints
-
-## Route catalog
-
-- `/`
-  - Public landing page
-- `/login`
-  - Authentication
-- `/register`
-  - Client, agent, and society onboarding
-- `/checkout`
-  - Subscription completion
-- `/dashboard`
-  - Main authenticated workspace
-- `/dashboard/society`
-  - Dedicated society configuration page
-- `/dashboard/branches`
-  - Dedicated branch management page
-- `/workspaces`
-  - Access-model overview
-- `/workspaces/client`
-  - Client workspace profile
-- `/workspaces/agent`
-  - Agent workspace profile
-- `/workspaces/society-admin`
-  - Society admin workspace profile
-- `/workspaces/platform-admin`
-  - Platform admin workspace profile
-- `/modules/[slug]`
-  - Banking module execution screen
+1. **Customers & Accounts Module**: The foundation. A Customer holds many Accounts (Savings, Checking, FD, RD, Loan).
+2. **Loans Module**: Tracks origination, KYC approval, principal amount, interest rate configuration, and EMI tracking schedules.
+3. **Deposits Module**: Supports Fixed Deposits (FDs) where principal is locked, and Recurring Deposits (RDs/Pigmy) where daily/monthly collections are enforced.
+4. **Physical Vaults & Lockers**: Maps physical safety deposit boxes to branch codes, assigns them to customers, and automatically triggers annual renewal invoices.
+5. **Cheque Clearing (IBC/OBC)**: Maps physical cheque instruments mapping clearing zones (Inward vs Outward) and tracking standard settlement days.
+6. **Cashbook / Day Book Maker-Checker**: Ensures that money digitally collected by agents exactly matches the physical cash dropped into the branch teller pool at the end of the day.

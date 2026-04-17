@@ -25,13 +25,9 @@ import { useLanguage } from "@/shared/i18n/language-provider";
 import { getSuperadminCopy } from "@/shared/i18n/superadmin-copy";
 import { getSuperadminExtraCopy } from "@/shared/i18n/superadmin-extra-copy";
 import type { AuthUser } from "@/shared/types";
+import { listReportJobs, runReport, type ReportJobRecord } from "@/shared/api/reports";
 
-const REPORTS = [
-  { id: "rp-1", name: "Global Financial Audit", type: "PDF", category: "Audit", generatedAt: "2026-03-31T10:00:00Z", status: "DONE" },
-  { id: "rp-2", name: "Active Societies Overview", type: "CSV", category: "Governance", generatedAt: "2026-03-30T15:45:00Z", status: "DONE" },
-  { id: "rp-3", name: "Network Agent Activity", type: "XLSX", category: "Operations", generatedAt: "2026-03-29T09:15:00Z", status: "DONE" },
-  { id: "rp-4", name: "Platform Risk Analysis", type: "PDF", category: "Audit", generatedAt: "2026-03-31T18:30:00Z", status: "RUNNING" }
-];
+
 
 export default function SuperadminReports() {
   const router = useRouter();
@@ -42,6 +38,16 @@ export default function SuperadminReports() {
   const [loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState("all_societies");
   const [generating, setGenerating] = useState(false);
+  const [reports, setReports] = useState<ReportJobRecord[]>([]);
+
+  const fetchReports = async (token: string) => {
+    try {
+      const response = await listReportJobs(token, { limit: 20 });
+      setReports(response.rows);
+    } catch (error) {
+      console.error("Failed to load reports:", error);
+    }
+  };
 
   useEffect(() => {
     async function init() {
@@ -53,6 +59,7 @@ export default function SuperadminReports() {
       try {
         const u = await getMe(session.accessToken);
         setUser(u);
+        await fetchReports(session.accessToken);
       } catch {
         clearSession();
         router.replace("/admin");
@@ -83,11 +90,22 @@ export default function SuperadminReports() {
     [navCopy]
   );
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setGenerating(true);
-    setTimeout(() => {
+    try {
+      const session = getSession();
+      if (session) {
+        await runReport(session.accessToken, {
+          category: "Platform",
+          reportName: reportType
+        });
+        await fetchReports(session.accessToken);
+      }
+    } catch (error) {
+      console.error("Failed to generate report:", error);
+    } finally {
       setGenerating(false);
-    }, 2000);
+    }
   };
 
   if (loading) return <Skeleton variant="rectangular" height="100vh" />;
@@ -189,16 +207,16 @@ export default function SuperadminReports() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {REPORTS.map((rp) => (
+                  {reports.map((rp) => (
                     <TableRow key={rp.id} sx={{ "&:hover": { bgcolor: "rgba(15,23,42,0.02)" } }}>
                       <TableCell>
                         <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Avatar sx={{ width: 36, height: 36, bgcolor: rp.type === "PDF" ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", color: rp.type === "PDF" ? "#ef4444" : "#10b981" }}>
-                            {rp.type === "PDF" ? <PictureAsPdfRoundedIcon sx={{ fontSize: 18 }} /> : <DescriptionRoundedIcon sx={{ fontSize: 18 }} />}
+                          <Avatar sx={{ width: 36, height: 36, bgcolor: "rgba(16,185,129,0.1)", color: "#10b981" }}>
+                            <DescriptionRoundedIcon sx={{ fontSize: 18 }} />
                           </Avatar>
                           <Box>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "#0f172a" }}>{rp.name}</Typography>
-                            <Typography variant="caption" sx={{ color: "text.disabled", fontWeight: 800 }}>{rp.type}</Typography>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "#0f172a" }}>{rp.reportName}</Typography>
+                            <Typography variant="caption" sx={{ color: "text.disabled", fontWeight: 800 }}>PDF/CSV</Typography>
                           </Box>
                         </Stack>
                       </TableCell>
@@ -206,7 +224,7 @@ export default function SuperadminReports() {
                         <Chip label={rp.category} size="small" sx={{ fontWeight: 800, fontSize: "0.65rem", bgcolor: alpha("#3b82f6", 0.08), color: "#3b82f6" }} />
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{new Date(rp.generatedAt).toLocaleDateString()}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{new Date(rp.requestedAt).toLocaleDateString()}</Typography>
                       </TableCell>
                       <TableCell align="right">
                         {rp.status === "DONE" ? (
@@ -214,7 +232,7 @@ export default function SuperadminReports() {
                             {copy.reports.download}
                           </Button>
                         ) : (
-                          <Chip label={copy.reports.running} size="small" sx={{ fontWeight: 800, fontSize: "0.65rem", bgcolor: "#fef3c7", color: "#d97706" }} />
+                          <Chip label={rp.status} size="small" sx={{ fontWeight: 800, fontSize: "0.65rem", bgcolor: "#fef3c7", color: "#d97706" }} />
                         )}
                       </TableCell>
                     </TableRow>

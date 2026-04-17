@@ -59,7 +59,9 @@ export function applyRequestRuntime(
     const requestId = randomUUID();
     const startedAt = Date.now();
     const clientId = getClientIdentifier(request);
-    const matchedRule = rules.find((rule) => rule.pathPattern.test(request.originalUrl ?? request.url ?? ""));
+    const isDev = (configService.get<string>("NODE_ENV") ?? "development") === "development";
+    const isLocal = clientId === "::1" || clientId === "127.0.0.1" || clientId === "::ffff:127.0.0.1";
+    const matchedRule = (isDev && isLocal) ? null : rules.find((rule) => rule.pathPattern.test(request.originalUrl ?? request.url ?? ""));
 
     response.setHeader("X-Request-Id", requestId);
 

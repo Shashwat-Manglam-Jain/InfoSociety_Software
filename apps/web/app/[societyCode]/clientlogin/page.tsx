@@ -9,7 +9,9 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
-import { Alert, Avatar, Box, Button, Card, CardContent, Chip, CircularProgress, Container, Grid, IconButton, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import FingerprintRoundedIcon from "@mui/icons-material/FingerprintRounded";
+import { Alert, Autocomplete, Avatar, Box, Button, Card, CardContent, Chip, CircularProgress, Container, Grid, IconButton, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { getPublicSocieties, getPublicSocietyBranches, login } from "@/shared/api/auth";
 import { getDefaultDashboardPath, setSession } from "@/shared/auth/session";
 import { useLanguage } from "@/shared/i18n/language-provider";
@@ -32,9 +34,11 @@ export default function ClientLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [society, setSociety] = useState<Society | null>(null);
+  const [cachedSocietiesList, setCachedSocietiesList] = useState<Society[]>([]);
   const [branchOptions, setBranchOptions] = useState<BranchOption[]>([headOfficeOption]);
   const [selectedBranchId, setSelectedBranchId] = useState(headOfficeOption.id);
   const [error, setError] = useState<string | null>(null);
+  const [aadhaarLast4, setAadhaarLast4] = useState("");
 
   useEffect(() => {
     router.prefetch("/dashboard/client");
@@ -51,11 +55,13 @@ export default function ClientLoginPage() {
         const found = societies.find((entry) => entry.code.toUpperCase() === normalizedSocietyCode);
         if (found) setSociety(found);
         setCachedPublicSocieties(societies);
+        setCachedSocietiesList(societies);
         const nextOptions = branches.length > 0 ? [headOfficeOption, ...branches] : [headOfficeOption];
         setBranchOptions(nextOptions);
         setSelectedBranchId(nextOptions[0]?.id ?? headOfficeOption.id);
       } catch (caught) {
-        console.error("Failed to fetch society info", caught);
+        // Fail silently during background fetch to avoid disrupting the UI during navigation transitions
+        console.warn("Could not refresh society context from API, using defaults.", caught);
       }
     }
 
@@ -74,7 +80,7 @@ export default function ClientLoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(username, password, normalizedSocietyCode, "CLIENT");
+      const response = await login(username, password, normalizedSocietyCode, "CLIENT", aadhaarLast4.trim() || undefined);
 
       await setSession({
         accessToken: response.accessToken,
@@ -93,7 +99,7 @@ export default function ClientLoginPage() {
       });
 
       toast.success(interpolateCopy(copy.success, { name: response.user.fullName }));
-      router.replace(getDefaultDashboardPath("CLIENT", response.user.requiresPasswordChange, response.user.allowedModuleSlugs));
+      window.location.href = getDefaultDashboardPath("CLIENT", response.user.requiresPasswordChange, response.user.allowedModuleSlugs);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : copy.fallbackError;
       setError(message);
@@ -152,6 +158,26 @@ export default function ClientLoginPage() {
                     <Box>
                       <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>{copy.passwordLabel}</Typography>
                       <TextField type={showPassword ? "text" : "password"} placeholder={copy.passwordPlaceholder} value={password} onChange={(event) => setPassword(event.target.value)} fullWidth InputProps={{ sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } }, startAdornment: <LockIcon sx={{ mr: 1, color: "#1e3a8a", fontSize: 20 }} />, endAdornment: <IconButton onClick={() => setShowPassword((previous) => !previous)} edge="end" size="small">{showPassword ? <VisibilityOffIcon sx={{ fontSize: 20 }} /> : <VisibilityIcon sx={{ fontSize: 20 }} />}</IconButton> }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ mb: 1.2, fontWeight: 700, color: "#1e293b" }}>
+                        Aadhaar Last 4 Digits <Typography component="span" variant="caption" sx={{ color: "text.secondary", fontWeight: 400 }}>(if registered)</Typography>
+                      </Typography>
+                      <TextField
+                        placeholder="e.g. 4567"
+                        value={aadhaarLast4}
+                        onChange={(event) => {
+                          const val = event.target.value.replace(/\D/g, "").slice(0, 4);
+                          setAadhaarLast4(val);
+                        }}
+                        fullWidth
+                        inputProps={{ maxLength: 4, inputMode: "numeric", pattern: "[0-9]*" }}
+                        helperText="Enter last 4 digits of your Aadhaar card if your account requires it"
+                        InputProps={{
+                          sx: { borderRadius: 2.5, bgcolor: "#fff", "& fieldset": { borderColor: "rgba(15, 23, 42, 0.12)" } },
+                          startAdornment: <FingerprintRoundedIcon sx={{ mr: 1, color: "#1e3a8a", fontSize: 20 }} />
+                        }}
+                      />
                     </Box>
                     {error ? <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert> : null}
                     <Button type="submit" variant="contained" size="large" disabled={loading} sx={{ height: 54, borderRadius: 3.5, fontWeight: 900, fontSize: "1rem", bgcolor: "#1e3a8a", "&:hover": { bgcolor: "#1e3a8a" }, boxShadow: "0 10px 20px -5px rgba(30, 58, 138, 0.3)" }}>

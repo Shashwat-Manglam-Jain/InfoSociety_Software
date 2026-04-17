@@ -84,6 +84,7 @@ type SocietyOperationsWorkspaceProps = {
 type DepositSchemeFormState = {
   code: string;
   name: string;
+  planType: "FD" | "RD" | "PGM_DAILY" | "PGM_MONTHLY" | "SB" | "CUR";
   recurring: boolean;
   minMonths: number;
   maxMonths: number;
@@ -92,6 +93,7 @@ type DepositSchemeFormState = {
 
 type DepositAccountFormState = {
   customerId: string;
+  accountType?: BankingAccountType;
   schemeId: string;
   openingBalance: number;
   openDate: string;
@@ -177,6 +179,7 @@ function createEmptySchemeForm(): DepositSchemeFormState {
   return {
     code: "",
     name: "",
+    planType: "FD",
     recurring: false,
     minMonths: 12,
     maxMonths: 12,
@@ -184,9 +187,20 @@ function createEmptySchemeForm(): DepositSchemeFormState {
   };
 }
 
+const PLAN_TYPE_OPTIONS: Array<{ value: DepositSchemeFormState["planType"]; label: string; recurring: boolean; prefix: string; defaultMonths: number; defaultRate: number }> = [
+  { value: "FD",         label: "Fixed Deposit (FD)",           recurring: false, prefix: "FD",   defaultMonths: 12,  defaultRate: 7.0 },
+  { value: "RD",         label: "Recurring Deposit (RD)",       recurring: true,  prefix: "RD",   defaultMonths: 12,  defaultRate: 6.5 },
+  { value: "PGM_DAILY",  label: "Pigmy — Daily Collection",     recurring: true,  prefix: "PGM-D",defaultMonths: 24,  defaultRate: 5.0 },
+  { value: "PGM_MONTHLY",label: "Pigmy — Monthly Collection",   recurring: true,  prefix: "PGM-M",defaultMonths: 24,  defaultRate: 5.5 },
+  { value: "SB",         label: "Savings Deposit Plan (SB)",    recurring: false, prefix: "SB",   defaultMonths: 1,   defaultRate: 3.5 },
+  { value: "CUR",        label: "Current Account Plan (CA)",    recurring: false, prefix: "CA",   defaultMonths: 1,   defaultRate: 0.0 },
+];
+
+
 function createEmptyDepositAccountForm(): DepositAccountFormState {
   return {
     customerId: "",
+    accountType: "SAVINGS",
     schemeId: "",
     openingBalance: 0,
     openDate: today(),
@@ -194,15 +208,16 @@ function createEmptyDepositAccountForm(): DepositAccountFormState {
   };
 }
 
-function getNextSchemeCode(schemes: DepositSchemeRecord[], recurring: boolean) {
-  const prefix = recurring ? "RD" : "FD";
+function getNextSchemeCode(schemes: DepositSchemeRecord[], planType: DepositSchemeFormState["planType"]) {
+  const option = PLAN_TYPE_OPTIONS.find((o) => o.value === planType);
+  const prefix = option?.prefix ?? "FD";
+  const recurring = option?.recurring ?? false;
   const nextSequence =
     schemes.reduce((largest, scheme) => {
       if (scheme.recurring !== recurring) {
         return largest;
       }
-
-      const match = scheme.code.match(new RegExp(`^${prefix}-(\\d+)$`, "i"));
+      const match = scheme.code.match(new RegExp(`^${prefix.replace("-", "\\-")}-(\\d+)$`, "i"));
       const sequence = match ? Number(match[1]) : 0;
       return sequence > largest ? sequence : largest;
     }, 0) + 1;
@@ -474,8 +489,8 @@ export function SocietyOperationsWorkspace({
     [accountForm.schemeId, schemeRows]
   );
   const generatedSchemeCode = useMemo(
-    () => getNextSchemeCode(schemeRows, schemeForm.recurring),
-    [schemeForm.recurring, schemeRows]
+    () => getNextSchemeCode(schemeRows, schemeForm.planType),
+    [schemeForm.planType, schemeRows]
   );
   const selectedClient = useMemo(
     () => clientProfiles.find((client) => client.customerId === accountForm.customerId) ?? null,
@@ -677,9 +692,13 @@ export function SocietyOperationsWorkspace({
   function openSchemeDrawer(scheme?: DepositSchemeRecord) {
     if (scheme) {
       setEditingSchemeId(scheme.id);
+      const inferredOption = PLAN_TYPE_OPTIONS.find((o) =>
+        scheme.code.toUpperCase().startsWith(o.prefix.toUpperCase() + "-")
+      ) ?? PLAN_TYPE_OPTIONS[0];
       setSchemeForm({
         code: scheme.code,
         name: scheme.name,
+        planType: inferredOption.value,
         recurring: scheme.recurring,
         minMonths: scheme.minMonths,
         maxMonths: scheme.maxMonths,
@@ -715,43 +734,53 @@ export function SocietyOperationsWorkspace({
   }
 
   async function handleCreateDepositAccount() {
-    if (!selectedClient || !selectedScheme) {
+    if (!selectedClient) {
       return;
     }
 
-    const head = resolveHeadForScheme(selectedScheme, headRows);
+    const requiresScheme = accountForm.accountType === "FIXED_DEPOSIT" || accountForm.accountType === "RECURRING_DEPOSIT";
+
+    if (requiresScheme && !selectedScheme) {
+      return;
+    }
+
+    const head = requiresScheme && selectedScheme
+      ? resolveHeadForScheme(selectedScheme, headRows)
+      : headRows.find((h) => h.relatedType === accountForm.accountType);
+
     if (!head) {
-      toast.error("No matching account head is configured for the selected plan.");
+      toast.error("No matching account head is configured for the selected account type.");
       return;
     }
 
     setAccountSubmitting(true);
 
     try {
-      const accountType = selectedScheme.recurring ? "RECURRING_DEPOSIT" : "FIXED_DEPOSIT";
       const created = await createAccount(token, {
         customerId: selectedClient.customerId,
-        type: accountType,
+        type: accountForm.accountType || "SAVINGS",
         openingBalance: Number(accountForm.openingBalance),
-        interestRate: Number(selectedScheme.interestRate),
+        interestRate: selectedScheme ? Number(selectedScheme.interestRate) : undefined,
         branchId: selectedClient.branchId || undefined,
         branchCode: branches.find((branch) => branch.id === selectedClient.branchId)?.code ?? undefined,
         headId: head.id,
         isPassbookEnabled: accountForm.isPassbookEnabled
       });
 
-      await openDepositAccount(token, {
-        accountId: created.id,
-        schemeId: selectedScheme.id,
-        principalAmount: Number(accountForm.openingBalance),
-        durationMonths: selectedScheme.minMonths,
-        startDate: accountForm.openDate
-      });
+      if (requiresScheme && selectedScheme) {
+        await openDepositAccount(token, {
+          accountId: created.id,
+          schemeId: selectedScheme.id,
+          principalAmount: Number(accountForm.openingBalance),
+          durationMonths: selectedScheme.minMonths,
+          startDate: accountForm.openDate
+        });
+      }
 
       setAccountDrawerOpen(false);
       setAccountForm(createEmptyDepositAccountForm());
       await loadAccounts();
-      toast.success("Deposit account created.");
+      toast.success("Account created and activated.");
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "Unable to open the account.");
     } finally {
@@ -1549,11 +1578,23 @@ export function SocietyOperationsWorkspace({
               select
               fullWidth
               label={planCopy.drawer.planType}
-              value={schemeForm.recurring ? "RD" : "FD"}
-              onChange={(event) => setSchemeForm((previous) => ({ ...previous, recurring: event.target.value === "RD" }))}
+              value={schemeForm.planType}
+              onChange={(event) => {
+                const chosen = PLAN_TYPE_OPTIONS.find((o) => o.value === event.target.value as DepositSchemeFormState["planType"]);
+                if (!chosen) return;
+                setSchemeForm((previous) => ({
+                  ...previous,
+                  planType: chosen.value,
+                  recurring: chosen.recurring,
+                  minMonths: chosen.defaultMonths,
+                  maxMonths: chosen.defaultMonths,
+                  interestRate: chosen.defaultRate
+                }));
+              }}
             >
-              <MenuItem value="FD">{planCopy.drawer.fixedDeposit}</MenuItem>
-              <MenuItem value="RD">{planCopy.drawer.recurringDeposit}</MenuItem>
+              {PLAN_TYPE_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+              ))}
             </TextField>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 6 }}>
@@ -1630,16 +1671,36 @@ export function SocietyOperationsWorkspace({
             <TextField
               select
               fullWidth
+              label="Account Type"
+              value={accountForm.accountType || "SAVINGS"}
+              onChange={(event) => setAccountForm((previous) => ({ ...previous, accountType: event.target.value as BankingAccountType, schemeId: "" }))}
+            >
+              <MenuItem value="SAVINGS">Savings Account</MenuItem>
+              <MenuItem value="CURRENT">Current Account</MenuItem>
+              <MenuItem value="FIXED_DEPOSIT">Fixed Deposit</MenuItem>
+              <MenuItem value="RECURRING_DEPOSIT">Recurring Deposit</MenuItem>
+              <MenuItem value="PIGMY">Pigmy Deposit</MenuItem>
+              <MenuItem value="GENERAL">General Account</MenuItem>
+            </TextField>
+            
+            {(accountForm.accountType === "FIXED_DEPOSIT" || accountForm.accountType === "RECURRING_DEPOSIT") && (
+            <TextField
+              select
+              fullWidth
               label={accountCopy.drawer.plan}
               value={accountForm.schemeId}
               onChange={(event) => setAccountForm((previous) => ({ ...previous, schemeId: event.target.value }))}
             >
-              {schemeRows.map((scheme) => (
+              {schemeRows
+                .filter((s) => accountForm.accountType === "RECURRING_DEPOSIT" ? s.recurring : !s.recurring)
+                .map((scheme) => (
                 <MenuItem key={scheme.id} value={scheme.id}>
                   {scheme.name} ({scheme.code})
                 </MenuItem>
               ))}
             </TextField>
+            )}
+            
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
@@ -1708,8 +1769,8 @@ export function SocietyOperationsWorkspace({
               disabled={
                 accountSubmitting ||
                 !accountForm.customerId ||
-                !accountForm.schemeId ||
-                Number(accountForm.openingBalance) <= 0
+                ((accountForm.accountType === "FIXED_DEPOSIT" || accountForm.accountType === "RECURRING_DEPOSIT") && !accountForm.schemeId) ||
+                Number(accountForm.openingBalance) < 0
               }
               sx={{ borderRadius: 2.5, py: 1.4, fontWeight: 800 }}
             >

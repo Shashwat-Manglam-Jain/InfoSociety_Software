@@ -43,7 +43,7 @@ export function getSession(): Session | null {
     return null;
   }
 
-  const value = window.localStorage.getItem(SESSION_KEY);
+  const value = window.sessionStorage.getItem(SESSION_KEY);
   if (!value) {
     return null;
   }
@@ -52,14 +52,14 @@ export function getSession(): Session | null {
     const parsed = parseStoredLocalSession(value);
 
     if (!parsed) {
-      window.localStorage.removeItem(SESSION_KEY);
+      window.sessionStorage.removeItem(SESSION_KEY);
       void syncServerSessionCookie(null);
       return null;
     }
 
     return parsed;
   } catch {
-    window.localStorage.removeItem(SESSION_KEY);
+    window.sessionStorage.removeItem(SESSION_KEY);
     void syncServerSessionCookie(null);
     return null;
   }
@@ -77,7 +77,7 @@ export async function setSession(session: Session) {
     return;
   }
 
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(normalizedSession));
+  window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(normalizedSession));
   await syncServerSessionCookie(normalizedSession);
   emitSessionChange();
 }
@@ -87,7 +87,7 @@ export async function clearSession() {
     return;
   }
 
-  window.localStorage.removeItem(SESSION_KEY);
+  window.sessionStorage.removeItem(SESSION_KEY);
   await Promise.allSettled([syncServerSessionCookie(null), logoutFromApi().catch(() => undefined)]);
   emitSessionChange();
 }

@@ -5,6 +5,8 @@ import ArrowForwardIosRoundedIcon from "@mui/icons-material/ArrowForwardIosRound
 import { useTheme } from "@mui/material/styles";
 import { WorkspacePreviewCard } from "@/features/roles/components/workspace-preview-card";
 import { getWorkspaceModules } from "@/features/roles/workspace-definitions";
+import { getPlatformStats } from "@/shared/api/auth";
+import { getCachedPlatformStats, setCachedPlatformStats } from "@/shared/public/public-data-cache";
 
 interface WorkspacesSectionProps {
   workspaceUi: any;
@@ -16,9 +18,44 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
   const theme = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [platformStats, setStats] = useState<{
+    clients: number;
+    agents: number;
+    societies: number;
+    societyAdmins: number;
+    platformAdmins: number;
+    totalAccounts: number;
+    totalDeposits: number;
+    totalLoans: number;
+    totalTransactions: number;
+  } | null>(null);
   const totalItems = workspaces.length;
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
   const isDark = theme.palette.mode === "dark";
+
+  useEffect(() => {
+    let active = true;
+    async function loadStats() {
+      const cached = getCachedPlatformStats();
+      if (cached && active) {
+        setStats(cached);
+      }
+      try {
+        const fresh = await getPlatformStats();
+        if (active) {
+          setStats(fresh);
+          setCachedPlatformStats(fresh);
+        }
+      } catch (err) {
+        // Platform stats failure on home page should not trigger a global error toast/alert
+        console.warn("Could not fetch live platform stats, using cached/fallback data.", err);
+      }
+    }
+    void loadStats();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleNext = () => {
     setActiveIndex((prev) => (prev + 1) % totalItems);
@@ -210,6 +247,8 @@ export function WorkspacesSection({ workspaceUi, workspaces, locale }: Workspace
                     workspaceUi={workspaceUi}
                     index={index}
                     variant="home"
+                    platformStats={platformStats}
+                    loading={!platformStats}
                   />
                 </Box>
               );

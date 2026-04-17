@@ -18,3 +18,28 @@ export async function getUserDirectory(token: string) {
     path: "/users/directory"
   });
 }
+
+export type UpdateProfilePayload = {
+  fullName?: string;
+  avatarUrl?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  fatherName?: string;
+  motherName?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  panNumber?: string;
+  nomineeFullName?: string;
+  nomineeRelation?: string;
+  nomineeContactNumber?: string;
+};
+
+export async function updateMyProfile(token: string, payload: UpdateProfilePayload) {
+  return requestJson<Record<string, unknown>>({
+    token,
+    path: "/auth/me",
+    method: "PATCH",
+    body: payload
+  });
+}

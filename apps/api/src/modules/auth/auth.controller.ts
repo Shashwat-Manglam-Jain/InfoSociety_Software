@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Req, Res } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { UserRole } from "@prisma/client";
@@ -62,6 +62,12 @@ export class AuthController {
   }
 
   @Public()
+  @Get("platform-stats")
+  getPlatformStats() {
+    return this.authService.getPlatformStats();
+  }
+
+  @Public()
   @Get("societies/:societyCode/branches")
   listSocietyBranches(@Param("societyCode") societyCode: string) {
     return this.authService.listActiveSocietyBranches(societyCode);
@@ -84,6 +90,25 @@ export class AuthController {
   @Get("me")
   me(@Req() req: Request & { user: RequestUser }) {
     return this.authService.me(req.user);
+  }
+
+  @ApiBearerAuth()
+  @Patch("me")
+  updateMe(@Req() req: Request & { user: RequestUser }, @Body() body: {
+    fullName?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    fatherName?: string;
+    motherName?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    panNumber?: string;
+    nomineeFullName?: string;
+    nomineeRelation?: string;
+    nomineeContactNumber?: string;
+  }) {
+    return this.authService.updateMyProfile(req.user, body);
   }
 
   @Public()
