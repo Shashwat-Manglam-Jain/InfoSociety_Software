@@ -1,5 +1,5 @@
 import { UserRole } from "@prisma/client";
-import { IsEnum, IsOptional, IsString, MinLength } from "class-validator";
+import { IsEnum, IsOptional, IsString, Length, Matches, MinLength } from "class-validator";
 
 export class LoginDto {
   @IsString()
@@ -16,4 +16,11 @@ export class LoginDto {
   @IsEnum(UserRole)
   @IsOptional()
   expectedRole?: UserRole;
+
+  /** Last 4 digits of the user's Aadhaar card – optional extra identity step */
+  @IsString()
+  @IsOptional()
+  @Length(4, 4)
+  @Matches(/^\d{4}$/, { message: "aadhaarLast4 must be exactly 4 digits" })
+  aadhaarLast4?: string;
 }

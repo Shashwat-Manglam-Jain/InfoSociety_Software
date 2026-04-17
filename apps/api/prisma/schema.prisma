@@ -85,6 +85,7 @@ model User {
   passwordHash                 String
   fullName                     String
   aadhaarNumber                String?              @unique
+  avatarUrl                    String?
   role                         UserRole             @default(CLIENT)
   isActive                     Boolean              @default(true)
   isSocietyAdmin               Boolean              @default(false)
@@ -153,6 +154,14 @@ model Customer {
   phone               String?
   email               String?
   address             String?
+  fatherName          String?
+  motherName          String?
+  dateOfBirth         DateTime?
+  gender              String?
+  panNumber           String?
+  nomineeFullName     String?
+  nomineeRelation     String?
+  nomineeContactNumber String?
   kycVerified         Boolean              @default(false)
   openingDate         DateTime             @default(now())
   closingDate         DateTime?

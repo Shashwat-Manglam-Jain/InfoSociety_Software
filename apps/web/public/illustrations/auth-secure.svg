@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" fill="none">
+  <!-- Background glow -->
+  <ellipse cx="240" cy="200" rx="200" ry="110" fill="rgba(16,185,129,0.07)"/>
+  
+  <!-- Lock body -->
+  <rect x="170" y="140" width="140" height="110" rx="14" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+  
+  <!-- Lock shackle -->
+  <path d="M200 140 L200 110 Q200 80 240 80 Q280 80 280 110 L280 140" stroke="rgba(255,255,255,0.4)" stroke-width="10" stroke-linecap="round" fill="none"/>
+  
+  <!-- Keyhole outer circle -->
+  <circle cx="240" cy="183" r="20" fill="rgba(16,185,129,0.35)" stroke="rgba(52,211,153,0.6)" stroke-width="2"/>
+  <!-- Keyhole slot -->
+  <rect x="235" y="183" width="10" height="22" rx="3" fill="rgba(16,185,129,0.7)"/>
+  
+  <!-- Sparkle dots around lock -->
+  <circle cx="135" cy="100" r="5" fill="rgba(52,211,153,0.6)"/>
+  <circle cx="155" cy="75" r="3" fill="rgba(52,211,153,0.4)"/>
+  <circle cx="340" cy="95" r="5" fill="rgba(52,211,153,0.6)"/>
+  <circle cx="360" cy="120" r="3" fill="rgba(52,211,153,0.35)"/>
+  <circle cx="120" cy="220" r="3" fill="rgba(52,211,153,0.4)"/>
+  <circle cx="365" cy="230" r="4" fill="rgba(52,211,153,0.5)"/>
+  
+  <!-- Success checkmark badge -->
+  <circle cx="302" cy="148" r="22" fill="rgba(6,95,70,0.8)" stroke="rgba(52,211,153,0.7)" stroke-width="2"/>
+  <path d="M292 148 L299 156 L313 141" stroke="rgba(52,211,153,1)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Horizontal bars (access control lines) -->
+  <rect x="80" y="260" width="320" height="8" rx="4" fill="rgba(255,255,255,0.08)"/>
+  <rect x="100" y="276" width="160" height="6" rx="3" fill="rgba(52,211,153,0.3)"/>
+  <rect x="270" y="276" width="100" height="6" rx="3" fill="rgba(255,255,255,0.1)"/>
+  
+  <!-- Shield behind lock -->
+  <path d="M240 30 L310 60 L310 130 Q310 170 240 190 Q170 170 170 130 L170 60 Z" fill="rgba(6,78,59,0.2)" stroke="rgba(52,211,153,0.2)" stroke-width="1"/>
+</svg>

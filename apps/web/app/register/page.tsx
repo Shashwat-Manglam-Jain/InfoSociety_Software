@@ -9,13 +9,26 @@ import LockIcon from "@mui/icons-material/Lock";
 import PersonIcon from "@mui/icons-material/Person";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import { Alert, Box, Button, Card, CardContent, Chip, Container, IconButton, Stack, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Container,
+  IconButton,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { alpha, useTheme } from "@mui/material/styles";
-import { getBillingPlans, getPublicSocieties, registerSociety } from "@/shared/api/client";
+import { getBillingPlans, registerSociety } from "@/shared/api/client";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getRegisterPageCopy } from "@/shared/i18n/register-copy";
-import { getCachedBillingPlans, getCachedPublicSocieties, setCachedBillingPlans, setCachedPublicSocieties } from "@/shared/public/public-data-cache";
+import { getCachedBillingPlans, setCachedBillingPlans } from "@/shared/public/public-data-cache";
 import { toast } from "@/shared/ui/toast";
 
 function formatPlanPrice(monthlyPrice: number | null, locale: string, copy: ReturnType<typeof getRegisterPageCopy>) {
@@ -40,32 +53,29 @@ export default function RegisterPage() {
   const [societyName, setSocietyName] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
+  const [aadhaarNumber, setAadhaarNumber] = useState("");
+  const [selectedPlanId, setSelectedPlanId] = useState("FREE");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [approvedSocietyCount, setApprovedSocietyCount] = useState<number | null>(null);
   const [premiumMonthlyPrice, setPremiumMonthlyPrice] = useState<number | null>(null);
-  const [platformSnapshotError, setPlatformSnapshotError] = useState<string | null>(null);
+
   const surfaceBoxSx = {
     border: `1px solid ${isDark ? alpha("#cbd5e1", 0.18) : "rgba(15, 23, 42, 0.08)"}`,
     bgcolor: isDark ? alpha("#0f172a", 0.68) : "rgba(255,255,255,0.6)"
   } as const;
-  const tileBoxSx = {
-    flex: 1,
-    p: 1.8,
-    borderRadius: 2,
-    bgcolor: isDark ? alpha("#0f172a", 0.9) : "#fff",
-    border: `1px solid ${isDark ? alpha("#cbd5e1", 0.16) : "rgba(15, 23, 42, 0.08)"}`
-  } as const;
+
   const fieldLabelSx = {
     mb: 1.2,
     fontWeight: 700,
     color: isDark ? "rgba(226, 232, 240, 0.96)" : "#1e293b"
   } as const;
+
   const helperTextSx = {
     color: isDark ? "rgba(148, 163, 184, 0.96)" : undefined
   } as const;
+
   const inputShellSx = {
     borderRadius: 2.5,
     bgcolor: isDark ? alpha("#0f172a", 0.92) : "#fff",
@@ -93,6 +103,7 @@ export default function RegisterPage() {
       borderColor: theme.palette.primary.main
     }
   } as const;
+
   const inputTextFieldSx = {
     "& .MuiFormHelperText-root": helperTextSx
   } as const;
@@ -100,42 +111,34 @@ export default function RegisterPage() {
   useEffect(() => {
     let active = true;
 
-    async function loadPlatformSnapshot() {
-      const cachedSocieties = getCachedPublicSocieties();
+    async function loadBillingPlans() {
       const cachedBillingPlans = getCachedBillingPlans();
 
       if (active) {
-        setApprovedSocietyCount(cachedSocieties?.length ?? null);
         setPremiumMonthlyPrice(cachedBillingPlans?.find((plan) => plan.id === "PREMIUM")?.monthlyPrice ?? null);
       }
 
       try {
-        const [societies, billing] = await Promise.all([getPublicSocieties(), getBillingPlans()]);
+        const billing = await getBillingPlans();
 
         if (!active) {
           return;
         }
 
-        setApprovedSocietyCount(societies.length);
-        setPremiumMonthlyPrice(billing.plans.find((plan) => plan.id === "PREMIUM")?.monthlyPrice ?? null);
-        setCachedPublicSocieties(societies);
+        const premium = billing.plans.find((plan) => plan.id === "PREMIUM");
+        setPremiumMonthlyPrice(premium?.monthlyPrice ?? null);
         setCachedBillingPlans(billing.plans);
-        setPlatformSnapshotError(null);
       } catch (caught) {
-        if (!active) {
-          return;
-        }
-
-        setPlatformSnapshotError(caught instanceof Error ? caught.message : copy.apiLoadError);
+        console.error("Failed to load billing plans", caught);
       }
     }
 
-    void loadPlatformSnapshot();
+    void loadBillingPlans();
 
     return () => {
       active = false;
     };
-  }, [copy.apiLoadError]);
+  }, []);
 
   function validateForm() {
     const nextErrors: Record<string, string> = {};
@@ -152,6 +155,10 @@ export default function RegisterPage() {
       nextErrors.password = copy.validations.passwordRequired;
     } else if (password.length < 8) {
       nextErrors.password = copy.validations.passwordLength;
+    }
+
+    if (!aadhaarNumber || aadhaarNumber.length !== 12) {
+      nextErrors.aadhaarNumber = "Please enter a valid 12-digit Aadhaar number";
     }
 
     setFormErrors(nextErrors);
@@ -172,7 +179,9 @@ export default function RegisterPage() {
       const response = await registerSociety({
         password,
         fullName: fullName.trim(),
-        societyName: societyName.trim()
+        societyName: societyName.trim(),
+        aadhaarNumber: aadhaarNumber.trim(),
+        planId: selectedPlanId
       });
 
       const generatedCode = response.user.society?.code ?? "";
@@ -281,47 +290,6 @@ export default function RegisterPage() {
                 </Box>
 
                 <Box
-                  sx={{
-                    p: 2.4,
-                    borderRadius: 1,
-                    ...surfaceBoxSx
-                  }}
-                >
-                  <Stack spacing={1.4}>
-                    <Typography variant="overline" sx={{ fontWeight: 900, color: "primary.main", letterSpacing: 1.5 }}>
-                      {copy.formPanel.snapshotTitle}
-                    </Typography>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                      <Box sx={tileBoxSx}>
-                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
-                          {copy.formPanel.approvedSocieties}
-                        </Typography>
-                        <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: isDark ? "#e2e8f0" : "#0f172a" }}>
-                          {approvedSocietyCount == null ? copy.loadingPrice : approvedSocietyCount.toLocaleString(locale === "hi" ? "hi-IN" : locale === "mr" ? "mr-IN" : "en-IN")}
-                        </Typography>
-                      </Box>
-                      <Box sx={tileBoxSx}>
-                        <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
-                          {copy.formPanel.premiumPlan}
-                        </Typography>
-                        <Typography variant="h6" sx={{ mt: 0.4, fontWeight: 900, color: isDark ? "#e2e8f0" : "#0f172a" }}>
-                          {formatPlanPrice(premiumMonthlyPrice, locale, copy)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                    {platformSnapshotError ? (
-                      <Typography variant="body2" color="error">
-                        {platformSnapshotError}
-                      </Typography>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        {copy.formPanel.snapshotLiveNote}
-                      </Typography>
-                    )}
-                  </Stack>
-                </Box>
-
-                <Box
                   component="form"
                   onSubmit={onSubmit}
                   sx={{
@@ -384,6 +352,57 @@ export default function RegisterPage() {
                           startAdornment: <PersonIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
                         }}
                       />
+                    </Box>
+
+                    <Box>
+                      <Typography variant="subtitle2" sx={fieldLabelSx}>
+                        {copy.formPanel.aadhaarLabel}
+                      </Typography>
+                      <TextField
+                        placeholder={copy.formPanel.aadhaarPlaceholder}
+                        value={aadhaarNumber}
+                        onChange={(event) => {
+                          const val = event.target.value.replace(/\D/g, "").slice(0, 12);
+                          setAadhaarNumber(val);
+                          if (val.length === 12) {
+                            setFormErrors((prev) => ({ ...prev, aadhaarNumber: "" }));
+                          }
+                        }}
+                        fullWidth
+                        error={Boolean(formErrors.aadhaarNumber)}
+                        helperText={formErrors.aadhaarNumber || copy.formPanel.aadhaarHelper}
+                        sx={inputTextFieldSx}
+                        FormHelperTextProps={{ sx: helperTextSx }}
+                        InputProps={{
+                          sx: inputShellSx,
+                          startAdornment: <PersonIcon sx={{ mr: 1, color: "primary.main", fontSize: 20 }} />
+                        }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Typography variant="subtitle2" sx={fieldLabelSx}>
+                        {copy.formPanel.planLabel}
+                      </Typography>
+                      <TextField
+                        select
+                        value={selectedPlanId}
+                        onChange={(event) => setSelectedPlanId(event.target.value)}
+                        fullWidth
+                        helperText={
+                          selectedPlanId === "PREMIUM"
+                            ? `${copy.formPanel.planHelper} - ${formatPlanPrice(premiumMonthlyPrice, locale, copy)}`
+                            : copy.formPanel.planHelper
+                        }
+                        sx={inputTextFieldSx}
+                        FormHelperTextProps={{ sx: helperTextSx }}
+                        InputProps={{
+                          sx: inputShellSx
+                        }}
+                      >
+                        <MenuItem value="FREE">{copy.formPanel.plans.FREE}</MenuItem>
+                        <MenuItem value="PREMIUM">{copy.formPanel.plans.PREMIUM}</MenuItem>
+                      </TextField>
                     </Box>
 
                     <Box>

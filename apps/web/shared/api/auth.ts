@@ -39,18 +39,21 @@ export type RegisterSocietyPayload = {
   registrationNumber?: string;
   registrationState?: string;
   registrationAuthority?: string;
+  aadhaarNumber?: string;
+  planId?: string;
 };
 
 export async function login(
   username: string,
   password: string,
   societyCode?: string,
-  expectedRole?: UserRole
+  expectedRole?: UserRole,
+  aadhaarLast4?: string
 ): Promise<LoginResponse> {
   return requestJson<LoginResponse>({
     method: "POST",
     path: "/auth/login",
-    body: { username, password, societyCode, expectedRole }
+    body: { username, password, societyCode, expectedRole, ...(aadhaarLast4 ? { aadhaarLast4 } : {}) }
   });
 }
 
@@ -85,6 +88,22 @@ export async function registerAgent(token: string, payload: RegisterAgentPayload
 export async function getPublicSocieties(): Promise<Society[]> {
   return requestJson<Society[]>({
     path: "/auth/societies"
+  });
+}
+
+export async function getPlatformStats(): Promise<{
+  clients: number;
+  agents: number;
+  societies: number;
+  societyAdmins: number;
+  platformAdmins: number;
+  totalAccounts: number;
+  totalDeposits: number;
+  totalLoans: number;
+  totalTransactions: number;
+}> {
+  return requestJson({
+    path: "/auth/platform-stats"
   });
 }
 

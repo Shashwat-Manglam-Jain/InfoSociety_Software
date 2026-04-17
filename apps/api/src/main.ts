@@ -97,7 +97,7 @@ async function bootstrap() {
   SwaggerModule.setup("api/docs", app, document);
 
   const port = parsePort(configService.get<string>("PORT"));
-  await app.listen(port);
+  await app.listen(port, "0.0.0.0");
   logger.log(`API listening on ${await app.getUrl()}`);
   logger.log(`Allowed CORS origins: ${Array.from(allowedOrigins).join(", ")}`);
   logger.log(`Runtime mode: ${configService.get<string>("NODE_ENV") ?? "development"}`);

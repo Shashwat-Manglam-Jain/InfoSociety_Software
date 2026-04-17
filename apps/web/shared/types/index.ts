@@ -77,6 +77,7 @@ export type AuthUser = {
   id: string;
   username: string;
   fullName: string;
+  avatarUrl?: string | null;
   aadhaarNumber?: string | null;
   role: UserRole;
   isActive?: boolean;

@@ -16,7 +16,7 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import SupportAgentRoundedIcon from "@mui/icons-material/SupportAgentRounded";
-import { Box, Button, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
+import { Box, Button, Card, CardContent, Chip, Skeleton, Stack, Typography } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { alpha, useTheme } from "@mui/material/styles";
 import type { WorkspaceDefinition, WorkspaceRoleSlug, WorkspaceUiCopy } from "@/features/roles/workspace-definitions";
@@ -27,6 +27,18 @@ type WorkspacePreviewCardProps = {
   workspaceUi: WorkspaceUiCopy;
   index: number;
   variant?: "home" | "detailed";
+  platformStats?: {
+    clients: number;
+    agents: number;
+    societies: number;
+    societyAdmins: number;
+    platformAdmins: number;
+    totalAccounts: number;
+    totalDeposits: number;
+    totalLoans: number;
+    totalTransactions: number;
+  } | null;
+  loading?: boolean;
 };
 
 type PreviewConfig = {
@@ -80,6 +92,16 @@ const workspaceVisuals: Record<WorkspaceRoleSlug, PreviewConfig> = {
     metricValues: ["128", "09", "₹74.2k", "03"],
     metricTones: ["#0ea5e9", "#f59e0b", "#14b8a6", "#ef4444"],
     activeModuleIndex: 1
+  },
+  "society-staff": {
+    accent: "#64748b",
+    icon: AssessmentRoundedIcon,
+    contextValue: "Back Office",
+    userValue: "Neha Gupta (Support)",
+    searchPlaceholder: "Search report, member, transaction, or log...",
+    metricValues: ["24", "150", "₹0", "01"],
+    metricTones: ["#64748b", "#0ea5e9", "#f59e0b", "#14b8a6"],
+    activeModuleIndex: 4
   }
 };
 
@@ -109,9 +131,60 @@ function getMetricLabels(
 function buildMetricCards(
   config: PreviewConfig,
   visibleModules: Array<{ slug: string; name: string }>,
-  workspaceUi: WorkspaceUiCopy
+  workspaceUi: WorkspaceUiCopy,
+  roleSlug: WorkspaceRoleSlug,
+  platformStats?: WorkspacePreviewCardProps["platformStats"]
 ) {
   const labels = getMetricLabels(visibleModules, workspaceUi);
+
+  if (platformStats) {
+    return labels.map((label, index) => {
+      let value = config.metricValues[index] ?? String(index + 1).padStart(2, "0");
+      let realLabel = label;
+
+      if (index === 0) {
+        if (roleSlug === "client") {
+          realLabel = "Trust Points";
+          value = (platformStats.totalDeposits / 10000).toFixed(1) + "k";
+        } else if (roleSlug === "agent") {
+          realLabel = "Served Base";
+          value = platformStats.clients.toLocaleString();
+        } else if (roleSlug === "society-admin") {
+          realLabel = "Governance Scope";
+          value = platformStats.totalAccounts.toLocaleString();
+        } else if (roleSlug === "platform-admin") {
+          realLabel = "Society Registry";
+          value = platformStats.societies.toLocaleString();
+        } else if (roleSlug === "society-staff") {
+          realLabel = "Operations";
+          value = platformStats.totalTransactions.toLocaleString();
+        }
+      } else if (index === 1) {
+        if (roleSlug === "client") {
+          realLabel = "Active Accounts";
+          value = platformStats.totalAccounts.toLocaleString();
+        } else if (roleSlug === "agent") {
+          realLabel = "Field Network";
+          value = platformStats.agents.toLocaleString();
+        } else if (roleSlug === "society-admin") {
+          realLabel = "Staff Force";
+          value = platformStats.societyAdmins.toLocaleString();
+        } else if (roleSlug === "platform-admin") {
+          realLabel = "Platform Admins";
+          value = platformStats.platformAdmins.toLocaleString();
+        } else if (roleSlug === "society-staff") {
+          realLabel = "Pending Tasks";
+          value = "18+";
+        }
+      }
+
+      return {
+        label: realLabel,
+        value,
+        tone: config.metricTones[index] ?? config.accent
+      };
+    });
+  }
 
   return labels.map((label, index) => ({
     label,
@@ -120,7 +193,7 @@ function buildMetricCards(
   }));
 }
 
-function MetricCard({ label, value, tone }: { label: string; value: string; tone: string }) {
+function MetricCard({ label, value, tone, loading }: { label: string; value: string; tone: string; loading?: boolean }) {
   return (
     <Box
       sx={{
@@ -135,7 +208,7 @@ function MetricCard({ label, value, tone }: { label: string; value: string; tone
         {label}
       </Typography>
       <Typography variant="h4" sx={{ mt: 0.6, fontWeight: 800, lineHeight: 1 }}>
-        {value}
+        {loading ? <Skeleton variant="text" sx={{ bgcolor: "rgba(255,255,255,0.2)" }} /> : value}
       </Typography>
     </Box>
   );
@@ -182,7 +255,9 @@ export function WorkspacePreviewCard({
   visibleModules,
   workspaceUi,
   index,
-  variant = "home"
+  variant = "home",
+  platformStats,
+  loading
 }: WorkspacePreviewCardProps) {
   const theme = useTheme();
   const config = workspaceVisuals[workspace.slug];
@@ -193,7 +268,7 @@ export function WorkspacePreviewCard({
   // For home, we show fewer modules and metrics to keep it compact
   const railModules = isHome ? [] : visibleModules.slice(0, variant === "detailed" ? 6 : 5);
   const spotlightModules = isHome ? visibleModules.slice(0, 2) : visibleModules.slice(0, variant === "detailed" ? 4 : 3);
-  const metricCards = buildMetricCards(config, visibleModules, workspaceUi).slice(0, isHome ? 2 : 4);
+  const metricCards = buildMetricCards(config, visibleModules, workspaceUi, workspace.slug, platformStats).slice(0, isHome ? 2 : 4);
   
   const moduleCountLabel =
     variant === "detailed" ? workspaceUi.cardAuthorizedModules(visibleModules.length) : workspaceUi.cardModules(visibleModules.length);
@@ -528,17 +603,47 @@ export function WorkspacePreviewCard({
                       variant={isHome ? "h5" : (variant === "detailed" ? "h4" : "h5")} 
                       sx={{ mt: 0.4, fontWeight: 900, lineHeight: 1.1, color: isHome ? "#0f172a" : "inherit" }}
                     >
-                      {workspace.title}
+                      {loading ? <Skeleton width="80%" /> : workspace.title}
                     </Typography>
                     {!isHome && (
-                      <Typography color="text.secondary" sx={{ mt: 0.85, maxWidth: 640, lineHeight: 1.65 }}>
-                        {workspace.subtitle}
-                      </Typography>
+                      <Box sx={{ mt: 0.85 }}>
+                        {loading ? (
+                          <>
+                            <Skeleton width="100%" />
+                            <Skeleton width="70%" />
+                          </>
+                        ) : (
+                          <Typography color="text.secondary" sx={{ maxWidth: 640, lineHeight: 1.65 }}>
+                            {workspace.subtitle}
+                          </Typography>
+                        )}
+                      </Box>
                     )}
                     {isHome && (
-                       <Typography variant="body2" color="text.secondary" sx={{ mt: 1, lineHeight: 1.6 }}>
-                          High-fidelity operational surface for {workspace.audience.toLowerCase()} including {spotlightModules.map(m => m.name).join(", ")}.
-                       </Typography>
+                       <Box sx={{ mt: 1 }}>
+                         {loading ? (
+                           <>
+                             <Skeleton width="100%" />
+                             <Skeleton width="60%" />
+                           </>
+                         ) : (
+                           <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                              High-fidelity operational surface for {workspace.audience.toLowerCase()} including {spotlightModules.map(m => m.name).join(", ")}.
+                           </Typography>
+                         )}
+                         <Box sx={{ mt: 1.5, p: 1.1, borderRadius: 2, bgcolor: alpha(config.accent, 0.08), border: `1px dashed ${alpha(config.accent, 0.2)}` }}>
+                           <Typography variant="caption" sx={{ fontWeight: 800, color: config.accent, display: "block", mb: 0.5 }}>
+                             💡 DID YOU KNOW?
+                           </Typography>
+                           <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700, lineHeight: 1.4 }}>
+                             {workspace.slug === 'client' && "Self-service portal reduces branch visits by 60% with 24/7 access to statements and loan requests."}
+                             {workspace.slug === 'agent' && "Agents can process field collections offline and sync instantly when back online."}
+                             {workspace.slug === 'society-admin' && "Complete digital governance with multi-level approvals and real-time bank reconciliation."}
+                             {workspace.slug === 'platform-admin' && "Multi-tenant architecture allowing secure management of thousands of independent societies."}
+                             {workspace.slug === 'society-staff' && "Automated EOD reporting and ledger balancing saves staff over 2 hours daily."}
+                           </Typography>
+                         </Box>
+                       </Box>
                     )}
                     {!isHome && (
                       <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1.25 }}>
@@ -555,11 +660,11 @@ export function WorkspacePreviewCard({
                       </Stack>
                     )}
                   </Box>
-
+ 
                   <Grid container spacing={isHome ? 1.5 : 1}>
                     {metricCards.map((metric) => (
                       <Grid key={`${workspace.slug}-${metric.label}`} size={{ xs: 6, xl: variant === "detailed" ? 3 : 6 }}>
-                        <MetricCard label={metric.label} value={metric.value} tone={metric.tone} />
+                        <MetricCard label={metric.label} value={metric.value} tone={metric.tone} loading={loading} />
                       </Grid>
                     ))}
                   </Grid>

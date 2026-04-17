@@ -1,14 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: process.env.BUILD_STANDALONE === "1" ? "standalone" : undefined,
   distDir: process.env.NEXT_DIST_DIR || ".next",
   productionBrowserSourceMaps: false,
   experimental: {
-    cpus: 1,
-    webpackBuildWorker: false,
+    optimizePackageImports: ["@mui/material", "@mui/icons-material"],
+    cpus: 2,
   },
   onDemandEntries: {
-    maxInactiveAge: 15 * 1000,
-    pagesBufferLength: 2,
+    maxInactiveAge: 60 * 1000,
+    pagesBufferLength: 4,
   },
 };
 

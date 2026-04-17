@@ -74,7 +74,9 @@ export class CustomersService {
             accountNumber: true,
             type: true,
             status: true,
-            currentBalance: true
+            currentBalance: true,
+            interestRate: true,
+            openingDate: true
           }
         }
       }

@@ -1,90 +1,52 @@
-# Role Access Matrix
+# Role Access & Security Matrix (RBAC)
 
-## Purpose
+The Infopath Society Savings platform employs a robust, highly-granular **Role-Based Access Control (RBAC)** architecture to guarantee that across thousands of potential users, nobody accidentally touches the wrong financial lever.
 
-This document defines the production access model for Infopath. It should be used during solution design, onboarding, demonstrations, and permission reviews so each account receives the correct workspace and only the controls appropriate to its role.
+The system relies on two layers of security:
+1. **Vertical Isolation**: JWT tokens are bound to a strict `societyCode`. A user inside Society A has a completely different JWT hash signature than a user in Society B, creating an impenetrable tenant wall.
+2. **Horizontal Isolation**: Inside a single Society, users are divided into strict `Roles` determining their horizontal access plane.
 
-## Public workspace routes
+---
 
-The public navbar exposes a `Workspaces` menu so prospects, implementation teams, and client stakeholders can review role boundaries before login.
+## 🛡️ Core Roles Description
 
-- `/workspaces`
-- `/workspaces/client`
-- `/workspaces/agent`
-- `/workspaces/society-admin`
-- `/workspaces/platform-admin`
+### 1. `PLATFORM_ADMIN` (Infopath Corporate Level)
+- **Who they are:** The maintainers of the SaaS software.
+- **Access Level:** Global. They do NOT engage in individual society banking.
+- **Permitted Actions:** Approving new Society registrations, viewing macro platform metrics, suspending societies that fail to pay their SaaS subscription.
+- **Portal:** `/admin`
 
-## Executive summary
+### 2. `SUPER_USER` (Head Office Society Admin)
+- **Who they are:** The CEO, Branch Manager, or lead accountant of a specific Cooperative Society.
+- **Access Level:** Institutional Maximum.
+- **Permitted Actions:** Can see everything happening within their specific society mapping. Approving loan disbursements, finalizing cheque clearings, printing Day Book reports, and creating Field Agents.
+- **Requirement:** Logging in MUST include the last 4 digits of their officially registered Aadhaar card.
+- **Portal:** `/dashboard/society`
 
-| Role | Primary audience | Data scope | Core modules | Not included |
-| --- | --- | --- | --- | --- |
-| `CLIENT` | Members and retail customers | Own records only | Accounts, deposits, loans, transactions, locker | Institution setup, staff operations, reporting, administration |
-| `AGENT` | Front-office and field staff | One assigned society | Customers, accounts, deposits, loans, transactions, clearing, cashbook, reports, locker | Institution profile setup, branch governance, platform controls |
-| `SUPER_USER` | Society leadership and institution admins | Full visibility inside one society | All society modules plus institution setup, administration, users, monitoring | Cross-society governance |
-| `SUPER_ADMIN` | Central platform operators | Cross-society portfolio visibility | Monitoring, reports, user directory, society lifecycle controls | Society-local transaction handling and branch setup |
+### 3. `AGENT` (Field Operative / Pigmy Teller)
+- **Who they are:** Remote workers out in the local towns collecting daily savings (Pigmy) from rural clientele or market shopkeepers.
+- **Access Level:** Collection mapping only.
+- **Permitted Actions:** Can look up clientele assigned to their collection zone. Can initiate a "collection receipt". They CANNOT approve loans, cannot open FDs, and cannot alter society configuration.
+- **Portal:** `/dashboard/agent`
 
-## Detailed role guidance
+### 4. `CLIENT` (Standard Society Member)
+- **Who they are:** The end-consumer holding the bank account.
+- **Access Level:** B2C Passbook only.
+- **Permitted Actions:** Can view their own account balance, pay an outstanding Loan EMI digitally, request an appointment to visit their physical locker, and download PDF account statements.
+- **Portal:** `/dashboard/client`
 
-### Client banking workspace
+---
 
-Authorized capabilities:
+## 🔒 The Tab/Module Capability System (`allowedModuleSlugs`)
 
-- Personal balances, account activity, transaction history, deposits, loans, and enabled locker records
-- Dashboard personalization through approved language and theme settings
-- Self-service visibility limited to the signed-in member
+To prevent the User Interface from being cluttered, we use a concept of "Capabilities" or "Module Slugs". Even if to tellers are both `SUPER_USER`, one might be a Loan Officer and the other a Locker Manager. 
 
-Restricted capabilities:
+By defining `allowedModuleSlugs` as an array of strings strings on the User table, the frontend dynamically hides or renders Side-Navigation links.
 
-- Customer master maintenance
-- Society-wide reports and cash operations
-- User administration and monitoring
-- Institution setup, billing, and branch controls
+**Available Slugs Example:**
+- `modules/loans`
+- `modules/lockers`
+- `modules/cashbook`
+- `modules/investments`
 
-### Agent operations workspace
-
-Authorized capabilities:
-
-- Customer onboarding, KYC review, and account servicing
-- Deposits, loans, transactions, clearing, demand drafts, and inward or outward instruments
-- Cashbook handling, locker servicing, and operational reports inside one society
-
-Restricted capabilities:
-
-- Institution profile and billing setup
-- Branch policy and society-wide governance controls
-- Cross-society monitoring and platform administration
-
-### Society administration workspace
-
-Authorized capabilities:
-
-- Institution master configuration, compliance data, billing details, and branch setup
-- All society operational modules, including administration, reports, users, and monitoring
-- Oversight of staff and member-facing workspaces within the current institution
-
-Restricted capabilities:
-
-- Cross-society governance
-- Global platform approvals outside the assigned society
-
-### Platform governance workspace
-
-Authorized capabilities:
-
-- Society onboarding, suspension, and access-control decisions
-- Platform-wide monitoring, reporting, and user visibility
-- Portfolio governance across all institutions in the deployment
-
-Restricted capabilities:
-
-- Society-local institution master maintenance
-- Society-local branch configuration
-- Day-to-day member servicing and branch transaction entry
-
-## Provisioning policy
-
-1. Use `CLIENT` for end members who should only see their own records.
-2. Use `AGENT` for staff running operational workflows inside one assigned society.
-3. Use `SUPER_USER` for institution owners and administrators responsible for one society end-to-end.
-4. Use `SUPER_ADMIN` only for central platform governance and multi-society oversight.
-5. Start product demos and client walkthroughs from `/workspaces` so the access model is clear before authentication.
+If an API request is made to a Controller for `/api/v1/banking/loans`, the backend explicitly checks if the decoded JWT token payload includes `modules/loans` in its allowed slugs array. If missing, it throws a `403 Forbidden`.

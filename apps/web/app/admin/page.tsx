@@ -70,7 +70,7 @@ export default function AdminLoginPage() {
       });
 
       toast.success(copy.success);
-      router.replace(getDefaultDashboardPath("PLATFORM", response.user.requiresPasswordChange));
+      window.location.href = getDefaultDashboardPath("PLATFORM", response.user.requiresPasswordChange);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : copy.fallbackError;
       setError(message);

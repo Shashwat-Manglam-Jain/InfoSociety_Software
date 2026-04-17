@@ -10,7 +10,20 @@ import GavelRoundedIcon from "@mui/icons-material/GavelRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import SavingsRoundedIcon from "@mui/icons-material/SavingsRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import SupportAgentRoundedIcon from "@mui/icons-material/SupportAgentRounded";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie
+} from "recharts";
 import {
   Alert,
   Avatar,
@@ -40,6 +53,7 @@ import { LockerWorkspace } from "@/features/society/components/locker-workspace"
 import { PaymentWorkspace } from "@/features/society/components/payment-workspace";
 import { SocietyOperationsWorkspace } from "@/features/society/components/society-operations-workspace";
 import { buildManagedUsersFromCustomers } from "@/features/society/lib/society-admin-dashboard";
+import { ProfileEditWorkspace } from "@/features/shared/components/profile-edit-workspace";
 
 type ClientProfile = {
   id: string;
@@ -51,6 +65,8 @@ type ClientProfile = {
     accountNumber: string;
     type: string;
     currentBalance: number;
+    interestRate: number | null;
+    openingDate: string;
   }>;
   dashboardStats: {
     totalInvested: number;
@@ -187,9 +203,9 @@ export default function ClientDashboardPage() {
         active: currentView === "overview"
       },
       {
-        label: "Profile",
+        label: "My Profile",
         href: "/dashboard/client?view=profile",
-        icon: <ContactMailOutlinedIcon />,
+        icon: <PersonRoundedIcon />,
         active: currentView === "profile"
       }
     ];
@@ -263,7 +279,7 @@ export default function ClientDashboardPage() {
     <DashboardShell
       user={user}
       accountTypeLabel={accountTypeLabel}
-      avatarDataUrl={null}
+      avatarDataUrl={user.avatarUrl}
       onLogout={() => {
         clearSession();
         router.replace("/");
@@ -273,58 +289,7 @@ export default function ClientDashboardPage() {
     >
       <Box sx={{ minHeight: "100vh", bgcolor: "#f8fafc", px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 } }}>
         {currentView === "profile" ? (
-          <Container maxWidth="lg" disableGutters>
-            <Stack spacing={3}>
-              <Card sx={{ borderRadius: 5, border: "1px solid rgba(15, 23, 42, 0.06)" }}>
-                <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-                  <Stack spacing={2.5}>
-                    <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>
-                      Client Profile
-                    </Typography>
-                    <Grid container spacing={2}>
-                      {[
-                        { label: "Customer Code", value: profile.customerCode },
-                        { label: "Client Name", value: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || user.fullName },
-                        { label: "Branch Scope", value: branchLabel },
-                        { label: "Portal Username", value: user.username }
-                      ].map((item) => (
-                        <Grid key={item.label} size={{ xs: 12, md: 6 }}>
-                          <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
-                            <Typography variant="caption" sx={{ fontWeight: 900, color: "text.secondary", letterSpacing: 0.8 }}>
-                              {item.label.toUpperCase()}
-                            </Typography>
-                            <Typography variant="h6" sx={{ mt: 1, fontWeight: 900 }}>
-                              {item.value}
-                            </Typography>
-                          </Paper>
-                        </Grid>
-                      ))}
-                    </Grid>
-                    {profile.allottedAgent ? (
-                      <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
-                        <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Avatar sx={{ bgcolor: alpha("#1d4ed8", 0.12), color: "#1d4ed8" }}>
-                            <SupportAgentRoundedIcon />
-                          </Avatar>
-                          <Box>
-                            <Typography variant="caption" sx={{ fontWeight: 900, color: "text.secondary", letterSpacing: 0.8 }}>
-                              RELATIONSHIP AGENT
-                            </Typography>
-                            <Typography variant="h6" sx={{ mt: 0.8, fontWeight: 900 }}>
-                              {[profile.allottedAgent.firstName, profile.allottedAgent.lastName].filter(Boolean).join(" ")}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {profile.allottedAgent.phone || "Phone not available"}
-                            </Typography>
-                          </Box>
-                        </Stack>
-                      </Paper>
-                    ) : null}
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Stack>
-          </Container>
+          <ProfileEditWorkspace user={user} />
         ) : currentView === "plan_catalogue" ? (
           <SocietyOperationsWorkspace
             view="plan_catalogue"
@@ -450,34 +415,115 @@ export default function ClientDashboardPage() {
                 ))}
               </Grid>
 
-              <Grid container spacing={2}>
-                {sidebarGroups
-                  .flatMap((group) => group.items ?? [])
-                  .filter((item) => item.href !== "/dashboard/client")
-                  .map((item) => (
-                    <Grid key={item.href} size={{ xs: 12, md: 6, xl: 4 }}>
-                      <Card sx={{ borderRadius: 4, border: "1px solid rgba(15, 23, 42, 0.06)", height: "100%" }}>
-                        <CardContent sx={{ p: 2.5 }}>
-                          <Stack spacing={2}>
-                            <Avatar sx={{ bgcolor: alpha("#1d4ed8", 0.12), color: "#1d4ed8", width: 48, height: 48 }}>
-                              {item.icon}
-                            </Avatar>
-                            <Box>
-                              <Typography variant="h6" sx={{ fontWeight: 900, color: "#0f172a" }}>
-                                {item.label}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                Open the live {item.label.toLowerCase()} screen and work with your real banking data.
-                              </Typography>
-                            </Box>
-                            <Button component={Link} href={item.href} variant="contained" sx={{ borderRadius: 999, alignSelf: "flex-start", fontWeight: 900 }}>
-                              Open {item.label}
-                            </Button>
-                          </Stack>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
+              {/* Visual Breakdown & Detailed Accounts */}
+              <Grid container spacing={3}>
+                {/* Account Type Distribution (Pie) */}
+                <Grid size={{ xs: 12, lg: 5 }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      borderRadius: 4,
+                      border: "1px solid rgba(15, 23, 42, 0.08)",
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column"
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ fontWeight: 900, mb: 3 }}>Portfolio Distribution</Typography>
+                    <Box sx={{ flex: 1, minHeight: 280 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={profile.accounts.reduce((acc, a) => {
+                              const found = acc.find(x => x.name === a.type);
+                              if (found) found.value += Number(a.currentBalance);
+                              else acc.push({ name: a.type, value: Number(a.currentBalance) });
+                              return acc;
+                            }, [] as { name: string; value: number }[])}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {profile.accounts.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={["#4f46e5", "#10b981", "#f59e0b", "#ef4444"][index % 4]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: any) => formatCurrency(Number(value))}
+                            contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </Box>
+                    <Stack spacing={1.5} sx={{ mt: 2 }}>
+                       {profile.accounts.reduce((acc, a) => {
+                          if (!acc.find(x => x.name === a.type)) acc.push({ name: a.type, value: 0 });
+                          return acc;
+                       }, [] as { name: string; value: number }[]).map((item, idx) => (
+                         <Stack key={item.name} direction="row" alignItems="center" justifyContent="space-between">
+                            <Stack direction="row" spacing={1} alignItems="center">
+                               <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: ["#4f46e5", "#10b981", "#f59e0b", "#ef4444"][idx % 4] }} />
+                               <Typography variant="body2" sx={{ fontWeight: 700 }}>{item.name}</Typography>
+                            </Stack>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                              {Math.round((profile.accounts.filter(a => a.type === item.name).reduce((sum, a) => sum + Number(a.currentBalance), 0) / stats.netBalance) * 100)}%
+                            </Typography>
+                         </Stack>
+                       ))}
+                    </Stack>
+                  </Paper>
+                </Grid>
+
+                {/* Account Details Table */}
+                <Grid size={{ xs: 12, lg: 7 }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      borderRadius: 4,
+                      border: "1px solid rgba(15, 23, 42, 0.08)",
+                      height: "100%"
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ fontWeight: 900, mb: 3 }}>My Holdings</Typography>
+                    <Box sx={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                            <th style={{ textAlign: "left", padding: "12px 0", color: "#64748b", fontSize: 13, fontWeight: 700 }}>ACCOUNT TYPE</th>
+                            <th style={{ textAlign: "left", padding: "12px 0", color: "#64748b", fontSize: 13, fontWeight: 700 }}>INTEREST</th>
+                            <th style={{ textAlign: "right", padding: "12px 0", color: "#64748b", fontSize: 13, fontWeight: 700 }}>BALANCE</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {profile.accounts.map((acc) => (
+                            <tr key={acc.id} style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+                              <td style={{ padding: "16px 0" }}>
+                                <Typography sx={{ fontWeight: 800, color: "#1e293b" }}>{acc.type}</Typography>
+                                <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>{acc.accountNumber}</Typography>
+                              </td>
+                              <td style={{ padding: "16px 0" }}>
+                                <Chip
+                                  label={`${acc.interestRate ?? 0}% p.a.`}
+                                  size="small"
+                                  sx={{ bgcolor: "rgba(16, 185, 129, 0.1)", color: "#059669", fontWeight: 800, fontSize: 11 }}
+                                />
+                              </td>
+                              <td style={{ padding: "16px 0", textAlign: "right" }}>
+                                <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{formatCurrency(acc.currentBalance)}</Typography>
+                                <Typography variant="caption" sx={{ color: "#94a3b8" }}>Opened {new Date(acc.openingDate).toLocaleDateString()}</Typography>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </Box>
+                  </Paper>
+                </Grid>
               </Grid>
             </Stack>
           </Container>

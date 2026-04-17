@@ -3,6 +3,7 @@ import type { BillingPlansResponse, Society } from "../types";
 const CACHE_TTL_MS = 60_000;
 const SOCIETIES_CACHE_KEY = "infopath_public_societies";
 const BILLING_CACHE_KEY = "infopath_public_billing_plans";
+const PLATFORM_STATS_CACHE_KEY = "infopath_platform_stats";
 
 type CacheEnvelope<T> = {
   cachedAt: number;
@@ -63,4 +64,32 @@ export function getCachedBillingPlans() {
 
 export function setCachedBillingPlans(plans: BillingPlansResponse["plans"]) {
   writeCache(BILLING_CACHE_KEY, plans);
+}
+
+export function getCachedPlatformStats() {
+  return readCache<{
+    clients: number;
+    agents: number;
+    societies: number;
+    societyAdmins: number;
+    platformAdmins: number;
+    totalAccounts: number;
+    totalDeposits: number;
+    totalLoans: number;
+    totalTransactions: number;
+  }>(PLATFORM_STATS_CACHE_KEY);
+}
+
+export function setCachedPlatformStats(stats: {
+  clients: number;
+  agents: number;
+  societies: number;
+  societyAdmins: number;
+  platformAdmins: number;
+  totalAccounts: number;
+  totalDeposits: number;
+  totalLoans: number;
+  totalTransactions: number;
+}) {
+  writeCache(PLATFORM_STATS_CACHE_KEY, stats);
 }

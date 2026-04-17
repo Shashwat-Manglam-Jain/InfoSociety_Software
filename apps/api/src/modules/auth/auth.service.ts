@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { AccountStatus, AccountType, Prisma, SocietyStatus, SubscriptionPlan, SubscriptionStatus, UserRole } from "@prisma/client";
+import { AccountStatus, AccountType, LoanStatus, Prisma, SocietyStatus, SubscriptionPlan, SubscriptionStatus, UserRole } from "@prisma/client";
 import { compare, hash } from "bcryptjs";
 import { RequestUser } from "../../common/auth/request-user.interface";
 import { MemoryCacheService } from "../../common/cache/memory-cache.service";
@@ -226,6 +226,20 @@ export class AuthService {
 
     this.assertSocietyAccessAllowed(user);
 
+    // 5. Aadhaar Verification (when Aadhaar is registered on the account)
+    // If the user account has aadhaarNumber set, the caller MUST provide
+    // aadhaarLast4 and it must match the last 4 digits of the stored number.
+    if ((user as any).aadhaarNumber) {
+      if (!dto.aadhaarLast4) {
+        throw new UnauthorizedException("Aadhaar verification required: please enter the last 4 digits of your Aadhaar card");
+      }
+ 
+      const storedLast4 = (user as any).aadhaarNumber.slice(-4);
+      if (dto.aadhaarLast4 !== storedLast4) {
+        throw new UnauthorizedException("Aadhaar verification failed: the digits you entered do not match");
+      }
+    }
+
     return this.buildLoginResponse(user);
   }
 
@@ -246,6 +260,44 @@ export class AuthService {
         }
       })
     );
+  }
+
+  async getPlatformStats() {
+    return this.cache.getOrSet("public:platform_stats", PUBLIC_DIRECTORY_CACHE_TTL_MS, async () => {
+      const [
+        clients,
+        agents,
+        societyAdmins,
+        platformAdmins,
+        societies,
+        totalAccounts,
+        totalDeposits,
+        totalLoans,
+        totalTransactions
+      ] = await Promise.all([
+        this.prisma.user.count({ where: { role: UserRole.CLIENT } }),
+        this.prisma.user.count({ where: { role: UserRole.AGENT } }),
+        this.prisma.user.count({ where: { role: UserRole.SUPER_USER } }),
+        this.prisma.user.count({ where: { role: UserRole.SUPER_ADMIN } }),
+        this.prisma.society.count({ where: { isActive: true, status: SocietyStatus.ACTIVE } }),
+        this.prisma.account.count({ where: { status: AccountStatus.ACTIVE } }),
+        this.prisma.depositAccount.count(),
+        this.prisma.loanAccount.count({ where: { status: { notIn: [LoanStatus.APPLIED, LoanStatus.CLOSED] } } }),
+        this.prisma.transaction.count()
+      ]);
+
+      return {
+        clients,
+        agents,
+        societyAdmins,
+        platformAdmins,
+        societies,
+        totalAccounts,
+        totalDeposits,
+        totalLoans,
+        totalTransactions
+      };
+    });
   }
 
   async listActiveSocietyBranches(societyCode: string) {
@@ -338,6 +390,15 @@ export class AuthService {
       await this.assertUsernameAvailable(identity.username);
       const passwordHash = await hash(dto.password, 10);
 
+      if (dto.aadhaarNumber) {
+        const existingAadhaar = await this.prisma.user.findUnique({
+          where: { aadhaarNumber: dto.aadhaarNumber }
+        });
+        if (existingAadhaar) {
+          throw new UnauthorizedException("This Aadhaar number is already registered with another account");
+        }
+      }
+
       const created = await this.prisma.$transaction(async (tx) => {
         const society = await tx.society.create({
           data: {
@@ -370,6 +431,7 @@ export class AuthService {
             username: identity.username,
             passwordHash,
             fullName: identity.fullName,
+            aadhaarNumber: dto.aadhaarNumber || null,
             role: UserRole.SUPER_USER,
             societyId: society.id,
             branchId: headOfficeBranch.id
@@ -378,12 +440,16 @@ export class AuthService {
         await this.updateUserAdminFlag(tx, user.id, true);
 
         await this.updateAllowedModules(tx, user.id, getDefaultAllowedModules(UserRole.SUPER_USER));
+        
+        const plan = dto.planId === "PREMIUM" ? SubscriptionPlan.PREMIUM : SubscriptionPlan.FREE;
+        const monthlyPrice = plan === SubscriptionPlan.PREMIUM ? (Number(this.configService.get("PREMIUM_MONTHLY_PRICE") || "299")) : 0;
+
         await tx.subscription.create({
           data: {
             userId: user.id,
-            plan: SubscriptionPlan.FREE,
+            plan,
             status: SubscriptionStatus.ACTIVE,
-            monthlyPrice: 0
+            monthlyPrice
           }
         });
         await ensureDefaultDepositSchemes(tx);
@@ -429,6 +495,79 @@ export class AuthService {
       allowedModuleSlugs: await this.resolveUserAllowedModules(user.id, user.role)
     };
   }
+
+  async updateMyProfile(
+    currentUser: RequestUser,
+    dto: {
+      fullName?: string;
+      avatarUrl?: string;
+      phone?: string;
+      email?: string;
+      address?: string;
+      fatherName?: string;
+      motherName?: string;
+      dateOfBirth?: string;
+      gender?: string;
+      panNumber?: string;
+      nomineeFullName?: string;
+      nomineeRelation?: string;
+      nomineeContactNumber?: string;
+    }
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: currentUser.sub },
+      select: { id: true, customerId: true }
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+
+    const userUpdate: Record<string, unknown> = {};
+    if (dto.fullName?.trim()) {
+      userUpdate.fullName = dto.fullName.trim();
+    }
+    if (dto.avatarUrl !== undefined) {
+      userUpdate.avatarUrl = dto.avatarUrl || null;
+    }
+
+    if (Object.keys(userUpdate).length > 0) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: userUpdate
+      });
+    }
+
+    // Update the linked Customer profile record if it exists
+    if (user.customerId) {
+      const customerUpdate: Record<string, unknown> = {};
+      if (dto.phone !== undefined) customerUpdate.phone = dto.phone.trim() || null;
+      if (dto.email !== undefined) customerUpdate.email = dto.email.trim() || null;
+      if (dto.address !== undefined) customerUpdate.address = dto.address.trim() || null;
+      if (dto.fatherName !== undefined) customerUpdate.fatherName = dto.fatherName.trim() || null;
+      if (dto.motherName !== undefined) customerUpdate.motherName = dto.motherName.trim() || null;
+      if (dto.dateOfBirth !== undefined) customerUpdate.dateOfBirth = dto.dateOfBirth ? new Date(dto.dateOfBirth) : null;
+      if (dto.gender !== undefined) customerUpdate.gender = dto.gender.trim() || null;
+      if (dto.panNumber !== undefined) customerUpdate.panNumber = dto.panNumber.trim().toUpperCase() || null;
+      if (dto.nomineeFullName !== undefined) customerUpdate.nomineeFullName = dto.nomineeFullName.trim() || null;
+      if (dto.nomineeRelation !== undefined) customerUpdate.nomineeRelation = dto.nomineeRelation.trim() || null;
+      if (dto.nomineeContactNumber !== undefined) customerUpdate.nomineeContactNumber = dto.nomineeContactNumber.trim() || null;
+
+      if (Object.keys(customerUpdate).length > 0) {
+        try {
+          await this.prisma.customer.update({
+            where: { id: user.customerId },
+            data: customerUpdate
+          });
+        } catch {
+          // Customer model may not have all fields — skip gracefully
+        }
+      }
+    }
+
+    return this.me(currentUser);
+  }
+
 
   async changePassword(currentUser: RequestUser, dto: { currentPassword: string; newPassword: string }) {
     const user = await this.prisma.user.findUnique({
@@ -550,6 +689,7 @@ export class AuthService {
       id: user.id,
       username: user.username,
       fullName: user.fullName,
+      avatarUrl: (user as any).avatarUrl,
       aadhaarNumber: extras.aadhaarNumber,
       role: user.role,
       isSocietyAdmin: extras.isSocietyAdmin,

@@ -4,8 +4,8 @@ const DEFAULT_TIMEOUT_MS = resolveTimeoutMs(process.env.NEXT_PUBLIC_API_TIMEOUT_
 export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
 function resolveTimeoutMs(value: string | undefined) {
-  const parsed = Number(value ?? "12000");
-  return Number.isFinite(parsed) && parsed >= 1000 ? parsed : 12000;
+  const parsed = Number(value ?? "30000");
+  return Number.isFinite(parsed) && parsed >= 1000 ? parsed : 30000;
 }
 
 function buildUrl(path: string) {
@@ -107,11 +107,13 @@ export async function requestJson<T>({ body, method = "GET", path, token }: Requ
     return parseResponse<T>(response);
   } catch (caught) {
     if (caught instanceof Error && caught.name === "AbortError") {
+      console.error(`Request timed out for: ${path}`);
       throw new Error("The request timed out. Please try again.");
     }
 
     if (caught instanceof TypeError) {
-      throw new Error("Unable to reach the server. Check your connection and API URL.");
+      console.error(`Failed to reach API at: ${buildUrl(path)}`, caught);
+      throw new Error("The server is currently unreachable. Please check if the API is running at the configured URL.");
     }
 
     throw caught;
