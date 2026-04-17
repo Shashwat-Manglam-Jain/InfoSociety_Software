@@ -2,9 +2,24 @@ import { clearSession, getSession, setSession, subscribeToSession } from "./sess
 
 describe("session helpers", () => {
   beforeEach(() => {
+    jest.restoreAllMocks();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true })
+    } as Response);
     window.localStorage.clear();
-    document.cookie = "infopath_session=; Max-Age=0; path=/";
   });
+
+  function buildToken(expiresAtUnixSeconds: number) {
+    const encode = (value: unknown) =>
+      Buffer.from(JSON.stringify(value))
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
+
+    return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ exp: expiresAtUnixSeconds })}.signature`;
+  }
 
   it("normalizes invalid persisted account types and subscription plans", () => {
     window.localStorage.setItem(
@@ -33,25 +48,53 @@ describe("session helpers", () => {
     const listener = jest.fn();
     const unsubscribe = subscribeToSession(listener);
 
-    setSession({
-      accessToken: "token-2",
-      role: "CLIENT",
-      accountType: "CLIENT",
-      username: "client1",
-      fullName: "Client One",
-      societyCode: "SOC-HO",
-      subscriptionPlan: "FREE",
-      avatarDataUrl: null,
-      requiresPasswordChange: false
-    });
-    clearSession();
+    return (async () => {
+      await setSession({
+        accessToken: "token-2",
+        role: "CLIENT",
+        accountType: "CLIENT",
+        username: "client1",
+        fullName: "Client One",
+        societyCode: "SOC-HO",
+        subscriptionPlan: "FREE",
+        avatarDataUrl: null,
+        requiresPasswordChange: false
+      });
+      await clearSession();
 
-    expect(listener).toHaveBeenCalledTimes(2);
-    unsubscribe();
+      expect(listener).toHaveBeenCalledTimes(2);
+      unsubscribe();
+    })();
   });
 
-  it("mirrors a slim session into a cookie for server rendering", () => {
-    setSession({
+  it("drops expired sessions from local storage", () => {
+    const now = 1_800_000_000_000;
+    jest.spyOn(Date, "now").mockReturnValue(now);
+
+    window.localStorage.setItem(
+      "infopath_session",
+      JSON.stringify({
+        accessToken: buildToken(Math.floor(now / 1000) - 60),
+        role: "SUPER_USER",
+        accountType: "SOCIETY",
+        username: "expired-admin",
+        fullName: "Expired Admin",
+        requiresPasswordChange: false
+      })
+    );
+
+    expect(getSession()).toBeNull();
+    expect(window.localStorage.getItem("infopath_session")).toBeNull();
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/session",
+      expect.objectContaining({
+        method: "DELETE"
+      })
+    );
+  });
+
+  it("persists a slim session through the server-session api", async () => {
+    await setSession({
       accessToken: "token-3",
       role: "SUPER_USER",
       accountType: "SOCIETY",
@@ -63,8 +106,30 @@ describe("session helpers", () => {
       requiresPasswordChange: false
     });
 
-    expect(document.cookie).toContain("infopath_session=");
-    expect(decodeURIComponent(document.cookie)).toContain('"accountType":"SOCIETY"');
-    expect(decodeURIComponent(document.cookie)).not.toContain("abc123");
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/session",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+
+    const requestInit = (global.fetch as jest.Mock).mock.calls[0]?.[1] as RequestInit | undefined;
+    const persistedPayload = JSON.parse(String(requestInit?.body)) as Record<string, unknown>;
+
+    expect(persistedPayload).toEqual(
+      expect.objectContaining({
+        accessToken: "token-3",
+        role: "SUPER_USER",
+        accountType: "SOCIETY",
+        username: "owner1",
+        fullName: "Owner One",
+        societyCode: "SOC-HO",
+        subscriptionPlan: "PREMIUM",
+        avatarDataUrl: null,
+        requiresPasswordChange: false
+      })
+    );
   });
 });

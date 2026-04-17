@@ -1,6 +1,7 @@
 import { ConfigService } from "@nestjs/config";
 import { PaymentMethod, PaymentPurpose, PaymentTransactionStatus, SocietyStatus, SubscriptionPlan, SubscriptionStatus, UserRole } from "@prisma/client";
 import { RequestUser } from "../../common/auth/request-user.interface";
+import { MemoryCacheService } from "../../common/cache/memory-cache.service";
 import { BillingService } from "./billing.service";
 
 describe("BillingService", () => {
@@ -28,8 +29,10 @@ describe("BillingService", () => {
       })
     };
 
+    const cache = new MemoryCacheService();
+
     return {
-      service: new BillingService(prisma as never, configService as never as ConfigService),
+      service: new BillingService(prisma as never, configService as never as ConfigService, cache),
       prisma
     };
   }
@@ -50,10 +53,10 @@ describe("BillingService", () => {
     customerId: "cust-1"
   };
 
-  it("returns free and premium plans from configuration", () => {
+  it("returns free and premium plans from configuration", async () => {
     const { service } = buildService(399);
 
-    const result = service.getPlans();
+    const result = await service.getPlans();
     const premiumPlan = result.plans.find((plan) => plan.id === SubscriptionPlan.PREMIUM);
 
     expect(result.currency).toBe("INR");
