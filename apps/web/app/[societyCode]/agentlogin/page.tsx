@@ -80,7 +80,7 @@ export default function AgentLoginPage() {
     setLoading(true);
 
     try {
-      const response = await login(username, password, normalizedSocietyCode, "AGENT", aadhaarLast4.trim() || undefined);
+      const response = await login(username, password, normalizedSocietyCode, "AGENT", aadhaarLast4.trim() || undefined, "AGENT");
 
       await setSession({
         accessToken: response.accessToken,

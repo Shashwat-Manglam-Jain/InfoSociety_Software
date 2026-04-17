@@ -150,7 +150,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const response = await login(username, password, codeToUse, selectedRole, aadhaarLast4 || undefined);
+      const response = await login(username, password, codeToUse, selectedRole, aadhaarLast4 || undefined, "ADMIN");
       await setSession({
         accessToken: response.accessToken,
         role: response.user.role,
@@ -239,11 +239,11 @@ export default function LoginPage() {
                       <>
                         <Box sx={{ p: 2, bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}` }}>
                           <Grid container spacing={2}>
-                            <Grid item xs={6}>
+                            <Grid size={{ xs: 6 }}>
                               <Typography variant="caption" fontWeight={700} color="text.secondary">Society Code</Typography>
                               <Typography fontWeight={800}>{selectedSociety?.code || societySearch}</Typography>
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid size={{ xs: 6 }}>
                               <Typography variant="caption" fontWeight={700} color="text.secondary">Access Role</Typography>
                               <Typography fontWeight={800}>Administrative (Full Access)</Typography>
                             </Grid>

@@ -73,7 +73,7 @@ export class AdministrationService {
   }
 
   async createBranch(currentUser: RequestUser, dto: CreateBranchDto) {
-    this.ensureOperator(currentUser);
+    await this.ensureSocietyAdmin(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
 
     let branchCode = dto.code?.trim().toUpperCase();
@@ -122,7 +122,7 @@ export class AdministrationService {
   }
 
   async updateBranch(currentUser: RequestUser, id: string, dto: any) {
-    this.ensureOperator(currentUser);
+    await this.ensureSocietyAdmin(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
     const existingBranch = await this.prisma.branch.findFirst({
       where: {
@@ -171,7 +171,7 @@ export class AdministrationService {
   }
 
   async deleteBranch(currentUser: RequestUser, id: string) {
-    this.ensureOperator(currentUser);
+    await this.ensureSocietyAdmin(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
     const targetBranch = await this.prisma.branch.findFirst({
       where: {
@@ -202,7 +202,7 @@ export class AdministrationService {
   }
 
   async createUser(currentUser: RequestUser, dto: CreateUserDto & { branchId?: string }) {
-    this.ensureOperator(currentUser);
+    await this.ensureSocietyAdmin(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
     const normalizedUsername = this.normalizeUsername(dto.username);
     const normalizedAadhaarNumber = this.normalizeAadhaarNumber(dto.aadhaarNumber);
@@ -469,7 +469,7 @@ export class AdministrationService {
   }
 
   async updateSociety(currentUser: RequestUser, dto: any) {
-    this.ensureOperator(currentUser);
+    await this.ensureSocietyAdmin(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
 
     const normalizeText = (value: unknown): string | null | undefined => {
@@ -1079,7 +1079,7 @@ export class AdministrationService {
   }
 
   async updateUser(currentUser: RequestUser, id: string, dto: UpdateUserDto) {
-    this.ensureOperator(currentUser);
+    await this.ensureSocietyAdmin(currentUser);
 
     const target = await this.prisma.user.findUnique({
       where: { id },
@@ -1238,7 +1238,7 @@ export class AdministrationService {
   }
 
   async updateUserStatus(currentUser: RequestUser, id: string, dto: UpdateUserStatusDto) {
-    this.ensureOperator(currentUser);
+    await this.ensureSocietyAdmin(currentUser);
     const target = await this.prisma.user.findUnique({ where: { id }, select: { id: true, societyId: true, role: true } });
     if (!target) throw new NotFoundException("User not found");
     if (currentUser.role !== UserRole.SUPER_ADMIN && target.societyId !== currentUser.societyId) throw new ForbiddenException("User belongs to another society");
@@ -1255,7 +1255,7 @@ export class AdministrationService {
   }
 
   async updateUserAccess(currentUser: RequestUser, id: string, dto: { allowedModuleSlugs: string[] }) {
-    this.ensureOperator(currentUser);
+    await this.ensureSocietyAdmin(currentUser);
     const target = await this.prisma.user.findUnique({ where: { id }, select: { id: true, societyId: true, role: true } });
     if (!target) throw new NotFoundException("User not found");
     if (currentUser.role !== UserRole.SUPER_ADMIN && target.societyId !== currentUser.societyId) throw new ForbiddenException("User belongs to another society");
@@ -1270,7 +1270,7 @@ export class AdministrationService {
   }
 
   async deleteUser(currentUser: RequestUser, id: string) {
-    this.ensureOperator(currentUser);
+    await this.ensureSocietyAdmin(currentUser);
 
     if (currentUser.sub === id) {
       throw new ForbiddenException("You cannot remove your own account");
@@ -1442,6 +1442,23 @@ export class AdministrationService {
 
   private ensureOperator(currentUser: RequestUser) {
     if (currentUser.role === UserRole.CLIENT) throw new ForbiddenException("Client users cannot access administration controls");
+  }
+
+  private async ensureSocietyAdmin(currentUser: RequestUser) {
+    if (currentUser.role === UserRole.SUPER_ADMIN) return;
+    this.ensureOperator(currentUser);
+
+    const map = await this.getUserExtraFieldMap([currentUser.sub]);
+    const extras = map.get(currentUser.sub);
+
+    let isSocietyAdmin = false;
+    if (extras) {
+      isSocietyAdmin = extras.isSocietyAdmin === true || String(extras.isSocietyAdmin).toLowerCase() === 't' || String(extras.isSocietyAdmin) === '1';
+    }
+
+    if (!isSocietyAdmin) {
+      throw new ForbiddenException("Staff and Agent users cannot manage branches, users, or society details. Administrative access required.");
+    }
   }
 
   private assertCanManageUser(

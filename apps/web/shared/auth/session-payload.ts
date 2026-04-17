@@ -5,20 +5,19 @@ export const AUTH_SESSION_COOKIE_KEY = "infopath_auth_session";
 const DEFAULT_SOCIETY_DASHBOARD_PATH = "/dashboard/society?view=overview";
 const societyDashboardPathByModulePriority: Array<{ moduleSlugs: string[]; path: string }> = [
   { moduleSlugs: ["administration"], path: "/dashboard/society?view=overview" },
-  { moduleSlugs: ["customers"], path: "/dashboard/society?view=customer_workspace" },
+  { moduleSlugs: ["customers"], path: "/dashboard/society?view=membership_clients" },
   { moduleSlugs: ["accounts"], path: "/dashboard/society?view=account_registry" },
   { moduleSlugs: ["deposits"], path: "/dashboard/society?view=plan_catalogue" },
   { moduleSlugs: ["loans"], path: "/dashboard/society?view=loan_workspace" },
-  { moduleSlugs: ["transactions"], path: "/dashboard/society?view=transaction_workspace" },
+  { moduleSlugs: ["transactions", "cashbook"], path: "/dashboard/society?view=ledger_workspace" },
   { moduleSlugs: ["payments"], path: "/dashboard/society?view=payments_workspace" },
   { moduleSlugs: ["cheque-clearing"], path: "/dashboard/society?view=cheque_workspace" },
   { moduleSlugs: ["locker"], path: "/dashboard/society?view=locker_workspace" },
-  { moduleSlugs: ["cashbook"], path: "/dashboard/society?view=ledger_workspace" },
-  { moduleSlugs: ["demand-drafts"], path: "/dashboard/society?view=demand_draft_workspace" },
+  { moduleSlugs: ["demand-drafts"], path: "/dashboard/society?view=demand_drafts_workspace" },
   { moduleSlugs: ["ibc-obc"], path: "/dashboard/society?view=ibc_obc_workspace" },
-  { moduleSlugs: ["investments"], path: "/dashboard/society?view=investment_workspace" },
-  { moduleSlugs: ["reports"], path: "/dashboard/society?view=report_workspace" },
-  { moduleSlugs: ["users"], path: "/dashboard/society?view=directory" },
+  { moduleSlugs: ["investments"], path: "/dashboard/society?view=investments_workspace" },
+  { moduleSlugs: ["reports"], path: "/dashboard/society?view=reports_workspace" },
+  { moduleSlugs: ["users"], path: "/dashboard/society?view=user_directory_workspace" },
   { moduleSlugs: ["monitoring"], path: "/dashboard/society?view=monitoring_workspace" }
 ];
 
@@ -126,6 +125,8 @@ export function parseSessionPayload(payload: unknown): Session | null {
     allowedModuleSlugs: Array.isArray(parsed.allowedModuleSlugs)
       ? parsed.allowedModuleSlugs.filter((entry): entry is string => typeof entry === "string")
       : [],
+    isSocietyAdmin: Boolean(parsed.isSocietyAdmin),
+    branchId: typeof parsed.branchId === "string" ? parsed.branchId : null,
     selectedBranchId: typeof parsed.selectedBranchId === "string" ? parsed.selectedBranchId : null,
     selectedBranchName: typeof parsed.selectedBranchName === "string" ? parsed.selectedBranchName : null,
     selectedBranchCode: typeof parsed.selectedBranchCode === "string" ? parsed.selectedBranchCode : null
@@ -173,6 +174,8 @@ export function buildSessionFromLoginResponse(response: LoginResponse): Session 
     avatarDataUrl: null,
     requiresPasswordChange: response.user.requiresPasswordChange,
     allowedModuleSlugs: response.user.allowedModuleSlugs ?? [],
+    isSocietyAdmin: response.user.isSocietyAdmin ?? false,
+    branchId: response.user.branchId ?? null,
     selectedBranchId: response.user.branchId ?? null,
     selectedBranchName: null,
     selectedBranchCode: null

@@ -1,5 +1,5 @@
 import { UserRole } from "@prisma/client";
-import { IsEnum, IsOptional, IsString, Length, Matches, MinLength } from "class-validator";
+import { IsEnum, IsIn, IsOptional, IsString, Length, Matches, MinLength } from "class-validator";
 
 export class LoginDto {
   @IsString()
@@ -23,4 +23,9 @@ export class LoginDto {
   @Length(4, 4)
   @Matches(/^\d{4}$/, { message: "aadhaarLast4 must be exactly 4 digits" })
   aadhaarLast4?: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['ADMIN', 'STAFF', 'AGENT', 'CLIENT'])
+  portalSource?: 'ADMIN' | 'STAFF' | 'AGENT' | 'CLIENT';
 }

@@ -57,7 +57,8 @@ import { listCustomers, updateCustomer } from "@/shared/api/customers";
 import { listLoans, type LoanRecord } from "@/shared/api/loans";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import { getMe } from "@/shared/api/client";
-import { clearSession, getDefaultDashboardPath, getSession } from "@/shared/auth/session";
+import { clearSession, getSession, setSession } from "@/shared/auth/session";
+import { getDefaultDashboardPath } from "@/shared/auth/session-payload";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getSocietyDashboardPageCopy } from "@/shared/i18n/society-dashboard-page-copy";
 import { DESIGN_SYSTEM } from "@/shared/theme/design-system";
@@ -208,7 +209,8 @@ const SOCIETY_VIEW_ACCESS: Record<SocietyView, string[]> = {
   ibc_obc_workspace: ["ibc-obc"],
   reports_workspace: ["reports"],
   user_directory_workspace: ["users"],
-  monitoring_workspace: ["monitoring"]
+  monitoring_workspace: ["monitoring"],
+  my_profile: []
 };
 
 function hasAllowedModule(isSocietyAdmin: boolean, allowedModuleSlugs: Set<string>, moduleCandidates: string[]) {
@@ -394,7 +396,20 @@ export default function SocietyDashboard() {
   const [societyOverview, setSocietyOverview] = useState<SocietyOverviewRecord>(EMPTY_SOCIETY_OVERVIEW);
   const [branchOverviews, setBranchOverviews] = useState<Record<string, SocietyOverviewRecord>>({});
   const [loans, setLoans] = useState<LoanRecord[]>([]);
-  const [shellUser, setShellUser] = useState<AuthUser | null>(null);
+  const [shellUser, setShellUser] = useState<AuthUser | null>(
+    session
+      ? ({
+          id: "session-fallback",
+          username: session.username,
+          fullName: session.fullName,
+          role: session.role,
+          isSocietyAdmin: session.isSocietyAdmin,
+          allowedModuleSlugs: session.allowedModuleSlugs ?? [],
+          branchId: session.branchId,
+          requiresPasswordChange: session.requiresPasswordChange
+        } as AuthUser)
+      : null
+  );
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -434,7 +449,22 @@ export default function SocietyDashboard() {
 
     try {
       const snapshot = await loadDashboardSnapshot(session.accessToken);
-      setShellUser(snapshot.user);
+      
+      const apiUser = snapshot.user;
+      if (
+        session.isSocietyAdmin !== apiUser.isSocietyAdmin ||
+        session.branchId !== apiUser.branchId ||
+        JSON.stringify(session.allowedModuleSlugs) !== JSON.stringify(apiUser.allowedModuleSlugs)
+      ) {
+        void setSession({
+          ...session,
+          isSocietyAdmin: apiUser.isSocietyAdmin ?? false,
+          allowedModuleSlugs: apiUser.allowedModuleSlugs ?? [],
+          branchId: apiUser.branchId ?? null
+        });
+      }
+
+      setShellUser(apiUser);
       setSocietyForm(mapSocietyToForm(snapshot.user));
       setBranches(snapshot.branches);
       setManagedUsers(snapshot.managedUsers);
@@ -477,6 +507,14 @@ export default function SocietyDashboard() {
       return;
     }
 
+    // Force staff to their assigned branch if not admin
+    if (shellUser && !shellUser.isSocietyAdmin && shellUser.branchId) {
+      if (selectedBranchFilter !== shellUser.branchId) {
+        setSelectedBranchFilter(shellUser.branchId);
+      }
+      return;
+    }
+
     if (selectedBranchFilter !== ALL_BRANCHES_FILTER && branches.some((branch) => branch.id === selectedBranchFilter)) {
       return;
     }
@@ -487,7 +525,7 @@ export default function SocietyDashboard() {
     }
 
     setSelectedBranchFilter(ALL_BRANCHES_FILTER);
-  }, [branches, selectedBranchFilter, session?.selectedBranchId]);
+  }, [branches, selectedBranchFilter, session?.selectedBranchId, shellUser]);
 
   const allowedModuleSlugs = shellUser?.allowedModuleSlugs ?? [];
   const allowedModuleSet = useMemo(() => new Set(allowedModuleSlugs), [allowedModuleSlugs]);
@@ -1215,7 +1253,7 @@ export default function SocietyDashboard() {
       accessibleModules={customAccessibleModules}
     >
       <Box sx={{ minHeight: "100vh", bgcolor: surfaces.background, p: { xs: 1.5, sm: 3 } }}>
-        {branches.length > 0 ? (
+        {shellUser?.isSocietyAdmin && branches.length > 0 ? (
           <Paper
             elevation={0}
             sx={{

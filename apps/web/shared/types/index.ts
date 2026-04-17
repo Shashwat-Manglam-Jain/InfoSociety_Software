@@ -112,6 +112,8 @@ export type Session = {
   avatarDataUrl: string | null;
   requiresPasswordChange: boolean;
   allowedModuleSlugs?: string[];
+  isSocietyAdmin?: boolean;
+  branchId?: string | null;
   selectedBranchId?: string | null;
   selectedBranchName?: string | null;
   selectedBranchCode?: string | null;
