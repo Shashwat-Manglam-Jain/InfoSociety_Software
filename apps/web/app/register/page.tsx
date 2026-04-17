@@ -44,8 +44,12 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [approvedSocietyCount, setApprovedSocietyCount] = useState<number | null>(null);
-  const [premiumMonthlyPrice, setPremiumMonthlyPrice] = useState<number | null>(null);
+  const cachedSocieties = getCachedPublicSocieties();
+  const cachedBillingPlans = getCachedBillingPlans();
+  const [approvedSocietyCount, setApprovedSocietyCount] = useState<number | null>(cachedSocieties?.length ?? null);
+  const [premiumMonthlyPrice, setPremiumMonthlyPrice] = useState<number | null>(
+    cachedBillingPlans?.find((plan) => plan.id === "PREMIUM")?.monthlyPrice ?? null
+  );
   const [platformSnapshotError, setPlatformSnapshotError] = useState<string | null>(null);
   const surfaceBoxSx = {
     border: `1px solid ${isDark ? alpha("#cbd5e1", 0.18) : "rgba(15, 23, 42, 0.08)"}`,

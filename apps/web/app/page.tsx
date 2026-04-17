@@ -29,8 +29,8 @@ export default function HomePage() {
   const homeCopy = getHomePageCopy(locale);
   const workspaceUi = getWorkspaceUiCopy(locale);
   const workspaces = getWorkspaceDefinitions(locale);
-  const [billingPlans, setBillingPlans] = useState<BillingPlansResponse["plans"]>([]);
-  const [pricingLoading, setPricingLoading] = useState(true);
+  const [billingPlans, setBillingPlans] = useState<BillingPlansResponse["plans"]>(() => getCachedBillingPlans() ?? []);
+  const [pricingLoading, setPricingLoading] = useState(billingPlans.length === 0);
   const [pricingError, setPricingError] = useState<string | null>(null);
 
   useEffect(() => {

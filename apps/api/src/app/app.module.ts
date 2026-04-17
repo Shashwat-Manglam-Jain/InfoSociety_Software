@@ -60,6 +60,8 @@ import { AppController } from "./app.controller";
     BranchesModule,
     HeadsModule
   ],
-  controllers: [AppController]
+  controllers: [AppController],
+  providers: [MemoryCacheService],
+  exports: [MemoryCacheService]
 })
 export class AppModule {}
