@@ -1,24 +1,8 @@
-node_modules
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-.env
-.env.*
-!.env.example
-
-.next
-dist
-coverage
-.tmp
-# dependencies
 node_modules/
-
-# next.js
 .next/
 .next-build/
-out/
-
-# env
+dist/
+build/
 .env*
+coverage/
+*.log
