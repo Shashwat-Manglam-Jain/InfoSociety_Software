@@ -12,3 +12,13 @@ pnpm-debug.log*
 dist
 coverage
 .tmp
+# dependencies
+node_modules/
+
+# next.js
+.next/
+.next-build/
+out/
+
+# env
+.env*
