@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import RegisterPage from "./page";
-import { getBillingPlans, getPublicSocieties, registerSociety } from "@/shared/api/client";
+import { getBillingPlans, registerSociety } from "@/shared/api/client";
 import { LanguageProvider } from "@/shared/i18n/language-provider";
 
 const push = jest.fn();
@@ -14,7 +14,6 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("@/shared/api/client", () => ({
   getBillingPlans: jest.fn(),
-  getPublicSocieties: jest.fn(),
   registerSociety: jest.fn()
 }));
 
@@ -36,10 +35,6 @@ function renderRegisterPage() {
 describe("RegisterPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getPublicSocieties as jest.Mock).mockResolvedValue([
-      { id: "soc-1", code: "SOC-HO", name: "Head Office", status: "ACTIVE" },
-      { id: "soc-2", code: "SOC-NB", name: "North Branch", status: "ACTIVE" }
-    ]);
     (getBillingPlans as jest.Mock).mockResolvedValue({
       currency: "INR",
       scope: "SOCIETY",
@@ -53,11 +48,9 @@ describe("RegisterPage", () => {
   it("renders live platform data from the API", async () => {
     renderRegisterPage();
 
-    await waitFor(() => expect(getPublicSocieties).toHaveBeenCalled());
     await waitFor(() => expect(getBillingPlans).toHaveBeenCalled());
 
-    expect(await screen.findByText("2")).toBeInTheDocument();
-    expect(screen.getByText("₹299/month")).toBeInTheDocument();
+    expect(screen.getByText("Society Enrollment Form")).toBeInTheDocument();
   });
 
   it("submits a pending society registration with generated credentials", async () => {
@@ -83,6 +76,9 @@ describe("RegisterPage", () => {
     fireEvent.change(screen.getByPlaceholderText("Full name"), {
       target: { value: "Head Office Admin" }
     });
+    fireEvent.change(screen.getByPlaceholderText("12-digit Aadhaar number"), {
+      target: { value: "123456789012" }
+    });
     fireEvent.change(screen.getByPlaceholderText("Create a secure password"), {
       target: { value: "Society@123" }
     });
@@ -90,14 +86,14 @@ describe("RegisterPage", () => {
 
     await waitFor(() =>
       expect(registerSociety).toHaveBeenCalledWith({
-        username: "headofficeadmin",
         password: "Society@123",
         fullName: "Head Office Admin",
-        societyCode: "HEAD-OFFICE",
-        societyName: "Head Office"
+        societyName: "Head Office",
+        aadhaarNumber: "123456789012",
+        planId: "FREE"
       })
     );
 
-    expect(push).toHaveBeenCalledWith("/login?from=register");
+    expect(push).toHaveBeenCalledWith("/login?from=register&societyCode=HEAD-OFFICE&username=headofficeadmin");
   });
 });

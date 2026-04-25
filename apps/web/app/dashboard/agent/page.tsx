@@ -315,6 +315,7 @@ export default function AgentDashboardPage() {
             role={user.role}
             customers={customers.map((c) => ({ id: c.id, fullName: [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || c.customerCode, customerCode: c.customerCode }))}
             canCreateRequests
+            viewerName={user.fullName}
           />
         ) : currentView === "transaction_workspace" ? (
           <TransactionWorkspace token={getSession()?.accessToken ?? ""} canCreateTransactions canManageTransactions />

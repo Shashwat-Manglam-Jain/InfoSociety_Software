@@ -10,11 +10,18 @@ describe("AccountsService", () => {
       account: {
         count: jest.fn(),
         create: jest.fn(),
+        findFirst: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
         findUnique: jest.fn()
       },
       society: {
+        findUnique: jest.fn()
+      },
+      branch: {
+        findUnique: jest.fn()
+      },
+      head: {
         findUnique: jest.fn()
       }
     };
@@ -34,9 +41,12 @@ describe("AccountsService", () => {
       society: { code: "SOC-HO" }
     });
     prisma.account.count.mockResolvedValue(0);
+    prisma.account.findFirst.mockResolvedValue(null);
+    prisma.society.findUnique.mockResolvedValue({ code: "SOC" });
+    prisma.head.findUnique.mockResolvedValue({ accountCode: "101" });
     prisma.account.create.mockResolvedValue({
       id: "acc-1",
-      accountNumber: "SB0000001"
+      accountNumber: "SOC00110100000001"
     });
 
     const result = await service.create(
@@ -49,15 +59,17 @@ describe("AccountsService", () => {
       },
       {
         customerId: "cust-1",
-        type: AccountType.SAVINGS
+        type: AccountType.SAVINGS,
+        headId: "head-1"
       }
     );
 
     expect(prisma.account.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          accountNumber: "SB0000001",
-          customerId: "cust-1"
+          accountNumber: "SOC00110100000001",
+          customerId: "cust-1",
+          headId: "head-1"
         })
       })
     );

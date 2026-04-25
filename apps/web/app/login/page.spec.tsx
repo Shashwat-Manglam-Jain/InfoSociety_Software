@@ -61,7 +61,9 @@ describe("LoginPage", () => {
 
     await waitFor(() => expect(getPublicSocieties).toHaveBeenCalled());
     expect(screen.getByPlaceholderText("Search by society name or code")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("e.g. SOC-001")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Search by society name or code"), { target: { value: "Head Office" } });
+    fireEvent.click(await screen.findByRole("option", { name: "Head Office" }));
+    await waitFor(() => expect(screen.getByText("SOC-HO")).toBeInTheDocument());
     expect(screen.getByText("Access Role")).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });
@@ -82,16 +84,16 @@ describe("LoginPage", () => {
 
     render(<LoginPage />);
 
-    const societySearchInput = screen.getByPlaceholderText("Search by society name or code");
-
     await waitFor(() => expect(getPublicSocieties).toHaveBeenCalled());
+    const societySearchInput = screen.getByPlaceholderText("Search by society name or code");
     fireEvent.change(societySearchInput, { target: { value: "Head Office" } });
-    await waitFor(() => expect(screen.getByDisplayValue("SOC-HO")).toBeInTheDocument());
+    fireEvent.click(await screen.findByRole("option", { name: "Head Office" }));
+    await waitFor(() => expect(screen.getByText("SOC-HO")).toBeInTheDocument());
     fireEvent.change(screen.getByPlaceholderText("e.g. adm_skyline"), { target: { value: "adm_skyline" } });
     fireEvent.change(screen.getByPlaceholderText("********"), { target: { value: "Agent@123" } });
     fireEvent.submit(screen.getByRole("button", { name: "Open Society Workspace" }).closest("form")!);
 
-    await waitFor(() => expect(login).toHaveBeenCalledWith("adm_skyline", "Agent@123", "SOC-HO", "SUPER_USER"));
+    await waitFor(() => expect(login).toHaveBeenCalledWith("adm_skyline", "Agent@123", "SOC-HO", "SUPER_USER", undefined, "ADMIN"));
     expect(setSession).toHaveBeenCalledWith(
       expect.objectContaining({
         accessToken: "token-1",

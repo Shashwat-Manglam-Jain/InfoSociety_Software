@@ -4,20 +4,25 @@ import React from "react";
 import { 
   Box, 
   Button, 
+  FormControlLabel,
   Grid, 
+  InputAdornment, 
+  MenuItem, 
   Paper, 
   Stack, 
+  Switch,
   TextField, 
-  Typography, 
   Avatar, 
   IconButton, 
-  InputAdornment, 
-  MenuItem 
+  Typography 
 } from "@mui/material";
 import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
 import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
+import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
+import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
+import QrCode2RoundedIcon from "@mui/icons-material/QrCode2Rounded";
 import StoreRoundedIcon from "@mui/icons-material/StoreRounded";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import { SectionHero } from "../operations/SectionHero";
@@ -132,7 +137,54 @@ export function SocietyMaster({
                 <Grid size={{ xs: 12 }}><TextField fullWidth multiline rows={3} label={copy.fields.institutionalAbstract} value={societyForm.about ?? ""} onChange={e => setField("about", e.target.value)} placeholder={copy.fields.institutionalAbstractPlaceholder} /></Grid>
                 <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label={copy.fields.softwareUrl} value={societyForm.softwareUrl ?? ""} onChange={e => setField("softwareUrl", e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><LanguageRoundedIcon fontSize="small" /></InputAdornment> }} /></Grid>
                 <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label={copy.fields.officialEmailMatrix} value={societyForm.billingEmail ?? ""} onChange={e => setField("billingEmail", e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><EmailRoundedIcon fontSize="small" /></InputAdornment> }} /></Grid>
+                <Grid size={{ xs: 12, md: 6 }}><TextField fullWidth label="Billing Phone" value={societyForm.billingPhone ?? ""} onChange={e => setField("billingPhone", e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><PhoneRoundedIcon fontSize="small" /></InputAdornment> }} /></Grid>
                 <Grid size={{ xs: 12 }}><TextField fullWidth multiline rows={2} label={copy.fields.registeredSecretariatAddress} value={societyForm.billingAddress ?? ""} onChange={e => setField("billingAddress", e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><StoreRoundedIcon fontSize="small" /></InputAdornment> }} /></Grid>
+              </Grid>
+            </Paper>
+
+            <Paper elevation={0} sx={{ p: 4, borderRadius: 2, border: "1px solid rgba(15, 23, 42, 0.08)" }}>
+              <Typography variant="caption" sx={{ fontWeight: 1000, color: "info.main", letterSpacing: "0.1em", display: "block", mb: 3 }}>
+                Payments & Settlement
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                  <FormControlLabel
+                    control={<Switch checked={Boolean(societyForm.acceptsDigitalPayments)} onChange={e => setField("acceptsDigitalPayments", e.target.checked)} />}
+                    label="Enable Razorpay and digital collections for this society"
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    label="Collection UPI ID"
+                    value={societyForm.upiId ?? ""}
+                    onChange={e => setField("upiId", e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <QrCode2RoundedIcon fontSize="small" />
+                        </InputAdornment>
+                      )
+                    }}
+                    helperText="Shown inside the payment desk so members and staff can see the society collection handle."
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    disabled
+                    label="Gateway Provider"
+                    value="Razorpay"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PaymentsRoundedIcon fontSize="small" />
+                        </InputAdornment>
+                      )
+                    }}
+                    helperText="Secure keys stay on the server. This page controls society-facing payment settings only."
+                  />
+                </Grid>
               </Grid>
             </Paper>
 

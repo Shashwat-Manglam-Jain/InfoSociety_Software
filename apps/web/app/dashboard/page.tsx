@@ -27,11 +27,11 @@ export default function DashboardRootRedirect() {
         router.replace("/dashboard/superadmin");
         break;
       case "SUPER_USER":
-        window.location.href = getDefaultDashboardPath(
+        router.replace(getDefaultDashboardPath(
           session.accountType,
           session.requiresPasswordChange,
           session.allowedModuleSlugs
-        );
+        ));
         break;
       default:
         router.replace("/login");

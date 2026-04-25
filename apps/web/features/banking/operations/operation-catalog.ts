@@ -449,6 +449,55 @@ export const moduleOperationCatalog: ModuleWorkspaceConfig[] = [
     ]
   },
   {
+    slug: "payments",
+    operations: [
+      {
+        id: "payments-overview",
+        title: "Payments Overview",
+        description: "View payment request and transaction summary.",
+        method: "GET",
+        path: "/payments/overview"
+      },
+      {
+        id: "payments-requests",
+        title: "List Payment Requests",
+        description: "Review pending, paid, and expired payment requests.",
+        method: "GET",
+        path: "/payments/requests",
+        fields: [
+          { key: "status", label: "Status", type: "text", location: "query" },
+          { key: "page", label: "Page", type: "number", location: "query", defaultValue: "1" },
+          { key: "limit", label: "Limit", type: "number", location: "query", defaultValue: "10" }
+        ]
+      },
+      {
+        id: "payments-transactions",
+        title: "List Payment Transactions",
+        description: "Audit digital payment transaction attempts and settlement state.",
+        method: "GET",
+        path: "/payments/transactions",
+        fields: [
+          { key: "status", label: "Status", type: "text", location: "query" },
+          { key: "page", label: "Page", type: "number", location: "query", defaultValue: "1" },
+          { key: "limit", label: "Limit", type: "number", location: "query", defaultValue: "10" }
+        ]
+      },
+      {
+        id: "payments-pay-request",
+        title: "Mark Payment Request Paid",
+        description: "Record a collection against an issued payment request.",
+        method: "POST",
+        path: "/payments/requests/:id/pay",
+        fields: [
+          pathIdField("Payment Request ID"),
+          { key: "method", label: "Method", type: "text", location: "body", required: true },
+          { key: "amount", label: "Amount", type: "number", location: "body" },
+          { key: "reference", label: "Reference", type: "text", location: "body" }
+        ]
+      }
+    ]
+  },
+  {
     slug: "cheque-clearing",
     operations: [
       {

@@ -133,7 +133,8 @@ export default function LoginPage() {
     setPasswordError("");
     setSocietyCodeError("");
 
-    const codeToUse = selectedSociety?.code || societySearch;
+    const resolvedSociety = selectedSociety ?? findExactSocietyMatch(societies, societySearch);
+    const codeToUse = resolvedSociety?.code || societySearch;
 
     if (!codeToUse) {
       setSocietyCodeError("Please select or enter a society code");
@@ -167,10 +168,7 @@ export default function LoginPage() {
       const redirectTarget = resolveSafeRedirect(searchParams.get("redirect"));
       const dashboardPath = getDefaultDashboardPath("SOCIETY", response.user.requiresPasswordChange, response.user.allowedModuleSlugs);
       toast.success(copy.submitSuccess.replace("{{name}}", response.user.fullName));
-      
-      // Native navigation forces the browser loading spinner, which is much better UX 
-      // in development mode when Next.js is lazy-compiling massive dashboard modules.
-      window.location.href = redirectTarget ?? dashboardPath;
+      router.replace(redirectTarget ?? dashboardPath);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : copy.submitError;
       setError(message);
@@ -196,6 +194,8 @@ export default function LoginPage() {
     bgcolor: isDark ? alpha("#0f172a", 0.92) : "#fff",
     "& fieldset": { borderColor: isDark ? alpha("#94a3b8", 0.28) : "rgba(15, 23, 42, 0.12)" }
   } as const;
+
+  const resolvedSociety = selectedSociety ?? findExactSocietyMatch(societies, societySearch);
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
@@ -224,24 +224,36 @@ export default function LoginPage() {
                         <Typography variant="subtitle2" sx={fieldLabelSx}>{copy.formPanel.searchSocietyLabel}</Typography>
                         <Autocomplete
                           options={societies}
+                          filterOptions={options => options.filter(option => matchesSocietyQuery(option, societySearch))}
                           getOptionLabel={o => o.name}
                           loading={societiesLoading}
                           value={selectedSociety}
                           inputValue={societySearch}
                           onInputChange={(_, val) => setSocietySearch(val)}
-                          onChange={(_, val) => setSelectedSociety(val)}
-                          renderInput={params => <TextField {...params} error={!!societyCodeError} helperText={societyCodeError || copy.formPanel.searchHelper} InputProps={{ ...params.InputProps, sx: inputShellSx }} />}
+                          onChange={(_, val) => {
+                            setSelectedSociety(val);
+                            if (val) setSocietySearch(val.name);
+                          }}
+                          renderInput={params => (
+                            <TextField
+                              {...params}
+                              placeholder={copy.formPanel.searchPlaceholder}
+                              error={!!societyCodeError}
+                              helperText={societyCodeError || copy.formPanel.searchHelper}
+                              InputProps={{ ...params.InputProps, sx: inputShellSx }}
+                            />
+                          )}
                         />
                       </Box>
                     )}
 
-                    {(selectedSociety || societySearch.length >= 3) && (
+                    {(resolvedSociety || societySearch.length >= 3) && (
                       <>
                         <Box sx={{ p: 2, bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}` }}>
                           <Grid container spacing={2}>
                             <Grid size={{ xs: 6 }}>
                               <Typography variant="caption" fontWeight={700} color="text.secondary">Society Code</Typography>
-                              <Typography fontWeight={800}>{selectedSociety?.code || societySearch}</Typography>
+                              <Typography fontWeight={800}>{resolvedSociety?.code || societySearch}</Typography>
                             </Grid>
                             <Grid size={{ xs: 6 }}>
                               <Typography variant="caption" fontWeight={700} color="text.secondary">Access Role</Typography>

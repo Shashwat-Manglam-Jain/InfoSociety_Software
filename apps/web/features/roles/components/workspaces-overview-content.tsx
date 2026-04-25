@@ -23,6 +23,7 @@ const workspaceAccents = {
   client: { accent: "#0f766e", icon: <PermIdentityRoundedIcon /> },
   agent: { accent: "#b45309", icon: <SupportAgentRoundedIcon /> },
   "society-admin": { accent: "#1d4ed8", icon: <ApartmentRoundedIcon /> },
+  "society-staff": { accent: "#0369a1", icon: <VerifiedUserRoundedIcon /> },
   "platform-admin": { accent: "#334155", icon: <ShieldOutlinedIcon /> }
 } as const;
 

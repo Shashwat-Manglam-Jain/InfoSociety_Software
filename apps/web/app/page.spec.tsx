@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import HomePage from "./page";
 import { getBillingPlans } from "@/shared/api/client";
-import { getPublicSocieties } from "@/shared/api/auth";
+import { getPlatformStats, getPublicSocieties } from "@/shared/api/auth";
 import { getSession } from "@/shared/auth/session";
 import { LanguageProvider } from "@/shared/i18n/language-provider";
 import { AppThemeProvider } from "@/shared/theme/app-theme-provider";
@@ -20,6 +20,7 @@ jest.mock("@/shared/api/client", () => ({
 }));
 
 jest.mock("@/shared/api/auth", () => ({
+  getPlatformStats: jest.fn(),
   getPublicSocieties: jest.fn()
 }));
 
@@ -48,6 +49,17 @@ describe("HomePage", () => {
       plans: []
     });
     (getPublicSocieties as jest.Mock).mockResolvedValue([]);
+    (getPlatformStats as jest.Mock).mockResolvedValue({
+      societies: 0,
+      clients: 0,
+      agents: 0,
+      societyAdmins: 0,
+      platformAdmins: 0,
+      totalAccounts: 0,
+      totalDeposits: 0,
+      totalLoans: 0,
+      totalTransactions: 0
+    });
   });
 
   it("shows Hindi landing copy when the selected locale is Hindi", async () => {
@@ -60,5 +72,6 @@ describe("HomePage", () => {
     expect(screen.getByText("पूर्ण ऑपरेशन्स सूट")).toBeInTheDocument();
     await waitFor(() => expect(getBillingPlans).toHaveBeenCalled());
     await waitFor(() => expect(getPublicSocieties).toHaveBeenCalled());
+    await waitFor(() => expect(getPlatformStats).toHaveBeenCalled());
   });
 });

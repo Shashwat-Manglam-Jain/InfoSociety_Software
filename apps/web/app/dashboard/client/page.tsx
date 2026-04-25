@@ -65,8 +65,8 @@ type ClientProfile = {
     accountNumber: string;
     type: string;
     currentBalance: number;
-    interestRate: number | null;
-    openingDate: string;
+    interestRate?: number | null;
+    openingDate?: string;
   }>;
   dashboardStats: {
     totalInvested: number;
@@ -316,7 +316,12 @@ export default function ClientDashboardPage() {
             canManageLoanActions={false}
           />
         ) : currentView === "payments_workspace" ? (
-          <PaymentWorkspace token={getSession()?.accessToken ?? ""} role={user.role} />
+          <PaymentWorkspace
+            token={getSession()?.accessToken ?? ""}
+            role={user.role}
+            viewerName={user.fullName}
+            viewerPhone={user.customerProfile?.phone ?? null}
+          />
         ) : currentView === "transaction_workspace" ? (
           <TransactionWorkspace token={getSession()?.accessToken ?? ""} canCreateTransactions={false} canManageTransactions={false} />
         ) : currentView === "locker_workspace" ? (
@@ -515,7 +520,9 @@ export default function ClientDashboardPage() {
                               </td>
                               <td style={{ padding: "16px 0", textAlign: "right" }}>
                                 <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{formatCurrency(acc.currentBalance)}</Typography>
-                                <Typography variant="caption" sx={{ color: "#94a3b8" }}>Opened {new Date(acc.openingDate).toLocaleDateString()}</Typography>
+                                <Typography variant="caption" sx={{ color: "#94a3b8" }}>
+                                  Opened {acc.openingDate ? new Date(acc.openingDate).toLocaleDateString() : "-"}
+                                </Typography>
                               </td>
                             </tr>
                           ))}

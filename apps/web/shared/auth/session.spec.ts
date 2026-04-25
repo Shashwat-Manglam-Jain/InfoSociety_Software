@@ -7,7 +7,7 @@ describe("session helpers", () => {
       ok: true,
       json: async () => ({ success: true })
     } as Response);
-    window.localStorage.clear();
+    window.sessionStorage.clear();
   });
 
   function buildToken(expiresAtUnixSeconds: number) {
@@ -22,7 +22,7 @@ describe("session helpers", () => {
   }
 
   it("normalizes invalid persisted account types and subscription plans", () => {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       "infopath_session",
       JSON.stringify({
         accessToken: "token-1",
@@ -67,11 +67,11 @@ describe("session helpers", () => {
     })();
   });
 
-  it("drops expired sessions from local storage", () => {
+  it("drops expired sessions from session storage", () => {
     const now = 1_800_000_000_000;
     jest.spyOn(Date, "now").mockReturnValue(now);
 
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       "infopath_session",
       JSON.stringify({
         accessToken: buildToken(Math.floor(now / 1000) - 60),
@@ -84,7 +84,7 @@ describe("session helpers", () => {
     );
 
     expect(getSession()).toBeNull();
-    expect(window.localStorage.getItem("infopath_session")).toBeNull();
+    expect(window.sessionStorage.getItem("infopath_session")).toBeNull();
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/session",
       expect.objectContaining({

@@ -90,7 +90,10 @@ type SocietyFormState = {
   about: string;
   softwareUrl: string;
   billingEmail: string;
+  billingPhone: string;
   billingAddress: string;
+  acceptsDigitalPayments: boolean;
+  upiId: string;
   cin: string;
   panNo: string;
   gstNo: string;
@@ -260,7 +263,10 @@ function createEmptySocietyForm(): SocietyFormState {
     about: "",
     softwareUrl: "",
     billingEmail: "",
+    billingPhone: "",
     billingAddress: "",
+    acceptsDigitalPayments: false,
+    upiId: "",
     cin: "",
     panNo: "",
     gstNo: "",
@@ -301,7 +307,10 @@ function mapSocietyToForm(user: AuthUser | null): SocietyFormState {
     about: society.about ?? "",
     softwareUrl: society.softwareUrl ?? "",
     billingEmail: society.billingEmail ?? "",
+    billingPhone: society.billingPhone ?? "",
     billingAddress: society.billingAddress ?? "",
+    acceptsDigitalPayments: society.acceptsDigitalPayments ?? false,
+    upiId: society.upiId ?? "",
     cin: society.cin ?? "",
     panNo: society.panNo ?? "",
     gstNo: society.gstNo ?? "",
@@ -798,7 +807,10 @@ export default function SocietyDashboard() {
         about: societyForm.about,
         softwareUrl: societyForm.softwareUrl,
         billingEmail: societyForm.billingEmail,
+        billingPhone: societyForm.billingPhone,
         billingAddress: societyForm.billingAddress,
+        acceptsDigitalPayments: societyForm.acceptsDigitalPayments,
+        upiId: societyForm.upiId,
         cin: societyForm.cin,
         panNo: societyForm.panNo,
         gstNo: societyForm.gstNo,
@@ -818,6 +830,9 @@ export default function SocietyDashboard() {
           ...shellUser,
           society: {
             ...shellUser.society,
+            billingPhone: societyForm.billingPhone,
+            acceptsDigitalPayments: societyForm.acceptsDigitalPayments,
+            upiId: societyForm.upiId,
             ...updated,
             status: shellUser.society?.status ?? "ACTIVE",
             registrationDate: updated.registrationDate ?? shellUser.society.registrationDate
@@ -1321,6 +1336,10 @@ export default function SocietyDashboard() {
                 customerCode: user.customerProfile!.customerCode
               }))}
             canCreateRequests
+            viewerName={shellUser?.fullName}
+            viewerEmail={shellUser?.society?.billingEmail ?? null}
+            viewerPhone={shellUser?.society?.billingPhone ?? null}
+            allowBankSettlement={shellUser?.role === "SUPER_USER"}
           />
         ) : isChequeView && session ? (
           <ChequeWorkspace token={session.accessToken} />
