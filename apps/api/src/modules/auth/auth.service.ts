@@ -1194,13 +1194,23 @@ export class AuthService {
       return existingBranch;
     }
 
-    const createdBranch = await tx.branch.create({
-      data: {
+    const createdBranch = await tx.branch.upsert({
+      where: {
+        societyId_code: {
+          societyId,
+          code: DEFAULT_HEAD_OFFICE_CODE
+        }
+      },
+      create: {
         code: DEFAULT_HEAD_OFFICE_CODE,
         name: DEFAULT_HEAD_OFFICE_NAME,
         isHead: true,
         isActive: true,
         societyId
+      },
+      update: {
+        isHead: true,
+        isActive: true
       },
       select: {
         id: true
