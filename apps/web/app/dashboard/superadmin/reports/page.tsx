@@ -26,6 +26,7 @@ import { getSuperadminCopy } from "@/shared/i18n/superadmin-copy";
 import { getSuperadminExtraCopy } from "@/shared/i18n/superadmin-extra-copy";
 import type { AuthUser } from "@/shared/types";
 import { listReportJobs, runReport, type ReportJobRecord } from "@/shared/api/reports";
+import { toast } from "@/shared/ui/toast";
 
 
 
@@ -46,6 +47,7 @@ export default function SuperadminReports() {
       setReports(response.rows);
     } catch (error) {
       console.error("Failed to load reports:", error);
+      toast.error("Failed to load reports. Please try again.");
     }
   };
 
@@ -103,6 +105,7 @@ export default function SuperadminReports() {
       }
     } catch (error) {
       console.error("Failed to generate report:", error);
+      toast.error("Failed to generate report. Please try again.");
     } finally {
       setGenerating(false);
     }

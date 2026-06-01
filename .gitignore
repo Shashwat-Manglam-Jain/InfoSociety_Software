@@ -1,8 +1,38 @@
+# Dependencies
 node_modules/
+
+# Build output
 .next/
 .next-build/
 dist/
+dist-seed/
 build/
-.env*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Test & coverage
 coverage/
+*.tsbuildinfo
+
+# Logs
 *.log
+npm-debug.log*
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Database (local dev)
+apps/api/prisma/dev.db
+apps/api/prisma/dev.db-journal
+
+# Temp / debug output
+apps/api/response.txt
+apps/api/test-out.txt

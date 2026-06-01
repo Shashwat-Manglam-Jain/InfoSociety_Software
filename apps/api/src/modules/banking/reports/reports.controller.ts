@@ -14,16 +14,19 @@ import { RunReportDto } from "./dto/run-report.dto";
 export class ReportsController {
   constructor(private readonly service: ReportsService) {}
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT)
   @Get("overview")
   getOverview() {
     return this.service.getOverview();
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT)
   @Get("workflows")
   getWorkflows() {
     return this.service.getWorkflows();
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT)
   @Get("catalog")
   getCatalog() {
     return this.service.getCatalog();

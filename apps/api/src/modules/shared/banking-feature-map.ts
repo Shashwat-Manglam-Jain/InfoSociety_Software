@@ -138,5 +138,59 @@ export const bankingFeatureMap: Record<string, BankingFeatureGroup> = {
       "Disable and reactivate users",
       "User-wise statistics"
     ]
+  },
+  "share-capital": {
+    description: "Member share capital management including issuance, surrender and forfeiture.",
+    workflows: [
+      "Share certificate issuance",
+      "Share register maintenance",
+      "Share surrender processing",
+      "Share forfeiture and status tracking"
+    ]
+  },
+  dividends: {
+    description: "Dividend declaration, approval and payout processing for share members.",
+    workflows: [
+      "Dividend declaration per financial year",
+      "Dividend approval workflow",
+      "Bulk payout processing for active members",
+      "Dividend cancellation and payout reports"
+    ]
+  },
+  "financial-years": {
+    description: "Financial year lifecycle management including creation and closure.",
+    workflows: [
+      "Financial year creation",
+      "Year-end closure processing",
+      "Financial year statistics and summaries",
+      "Link financial years to dividend cycles"
+    ]
+  },
+  "interest-slabs": {
+    description: "Interest rate slab configuration by category, amount range and tenure.",
+    workflows: [
+      "Interest slab creation and categorisation",
+      "Rate revision and effective date management",
+      "Slab deactivation",
+      "Category-wise interest rate reports"
+    ]
+  },
+  "standing-instructions": {
+    description: "Recurring auto-debit standing instructions between accounts.",
+    workflows: [
+      "Standing instruction setup",
+      "Frequency and amount modification",
+      "Instruction deactivation",
+      "Upcoming execution schedule review"
+    ]
+  },
+  "loan-notices": {
+    description: "Loan notice generation, tracking and delivery management.",
+    workflows: [
+      "Demand and reminder notice creation",
+      "Legal and NPA notice issuance",
+      "Delivery confirmation tracking",
+      "Notice history by loan and customer"
+    ]
   }
 };

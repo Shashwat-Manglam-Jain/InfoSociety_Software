@@ -46,6 +46,7 @@ import { getMe } from "@/shared/api/client";
 import { listCustomers, getCustomerMe } from "@/shared/api/customers";
 import { listBranches } from "@/shared/api/branches";
 import { clearSession, getSession } from "@/shared/auth/session";
+import { formatCurrency } from "@/shared/lib/format";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import type { AuthUser, Branch } from "@/shared/types";
 import { LoanWorkspace } from "@/features/society/components/loan-workspace";
@@ -106,14 +107,6 @@ const CLIENT_VIEWS = new Set<ClientView>([
 
 function hasAllowedModule(allowedModuleSet: Set<string>, moduleCandidates: string[]) {
   return moduleCandidates.some((moduleSlug) => allowedModuleSet.has(moduleSlug));
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0
-  }).format(value || 0);
 }
 
 function buildLockerClients(profile: ClientProfile, branchId?: string | null) {

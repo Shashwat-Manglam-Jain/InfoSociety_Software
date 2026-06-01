@@ -1,18 +1,20 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Res } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { UserRole } from "@prisma/client";
-import { Request, Response } from "express";
+import { Response } from "express";
 import { getAuthCookieName, getAuthCookieOptions } from "../../common/auth/auth-cookie";
+import { CurrentUser } from "../../common/auth/current-user.decorator";
 import { Public } from "../../common/auth/public.decorator";
 import { RequestUser } from "../../common/auth/request-user.interface";
 import { Roles } from "../../common/auth/roles.decorator";
 import { AuthService } from "./auth.service";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterAgentDto } from "./dto/register-agent.dto";
 import { RegisterClientDto } from "./dto/register-client.dto";
 import { RegisterSocietyDto } from "./dto/register-society.dto";
-import { ChangePasswordDto } from "./dto/change-password.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -82,33 +84,20 @@ export class AuthController {
 
   @ApiBearerAuth()
   @Post("change-password")
-  changePassword(@Req() req: Request & { user: RequestUser }, @Body() dto: ChangePasswordDto) {
-    return this.authService.changePassword(req.user, dto);
+  changePassword(@CurrentUser() user: RequestUser, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(user, dto);
   }
 
   @ApiBearerAuth()
   @Get("me")
-  me(@Req() req: Request & { user: RequestUser }) {
-    return this.authService.me(req.user);
+  me(@CurrentUser() user: RequestUser) {
+    return this.authService.me(user);
   }
 
   @ApiBearerAuth()
   @Patch("me")
-  updateMe(@Req() req: Request & { user: RequestUser }, @Body() body: {
-    fullName?: string;
-    phone?: string;
-    email?: string;
-    address?: string;
-    fatherName?: string;
-    motherName?: string;
-    dateOfBirth?: string;
-    gender?: string;
-    panNumber?: string;
-    nomineeFullName?: string;
-    nomineeRelation?: string;
-    nomineeContactNumber?: string;
-  }) {
-    return this.authService.updateMyProfile(req.user, body);
+  updateMe(@CurrentUser() user: RequestUser, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateMyProfile(user, dto);
   }
 
   @Public()

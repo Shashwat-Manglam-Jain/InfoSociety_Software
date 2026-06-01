@@ -55,6 +55,7 @@ import { getMe } from "@/shared/api/client";
 import { listCustomers, type CustomerListRecord } from "@/shared/api/customers";
 import { listBranches } from "@/shared/api/branches";
 import { clearSession, getSession } from "@/shared/auth/session";
+import { formatCurrency } from "@/shared/lib/format";
 import type { AuthUser, Branch } from "@/shared/types";
 import { ChequeWorkspace } from "@/features/society/components/cheque-workspace";
 import { LedgerWorkspace } from "@/features/society/components/ledger-workspace";
@@ -124,10 +125,6 @@ function getDefaultAgentPath(allowedModuleSet: Set<string>) {
     }
   }
   return "/dashboard/agent";
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value || 0);
 }
 
 function buildLockerClients(customers: CustomerListRecord[], branchId?: string | null) {

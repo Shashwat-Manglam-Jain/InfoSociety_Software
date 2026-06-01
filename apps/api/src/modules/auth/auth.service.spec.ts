@@ -241,7 +241,8 @@ describe("AuthService", () => {
       branch: {
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({ id: "branch-ho" }),
-        update: jest.fn().mockResolvedValue({ id: "branch-ho" })
+        update: jest.fn().mockResolvedValue({ id: "branch-ho" }),
+        upsert: jest.fn().mockResolvedValue({ id: "branch-ho" })
       },
       subscription: {
         create: jest.fn().mockResolvedValue(undefined)
@@ -335,7 +336,8 @@ describe("AuthService", () => {
       branch: {
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({ id: "branch-ho" }),
-        update: jest.fn().mockResolvedValue({ id: "branch-ho" })
+        update: jest.fn().mockResolvedValue({ id: "branch-ho" }),
+        upsert: jest.fn().mockResolvedValue({ id: "branch-ho" })
       },
       subscription: {
         create: jest.fn().mockResolvedValue(undefined)

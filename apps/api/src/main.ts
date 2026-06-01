@@ -1,7 +1,6 @@
 import { Logger, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { applyRequestRuntime } from "./common/http/request-runtime";
 import { AppModule } from "./app/app.module";
 
@@ -24,6 +23,59 @@ function resolveAllowedOrigins(configService: ConfigService) {
       .map((value) => normalizeOrigin(value))
       .filter(Boolean)
   );
+}
+
+function isSwaggerEnabled(configService: ConfigService) {
+  const nodeEnv = configService.get<string>("NODE_ENV") ?? "development";
+  const configured = (configService.get<string>("ENABLE_SWAGGER") ?? "").toLowerCase();
+
+  if (configured) {
+    return configured === "true" || configured === "1";
+  }
+
+  return nodeEnv !== "production";
+}
+
+async function setupSwagger(app: Awaited<ReturnType<typeof NestFactory.create>>, configService: ConfigService) {
+  if (!isSwaggerEnabled(configService)) {
+    return;
+  }
+
+  const { DocumentBuilder, SwaggerModule } = await import("@nestjs/swagger");
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle("Infopath Info Banking API")
+    .setDescription("Core banking API scaffold for accounts, loans, deposits, transactions and reporting")
+    .setVersion("1.0.0")
+    .addBearerAuth()
+    .addTag("auth")
+    .addTag("billing")
+    .addTag("payments")
+    .addTag("monitoring")
+    .addTag("health")
+    .addTag("customers")
+    .addTag("accounts")
+    .addTag("deposits")
+    .addTag("loans")
+    .addTag("transactions")
+    .addTag("cheque-clearing")
+    .addTag("demand-drafts")
+    .addTag("ibc-obc")
+    .addTag("investments")
+    .addTag("locker")
+    .addTag("cashbook")
+    .addTag("administration")
+    .addTag("reports")
+    .addTag("users")
+    .addTag("share-capital")
+    .addTag("dividends")
+    .addTag("financial-years")
+    .addTag("interest-slabs")
+    .addTag("standing-instructions")
+    .addTag("loan-notices")
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup("api/docs", app, document);
 }
 
 async function bootstrap() {
@@ -67,34 +119,7 @@ async function bootstrap() {
     })
   );
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle("Infopath Info Banking API")
-    .setDescription("Core banking API scaffold for accounts, loans, deposits, transactions and reporting")
-    .setVersion("1.0.0")
-    .addBearerAuth()
-    .addTag("auth")
-    .addTag("billing")
-    .addTag("payments")
-    .addTag("monitoring")
-    .addTag("health")
-    .addTag("customers")
-    .addTag("accounts")
-    .addTag("deposits")
-    .addTag("loans")
-    .addTag("transactions")
-    .addTag("cheque-clearing")
-    .addTag("demand-drafts")
-    .addTag("ibc-obc")
-    .addTag("investments")
-    .addTag("locker")
-    .addTag("cashbook")
-    .addTag("administration")
-    .addTag("reports")
-    .addTag("users")
-    .build();
-
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup("api/docs", app, document);
+  await setupSwagger(app, configService);
 
   const port = parsePort(configService.get<string>("PORT"));
   await app.listen(port, "0.0.0.0");

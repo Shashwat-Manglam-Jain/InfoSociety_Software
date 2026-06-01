@@ -19,11 +19,13 @@ import { UpdateOverdueDto } from "./dto/update-overdue.dto";
 export class LoansController {
   constructor(private readonly service: LoansService) {}
 
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("overview")
   getOverview() {
     return this.service.getOverview();
   }
 
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("workflows")
   getWorkflows() {
     return this.service.getWorkflows();

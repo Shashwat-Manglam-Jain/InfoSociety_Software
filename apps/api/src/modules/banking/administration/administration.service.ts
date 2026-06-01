@@ -10,9 +10,12 @@ import { getUserAllowedModuleMap, updateUserAllowedModules } from "../../../comm
 import { isCashPaymentMethod } from "../../shared/payment-methods";
 import { CreateBranchDto } from "./dto/create-branch.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
+import { ListSocietyTransactionsQueryDto } from "./dto/list-society-transactions-query.dto";
 import { ListWorkingDaysQueryDto } from "./dto/list-working-days-query.dto";
 import { MapAgentClientDto } from "./dto/map-agent-client.dto";
 import { RecomputeAccountDto } from "./dto/recompute-account.dto";
+import { UpdateBranchDto } from "./dto/update-branch.dto";
+import { UpdateSocietyDto } from "./dto/update-society.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 import { WorkingDayDto } from "./dto/working-day.dto";
@@ -30,7 +33,6 @@ export class AdministrationService {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
 
-    // Verify both belong to the same society
     const [agent, client] = await Promise.all([
       this.prisma.customer.findUnique({ where: { id: dto.agentId }, select: { id: true, societyId: true } }),
       this.prisma.customer.findUnique({ where: { id: dto.customerId }, select: { id: true, societyId: true } })
@@ -95,8 +97,6 @@ export class AdministrationService {
       throw new ConflictException(`Branch code ${branchCode} already exists in this society`);
     }
 
-    const { id: _id, societyId: _sid, ...rest } = dto as any;
-
     return this.prisma.$transaction(async (tx) => {
       if (dto.isHead) {
         await tx.branch.updateMany({
@@ -112,8 +112,18 @@ export class AdministrationService {
 
       return tx.branch.create({
         data: {
-          ...rest,
+          name: dto.name,
+          isHead: dto.isHead,
+          contactEmail: dto.contactEmail,
+          contactNo: dto.contactNo,
+          addressLine1: dto.addressLine1,
+          addressLine2: dto.addressLine2,
+          city: dto.city,
+          state: dto.state,
+          pincode: dto.pincode,
           openingDate: dto.openingDate ? new Date(dto.openingDate) : undefined,
+          lockerFacility: dto.lockerFacility,
+          neftImpsService: dto.neftImpsService,
           code: branchCode,
           societyId
         }
@@ -121,7 +131,7 @@ export class AdministrationService {
     });
   }
 
-  async updateBranch(currentUser: RequestUser, id: string, dto: any) {
+  async updateBranch(currentUser: RequestUser, id: string, dto: UpdateBranchDto) {
     await this.ensureSocietyAdmin(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
     const existingBranch = await this.prisma.branch.findFirst({
@@ -143,7 +153,6 @@ export class AdministrationService {
       throw new ForbiddenException("Head office cannot be disabled");
     }
 
-    const { id: _id, societyId: _sid, ...rest } = dto;
     return this.prisma.$transaction(async (tx) => {
       if (dto.isHead) {
         await tx.branch.updateMany({
@@ -163,8 +172,20 @@ export class AdministrationService {
       return tx.branch.update({
         where: { id },
         data: {
-          ...rest,
+          code: dto.code,
+          name: dto.name,
+          isHead: dto.isHead,
+          isActive: dto.isActive,
+          contactEmail: dto.contactEmail,
+          contactNo: dto.contactNo,
+          addressLine1: dto.addressLine1,
+          addressLine2: dto.addressLine2,
+          city: dto.city,
+          state: dto.state,
+          pincode: dto.pincode,
           openingDate: dto.openingDate ? new Date(dto.openingDate) : undefined,
+          lockerFacility: dto.lockerFacility,
+          neftImpsService: dto.neftImpsService,
         }
       });
     });
@@ -468,7 +489,7 @@ export class AdministrationService {
     };
   }
 
-  async updateSociety(currentUser: RequestUser, dto: any) {
+  async updateSociety(currentUser: RequestUser, dto: UpdateSocietyDto) {
     await this.ensureSocietyAdmin(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
 
@@ -512,7 +533,7 @@ export class AdministrationService {
     });
   }
 
-  async listSocietyTransactions(currentUser: RequestUser, query: any) {
+  async listSocietyTransactions(currentUser: RequestUser, query: ListSocietyTransactionsQueryDto) {
     this.ensureOperator(currentUser);
     const societyId = this.resolveOperatingSocietyId(currentUser);
     const search = query.search?.trim().toLowerCase() ?? "";
@@ -861,8 +882,8 @@ export class AdministrationService {
     });
 
     const now = new Date();
-    const startOfDay = new Date(now.setHours(0,0,0,0));
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     return Promise.all(agents.map(async (agent) => {

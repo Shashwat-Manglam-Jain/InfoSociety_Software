@@ -15,11 +15,13 @@ import { UpdateIbcObcStatusDto } from "./dto/update-ibc-obc-status.dto";
 export class IbcObcController {
   constructor(private readonly service: IbcObcService) {}
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("overview")
   getOverview() {
     return this.service.getOverview();
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("workflows")
   getWorkflows() {
     return this.service.getWorkflows();

@@ -129,7 +129,8 @@ export default function RegisterPage() {
         setPremiumMonthlyPrice(premium?.monthlyPrice ?? null);
         setCachedBillingPlans(billing.plans);
       } catch (caught) {
-        console.error("Failed to load billing plans", caught);
+        console.error("Failed to load billing plans:", caught);
+        toast.error("Unable to load pricing plans. Default pricing will be shown.");
       }
     }
 
