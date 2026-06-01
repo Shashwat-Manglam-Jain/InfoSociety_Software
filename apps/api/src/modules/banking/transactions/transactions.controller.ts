@@ -16,11 +16,13 @@ import { UpdateTransactionDto } from "./dto/update-transaction.dto";
 export class TransactionsController {
   constructor(private readonly service: TransactionsService) {}
 
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("overview")
   getOverview() {
     return this.service.getOverview();
   }
 
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("workflows")
   getWorkflows() {
     return this.service.getWorkflows();

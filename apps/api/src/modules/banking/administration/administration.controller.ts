@@ -7,9 +7,12 @@ import { Roles } from "../../../common/auth/roles.decorator";
 import { AdministrationService } from "./administration.service";
 import { CreateBranchDto } from "./dto/create-branch.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
+import { ListSocietyTransactionsQueryDto } from "./dto/list-society-transactions-query.dto";
 import { ListWorkingDaysQueryDto } from "./dto/list-working-days-query.dto";
 import { MapAgentClientDto } from "./dto/map-agent-client.dto";
 import { RecomputeAccountDto } from "./dto/recompute-account.dto";
+import { UpdateBranchDto } from "./dto/update-branch.dto";
+import { UpdateSocietyDto } from "./dto/update-society.dto";
 import { UpdateUserAccessDto } from "./dto/update-user-access.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
@@ -35,7 +38,7 @@ export class AdministrationController {
 
   @Roles(UserRole.SUPER_USER)
   @Patch("branches/:id")
-  updateBranch(@Req() req: Request & { user: RequestUser }, @Param("id") id: string, @Body() dto: any) {
+  updateBranch(@Req() req: Request & { user: RequestUser }, @Param("id") id: string, @Body() dto: UpdateBranchDto) {
     return this.service.updateBranch(req.user, id, dto);
   }
 
@@ -55,7 +58,7 @@ export class AdministrationController {
 
   @Roles(UserRole.SUPER_USER)
   @Get("society-transactions")
-  listSocietyTransactions(@Req() req: Request & { user: RequestUser }, @Query() query: any) {
+  listSocietyTransactions(@Req() req: Request & { user: RequestUser }, @Query() query: ListSocietyTransactionsQueryDto) {
     return this.service.listSocietyTransactions(req.user, query);
   }
 
@@ -67,7 +70,7 @@ export class AdministrationController {
 
   @Roles(UserRole.SUPER_USER)
   @Patch("society")
-  updateSociety(@Req() req: Request & { user: RequestUser }, @Body() dto: any) {
+  updateSociety(@Req() req: Request & { user: RequestUser }, @Body() dto: UpdateSocietyDto) {
     return this.service.updateSociety(req.user, dto);
   }
 
@@ -89,11 +92,13 @@ export class AdministrationController {
     return this.service.listAgentMappings(req.user);
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("overview")
   getOverview() {
     return this.service.getOverview();
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("workflows")
   getWorkflows() {
     return this.service.getWorkflows();

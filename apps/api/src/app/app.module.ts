@@ -23,6 +23,12 @@ import { HeadsModule } from "../modules/banking/heads/heads.module";
 import { ReportsModule } from "../modules/banking/reports/reports.module";
 import { TransactionsModule } from "../modules/banking/transactions/transactions.module";
 import { UsersModule } from "../modules/banking/users/users.module";
+import { ShareCapitalModule } from "../modules/banking/share-capital/share-capital.module";
+import { DividendsModule } from "../modules/banking/dividends/dividends.module";
+import { FinancialYearsModule } from "../modules/banking/financial-years/financial-years.module";
+import { InterestSlabsModule } from "../modules/banking/interest-slabs/interest-slabs.module";
+import { StandingInstructionsModule } from "../modules/banking/standing-instructions/standing-instructions.module";
+import { LoanNoticesModule } from "../modules/banking/loan-notices/loan-notices.module";
 import { AppController } from "./app.controller";
 
 @Module({
@@ -58,7 +64,13 @@ import { AppController } from "./app.controller";
     UsersModule,
     MonitoringModule,
     BranchesModule,
-    HeadsModule
+    HeadsModule,
+    ShareCapitalModule,
+    DividendsModule,
+    FinancialYearsModule,
+    InterestSlabsModule,
+    StandingInstructionsModule,
+    LoanNoticesModule
   ],
   controllers: [AppController]
 })

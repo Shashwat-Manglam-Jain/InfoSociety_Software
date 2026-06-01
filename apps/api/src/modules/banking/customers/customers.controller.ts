@@ -15,11 +15,13 @@ import { UpdateCustomerDto } from "./dto/update-customer.dto";
 export class CustomersController {
   constructor(private readonly service: CustomersService) {}
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("overview")
   getOverview() {
     return this.service.getOverview();
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("workflows")
   getWorkflows() {
     return this.service.getWorkflows();

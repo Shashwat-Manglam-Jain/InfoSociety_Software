@@ -17,11 +17,13 @@ import { VisitLockerDto } from "./dto/visit-locker.dto";
 export class LockerController {
   constructor(private readonly service: LockerService) {}
 
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("overview")
   getOverview() {
     return this.service.getOverview();
   }
 
+  @Roles(UserRole.SUPER_USER, UserRole.AGENT, UserRole.CLIENT)
   @Get("workflows")
   getWorkflows() {
     return this.service.getWorkflows();

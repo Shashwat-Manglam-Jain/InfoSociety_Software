@@ -38,11 +38,17 @@ model Society {
   registrationState      String?
   shareNominalValue      Decimal?             @db.Decimal(18, 2)
   tanNo                  String?
+  financialYearStart     Int                  @default(4)
   accounts               Account[]
   branches               Branch[]
   customers              Customer[]
+  dividendDeclarations   DividendDeclaration[]
+  financialYears         FinancialYear[]
+  interestSlabs          InterestSlab[]
   paymentRequests        PaymentRequest[]
   paymentTransactions    PaymentTransaction[]
+  shareRegisters         ShareRegister[]
+  standingInstructions   StandingInstruction[]
   subscription           SocietySubscription?
   users                  User[]
   workingDays            WorkingDay[]
@@ -171,12 +177,17 @@ model Customer {
   isElder             Boolean              @default(false)
   isMilitary          Boolean              @default(false)
   isWidow             Boolean              @default(false)
+  membershipStatus    MembershipStatus     @default(ACTIVE)
+  admissionDate       DateTime?
+  admissionFee        Decimal?             @db.Decimal(18, 2)
+  resignationDate     DateTime?
   accounts            Account[]
   agentClients        AgentClient[]        @relation("AgentClientAgent")
   pigmyClients        AgentClient[]        @relation("AgentClientCustomer")
   society             Society              @relation(fields: [societyId], references: [id])
   benefits            CustomerBenefit[]
   demandDrafts        DemandDraft[]
+  dividendPayouts     DividendPayout[]
   instruments         IbcObcInstrument[]
   kycDocuments        KycDocument[]
   loans               LoanAccount[]
@@ -184,13 +195,17 @@ model Customer {
   guarantor2Loans     LoanAccount[]        @relation("Guarantor2")
   guarantor3Loans     LoanAccount[]        @relation("Guarantor3")
   lockers             Locker[]
+  loanNotices         LoanNotice[]
   minors              MinorDetails?
+  passbookPrints      PassbookPrint[]
   paymentRequests     PaymentRequest[]
   paymentTransactions PaymentTransaction[]
+  shareHoldings       ShareRegister[]
   user                User?                @relation("CustomerUser")
 
   @@index([customerCode])
   @@index([societyId])
+  @@index([membershipStatus])
 }
 
 model BenefitCategory {
@@ -301,6 +316,9 @@ model Account {
   ledgerEntries     LedgerEntry[]
   loanAccount       LoanAccount?
   nominees          Nominee[]
+  passbookPrints    PassbookPrint[]
+  siAsSource        StandingInstruction[] @relation("SISource")
+  siAsTarget        StandingInstruction[] @relation("SITarget")
   transactions      Transaction[]
 
   @@index([accountNumber])
@@ -381,6 +399,8 @@ model LoanAccount {
   guarantor1Id      String?
   guarantor2Id      String?
   guarantor3Id      String?
+  npaClassification NpaClassification? @default(STANDARD)
+  npaDate           DateTime?
   noticeIssued      Boolean    @default(false)
   penalInterestRate Decimal    @default(0) @db.Decimal(5, 2)
   remarks           String?
@@ -389,9 +409,11 @@ model LoanAccount {
   guarantor1        Customer?  @relation("Guarantor1", fields: [guarantor1Id], references: [id])
   guarantor2        Customer?  @relation("Guarantor2", fields: [guarantor2Id], references: [id])
   guarantor3        Customer?  @relation("Guarantor3", fields: [guarantor3Id], references: [id])
+  notices           LoanNotice[]
 
   @@index([status])
   @@index([customerId])
+  @@index([npaClassification])
 }
 
 model Transaction {
@@ -640,6 +662,158 @@ model AgentClient {
   @@index([customerId])
 }
 
+// ─── Share Capital ──────────────────────────────────────────────
+
+model ShareRegister {
+  id            String          @id @default(uuid())
+  societyId     String
+  customerId    String
+  certificateNo String?
+  sharesHeld    Int             @default(0)
+  faceValue     Decimal         @db.Decimal(18, 2)
+  paidUpValue   Decimal         @db.Decimal(18, 2)
+  purchaseDate  DateTime        @default(now())
+  surrenderDate DateTime?
+  status        ShareStatus     @default(ACTIVE)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  customer      Customer        @relation(fields: [customerId], references: [id])
+  society       Society         @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, customerId])
+  @@index([status])
+}
+
+// ─── Dividend ───────────────────────────────────────────────────
+
+model DividendDeclaration {
+  id              String           @id @default(uuid())
+  societyId       String
+  financialYearId String
+  ratePercent     Decimal          @db.Decimal(5, 2)
+  declaredAt      DateTime         @default(now())
+  totalAmount     Decimal?         @db.Decimal(18, 2)
+  status          DividendStatus   @default(DECLARED)
+  createdAt       DateTime         @default(now())
+  financialYear   FinancialYear    @relation(fields: [financialYearId], references: [id])
+  payouts         DividendPayout[]
+  society         Society          @relation(fields: [societyId], references: [id])
+
+  @@unique([societyId, financialYearId])
+}
+
+model DividendPayout {
+  id            String              @id @default(uuid())
+  declarationId String
+  customerId    String
+  sharesHeld    Int
+  amount        Decimal             @db.Decimal(18, 2)
+  paidAt        DateTime?
+  createdAt     DateTime            @default(now())
+  customer      Customer            @relation(fields: [customerId], references: [id])
+  declaration   DividendDeclaration @relation(fields: [declarationId], references: [id])
+
+  @@index([declarationId])
+  @@index([customerId])
+}
+
+// ─── Financial Year ─────────────────────────────────────────────
+
+model FinancialYear {
+  id                   String                @id @default(uuid())
+  societyId            String
+  label                String
+  startDate            DateTime
+  endDate              DateTime
+  isClosed             Boolean               @default(false)
+  closedAt             DateTime?
+  createdAt            DateTime              @default(now())
+  dividendDeclarations DividendDeclaration[]
+  society              Society               @relation(fields: [societyId], references: [id])
+
+  @@unique([societyId, label])
+  @@index([societyId, isClosed])
+}
+
+// ─── Interest Rate Slabs ────────────────────────────────────────
+
+model InterestSlab {
+  id           String      @id @default(uuid())
+  societyId    String
+  category     String
+  minAmount    Decimal     @db.Decimal(18, 2)
+  maxAmount    Decimal?    @db.Decimal(18, 2)
+  minDays      Int         @default(0)
+  maxDays      Int?
+  ratePercent  Decimal     @db.Decimal(5, 2)
+  effectiveFrom DateTime   @default(now())
+  effectiveTo  DateTime?
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  society      Society     @relation(fields: [societyId], references: [id])
+
+  @@index([societyId, category, isActive])
+}
+
+// ─── Standing Instructions (auto-debit) ─────────────────────────
+
+model StandingInstruction {
+  id              String    @id @default(uuid())
+  societyId       String
+  sourceAccountId String
+  targetAccountId String
+  amount          Decimal   @db.Decimal(18, 2)
+  frequency       String
+  nextExecutionAt DateTime
+  lastExecutedAt  DateTime?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  society         Society   @relation(fields: [societyId], references: [id])
+  sourceAccount   Account   @relation("SISource", fields: [sourceAccountId], references: [id])
+  targetAccount   Account   @relation("SITarget", fields: [targetAccountId], references: [id])
+
+  @@index([societyId, isActive])
+  @@index([nextExecutionAt, isActive])
+}
+
+// ─── Loan Notices ───────────────────────────────────────────────
+
+model LoanNotice {
+  id           String         @id @default(uuid())
+  loanId       String
+  customerId   String
+  noticeType   LoanNoticeType
+  issuedAt     DateTime       @default(now())
+  dueDate      DateTime?
+  content      String?
+  deliveredAt  DateTime?
+  createdAt    DateTime       @default(now())
+  customer     Customer       @relation(fields: [customerId], references: [id])
+  loan         LoanAccount    @relation(fields: [loanId], references: [id])
+
+  @@index([loanId])
+  @@index([customerId])
+}
+
+// ─── Passbook Print Tracking ────────────────────────────────────
+
+model PassbookPrint {
+  id             String   @id @default(uuid())
+  accountId      String
+  customerId     String
+  lastPrintedTxn String?
+  printedAt      DateTime @default(now())
+  pageNumber     Int      @default(1)
+  account        Account  @relation(fields: [accountId], references: [id])
+  customer       Customer @relation(fields: [customerId], references: [id])
+
+  @@index([accountId, printedAt])
+}
+
+// ─── Enums ──────────────────────────────────────────────────────
+
 enum UserRole {
   CLIENT
   AGENT
@@ -761,4 +935,40 @@ enum PaymentTransactionStatus {
   FAILED
   REFUNDED
   CANCELLED
+}
+
+enum MembershipStatus {
+  ACTIVE
+  RESIGNED
+  EXPELLED
+  DECEASED
+  MINOR_TO_ADULT
+}
+
+enum ShareStatus {
+  ACTIVE
+  SURRENDERED
+  FORFEITED
+}
+
+enum DividendStatus {
+  DECLARED
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum NpaClassification {
+  STANDARD
+  SUB_STANDARD
+  DOUBTFUL
+  LOSS
+}
+
+enum LoanNoticeType {
+  DEMAND_NOTICE
+  REMINDER
+  LEGAL_NOTICE
+  NPA_NOTICE
+  RECOVERY_NOTICE
 }

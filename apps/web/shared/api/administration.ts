@@ -218,29 +218,9 @@ export async function deleteStaffUser(token: string, id: string) {
   return apiRequest(token, "POST", `/administration/users/${id}/delete`);
 }
 
-export async function mapAgentClient(token: string, payload: { agentId: string; customerId: string }) {
-  return apiRequest(token, "POST", "/administration/agent-clients", payload);
-}
-
-export async function listAgentMappings(token: string) {
-  return apiRequest(token, "GET", "/administration/agent-clients");
-}
-
-export async function getAdministrationOverview(token: string) {
-  return apiRequest(token, "GET", "/administration/overview");
-}
-
-export async function getAgentOverview(token: string) {
-  return apiRequest(token, "GET", "/administration/agent-overview");
-}
-
 export async function getSocietyOverview(token: string, branchId?: string) {
   const query = branchId ? `?branchId=${branchId}` : "";
   return apiRequest<SocietyOverviewRecord>(token, "GET", `/administration/society-overview${query}`);
-}
-
-export async function getCustomerDetails(token: string, id: string) {
-  return apiRequest(token, "GET", `/administration/customers/${id}`);
 }
 
 export async function getAgentDetails(token: string, id: string) {

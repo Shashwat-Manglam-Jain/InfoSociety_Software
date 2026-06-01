@@ -33,6 +33,12 @@ import { IbcObcWorkspace } from "@/features/society/components/ibc-obc-workspace
 import { ReportsWorkspace } from "@/features/society/components/reports-workspace";
 import { UserDirectoryWorkspace } from "@/features/society/components/user-directory-workspace";
 import { SocietyMonitoringWorkspace } from "@/features/society/components/society-monitoring-workspace";
+import { ShareCapitalWorkspace } from "@/features/society/components/share-capital-workspace";
+import { DividendsWorkspace } from "@/features/society/components/dividends-workspace";
+import { FinancialYearsWorkspace } from "@/features/society/components/financial-years-workspace";
+import { InterestSlabsWorkspace } from "@/features/society/components/interest-slabs-workspace";
+import { StandingInstructionsWorkspace } from "@/features/society/components/standing-instructions-workspace";
+import { LoanNoticesWorkspace } from "@/features/society/components/loan-notices-workspace";
 import { ProfileEditWorkspace } from "@/features/shared/components/profile-edit-workspace";
 import {
   adminCreateBranch,
@@ -58,6 +64,7 @@ import { listLoans, type LoanRecord } from "@/shared/api/loans";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import { getMe } from "@/shared/api/client";
 import { clearSession, getSession, setSession } from "@/shared/auth/session";
+import { formatCurrency } from "@/shared/lib/format";
 import { getDefaultDashboardPath } from "@/shared/auth/session-payload";
 import { useLanguage } from "@/shared/i18n/language-provider";
 import { getSocietyDashboardPageCopy } from "@/shared/i18n/society-dashboard-page-copy";
@@ -127,6 +134,12 @@ type SocietyView =
   | "reports_workspace"
   | "user_directory_workspace"
   | "monitoring_workspace"
+  | "share_capital_workspace"
+  | "dividends_workspace"
+  | "financial_years_workspace"
+  | "interest_slabs_workspace"
+  | "standing_instructions_workspace"
+  | "loan_notices_workspace"
   | "my_profile"
   | AdminView;
 
@@ -166,6 +179,12 @@ const SOCIETY_VIEWS = new Set<SocietyView>([
   "reports_workspace",
   "user_directory_workspace",
   "monitoring_workspace",
+  "share_capital_workspace",
+  "dividends_workspace",
+  "financial_years_workspace",
+  "interest_slabs_workspace",
+  "standing_instructions_workspace",
+  "loan_notices_workspace",
   "my_profile"
 ]);
 
@@ -186,7 +205,13 @@ const SOCIETY_CUSTOM_MODULE_HREF_BY_SLUG: Record<string, string> = {
   "ibc-obc": "/dashboard/society?view=ibc_obc_workspace",
   reports: "/dashboard/society?view=reports_workspace",
   users: "/dashboard/society?view=user_directory_workspace",
-  monitoring: "/dashboard/society?view=monitoring_workspace"
+  monitoring: "/dashboard/society?view=monitoring_workspace",
+  "share-capital": "/dashboard/society?view=share_capital_workspace",
+  dividends: "/dashboard/society?view=dividends_workspace",
+  "financial-years": "/dashboard/society?view=financial_years_workspace",
+  "interest-slabs": "/dashboard/society?view=interest_slabs_workspace",
+  "standing-instructions": "/dashboard/society?view=standing_instructions_workspace",
+  "loan-notices": "/dashboard/society?view=loan_notices_workspace"
 };
 
 const SOCIETY_VIEW_ACCESS: Record<SocietyView, string[]> = {
@@ -213,6 +238,12 @@ const SOCIETY_VIEW_ACCESS: Record<SocietyView, string[]> = {
   reports_workspace: ["reports"],
   user_directory_workspace: ["users"],
   monitoring_workspace: ["monitoring"],
+  share_capital_workspace: ["share-capital", "customers"],
+  dividends_workspace: ["dividends", "share-capital"],
+  financial_years_workspace: ["financial-years", "administration"],
+  interest_slabs_workspace: ["interest-slabs", "administration"],
+  standing_instructions_workspace: ["standing-instructions", "accounts"],
+  loan_notices_workspace: ["loan-notices", "loans"],
   my_profile: []
 };
 
@@ -748,6 +779,48 @@ export default function SocietyDashboard() {
         moduleCandidates: ["users"]
       },
       {
+        label: "Share Capital",
+        href: "/dashboard/society?view=share_capital_workspace",
+        icon: getSocietyModuleIcon("share-capital"),
+        active: !requestedModuleSlug && currentView === "share_capital_workspace",
+        moduleCandidates: ["share-capital", "customers"]
+      },
+      {
+        label: "Dividends",
+        href: "/dashboard/society?view=dividends_workspace",
+        icon: getSocietyModuleIcon("dividends"),
+        active: !requestedModuleSlug && currentView === "dividends_workspace",
+        moduleCandidates: ["dividends", "share-capital"]
+      },
+      {
+        label: "Financial Years",
+        href: "/dashboard/society?view=financial_years_workspace",
+        icon: getSocietyModuleIcon("financial-years"),
+        active: !requestedModuleSlug && currentView === "financial_years_workspace",
+        moduleCandidates: ["financial-years", "administration"]
+      },
+      {
+        label: "Interest Slabs",
+        href: "/dashboard/society?view=interest_slabs_workspace",
+        icon: getSocietyModuleIcon("interest-slabs"),
+        active: !requestedModuleSlug && currentView === "interest_slabs_workspace",
+        moduleCandidates: ["interest-slabs", "administration"]
+      },
+      {
+        label: "Standing Instructions",
+        href: "/dashboard/society?view=standing_instructions_workspace",
+        icon: getSocietyModuleIcon("standing-instructions"),
+        active: !requestedModuleSlug && currentView === "standing_instructions_workspace",
+        moduleCandidates: ["standing-instructions", "accounts"]
+      },
+      {
+        label: "Loan Notices",
+        href: "/dashboard/society?view=loan_notices_workspace",
+        icon: getSocietyModuleIcon("loan-notices"),
+        active: !requestedModuleSlug && currentView === "loan_notices_workspace",
+        moduleCandidates: ["loan-notices", "loans"]
+      },
+      {
         label: copy.nav.monitoring,
         href: "/dashboard/society?view=monitoring_workspace",
         icon: getSocietyModuleIcon("monitoring"),
@@ -1154,12 +1227,7 @@ export default function SocietyDashboard() {
     setAgentLoading(false);
   }
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat(localeTag, {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0
-    }).format(value || 0);
+  const formatCurrencyLocalized = (value: number) => formatCurrency(value, localeTag);
 
   const formatDate = (value: string) => {
     if (!value) {
@@ -1181,6 +1249,12 @@ export default function SocietyDashboard() {
   const isReportsView = currentView === "reports_workspace";
   const isUserDirectoryView = currentView === "user_directory_workspace";
   const isMonitoringView = currentView === "monitoring_workspace";
+  const isShareCapitalView = currentView === "share_capital_workspace";
+  const isDividendsView = currentView === "dividends_workspace";
+  const isFinancialYearsView = currentView === "financial_years_workspace";
+  const isInterestSlabsView = currentView === "interest_slabs_workspace";
+  const isStandingInstructionsView = currentView === "standing_instructions_workspace";
+  const isLoanNoticesView = currentView === "loan_notices_workspace";
   const isMyProfileView = currentView === "my_profile";
   const branchFilterActive = selectedBranchFilter !== ALL_BRANCHES_FILTER;
   const visibleBranches = useMemo(
@@ -1353,6 +1427,18 @@ export default function SocietyDashboard() {
           <ReportsWorkspace token={session.accessToken} />
         ) : isUserDirectoryView && session ? (
           <UserDirectoryWorkspace token={session.accessToken} />
+        ) : isShareCapitalView && session ? (
+          <ShareCapitalWorkspace token={session.accessToken} />
+        ) : isDividendsView && session ? (
+          <DividendsWorkspace token={session.accessToken} />
+        ) : isFinancialYearsView && session ? (
+          <FinancialYearsWorkspace token={session.accessToken} />
+        ) : isInterestSlabsView && session ? (
+          <InterestSlabsWorkspace token={session.accessToken} />
+        ) : isStandingInstructionsView && session ? (
+          <StandingInstructionsWorkspace token={session.accessToken} />
+        ) : isLoanNoticesView && session ? (
+          <LoanNoticesWorkspace token={session.accessToken} />
         ) : isMonitoringView && session ? (
           <SocietyMonitoringWorkspace token={session.accessToken} />
         ) : isMyProfileView && shellUser ? (
@@ -1397,7 +1483,7 @@ export default function SocietyDashboard() {
             loanApplications={filteredLoans}
             transactionSearch={transactionSearch}
             setTransactionSearch={setTransactionSearch}
-            formatCurrency={formatCurrency}
+            formatCurrency={formatCurrencyLocalized}
             formatDate={formatDate}
             agents={filteredAgents}
             agentSearch={agentSearch}

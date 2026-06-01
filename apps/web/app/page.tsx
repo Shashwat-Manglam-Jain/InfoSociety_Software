@@ -23,6 +23,11 @@ import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
 import type { BillingPlansResponse } from "@/shared/types";
 
+type MarketingFeature = {
+  title: string;
+  description: string;
+};
+
 export default function HomePage() {
   const router = useRouter();
   const { locale, t } = useLanguage();
@@ -93,7 +98,7 @@ export default function HomePage() {
     <AssessmentRoundedIcon key="assess" sx={{ fontSize: 40, color: "secondary.main" }} />
   ];
 
-  const features = homeCopy.features.map((f: any, i: number) => ({
+  const features = homeCopy.features.map((f: MarketingFeature, i: number) => ({
     ...f,
     icon: featureIcons[i] || featureIcons[0]
   }));

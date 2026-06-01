@@ -116,7 +116,7 @@ export function ProfileEditWorkspace({ user }: { user: AuthUser }) {
     nomineeFullName: "",
     nomineeRelation: "",
     nomineeContactNumber: "",
-    avatarUrl: (user as any).avatarUrl ?? null
+    avatarUrl: user.avatarUrl ?? null
   });
   const [customerCode, setCustomerCode] = useState<string | null>(null);
   const [hasCustomer, setHasCustomer] = useState(false);
@@ -132,20 +132,20 @@ export function ProfileEditWorkspace({ user }: { user: AuthUser }) {
         setForm((prev) => ({
           ...prev,
           fullName: user.fullName ?? "",
-          phone: (customerMe as any).phone ?? "",
-          email: (customerMe as any).email ?? "",
-          address: (customerMe as any).address ?? "",
-          fatherName: (customerMe as any).fatherName ?? "",
-          motherName: (customerMe as any).motherName ?? "",
-          dateOfBirth: (customerMe as any).dateOfBirth
-            ? new Date((customerMe as any).dateOfBirth).toISOString().slice(0, 10)
+          phone: customerMe.phone ?? "",
+          email: customerMe.email ?? "",
+          address: customerMe.address ?? "",
+          fatherName: customerMe.fatherName ?? "",
+          motherName: customerMe.motherName ?? "",
+          dateOfBirth: customerMe.dateOfBirth
+            ? new Date(customerMe.dateOfBirth).toISOString().slice(0, 10)
             : "",
-          gender: (customerMe as any).gender ?? "",
-          panNumber: (customerMe as any).panNumber ?? "",
-          nomineeFullName: (customerMe as any).nomineeFullName ?? "",
-          nomineeRelation: (customerMe as any).nomineeRelation ?? "",
-          nomineeContactNumber: (customerMe as any).nomineeContactNumber ?? "",
-          avatarUrl: (user as any).avatarUrl ?? null
+          gender: customerMe.gender ?? "",
+          panNumber: customerMe.panNumber ?? "",
+          nomineeFullName: customerMe.nomineeFullName ?? "",
+          nomineeRelation: customerMe.nomineeRelation ?? "",
+          nomineeContactNumber: customerMe.nomineeContactNumber ?? "",
+          avatarUrl: user.avatarUrl ?? null
         }));
       } catch {
         // AGENT / STAFF have no linked customer — that's fine

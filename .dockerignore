@@ -1,0 +1,32 @@
+# Dependencies (reinstalled inside container)
+node_modules
+**/node_modules
+
+# Build artifacts
+.next
+.next-build
+dist
+dist-seed
+coverage
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Git & editor
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+
+# Environment (secrets must be injected at runtime)
+.env
+.env.*
+
+# Documentation & config not needed in image
+*.md
+LICENSE
+.claude

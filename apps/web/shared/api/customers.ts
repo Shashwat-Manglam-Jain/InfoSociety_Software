@@ -76,6 +76,17 @@ export async function getCustomerMe(token: string) {
     customerCode: string;
     firstName: string;
     lastName: string | null;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+    fatherName: string | null;
+    motherName: string | null;
+    dateOfBirth: string | null;
+    gender: string | null;
+    panNumber: string | null;
+    nomineeFullName: string | null;
+    nomineeRelation: string | null;
+    nomineeContactNumber: string | null;
     accounts: Array<{
       id: string;
       accountNumber: string;

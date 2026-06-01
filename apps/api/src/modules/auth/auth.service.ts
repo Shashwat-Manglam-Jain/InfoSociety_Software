@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, Injectable, Logger, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { AccountStatus, AccountType, LoanStatus, Prisma, SocietyStatus, SubscriptionPlan, SubscriptionStatus, UserRole } from "@prisma/client";
@@ -14,6 +14,7 @@ import { LoginDto } from "./dto/login.dto";
 import { RegisterAgentDto } from "./dto/register-agent.dto";
 import { RegisterClientDto } from "./dto/register-client.dto";
 import { RegisterSocietyDto } from "./dto/register-society.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 
 const userProfileInclude = Prisma.validator<Prisma.UserInclude>()({
   society: {
@@ -84,6 +85,7 @@ const PUBLIC_DIRECTORY_CACHE_TTL_MS = 60_000;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private userExtraFieldAvailability?: Promise<UserExtraFieldAvailability>;
 
   constructor(
@@ -100,8 +102,7 @@ export class AuthService {
     if (expectedRole && expectedRole !== UserRole.SUPER_ADMIN && !dto.societyCode?.trim()) {
       throw new UnauthorizedException("Society code is required for this login portal");
     }
-    
-    // 1. Attempt to find user by Administrative Handle / Username
+
     let user = await this.prisma.user.findFirst({
       where: {
         OR: [
@@ -122,7 +123,6 @@ export class AuthService {
       include: userProfileInclude
     });
 
-    // 2. If no direct user match, try to find a society with this unique code
     if (!user) {
       const society = await this.prisma.society.findUnique({
         where: { code: input.toUpperCase() },
@@ -136,7 +136,7 @@ export class AuthService {
       });
 
       if (society && society.users.length > 0) {
-        user = society.users[0] as any;
+        user = society.users[0];
       }
     }
 
@@ -212,9 +212,6 @@ export class AuthService {
       throw new UnauthorizedException("Selected access role does not match this account");
     }
 
-    // 4. Institutional Boundary Enforcement (New)
-    // If the login is performed via a specific institutional portal (societyCode provided),
-    // ensure the user account is actually mapped to that infrastructure.
     if (dto.societyCode) {
       const targetCode = dto.societyCode.trim().toUpperCase();
       const userSocietyCode = user.society?.code?.toUpperCase();
@@ -226,27 +223,21 @@ export class AuthService {
 
     this.assertSocietyAccessAllowed(user);
 
-    // 5. Aadhaar Verification (when Aadhaar is registered on the account)
-    // If the user account has aadhaarNumber set, the caller MUST provide
-    // aadhaarLast4 and it must match the last 4 digits of the stored number.
-    if ((user as any).aadhaarNumber) {
+    if (user.aadhaarNumber) {
       if (!dto.aadhaarLast4) {
         throw new UnauthorizedException("Aadhaar verification required: please enter the last 4 digits of your Aadhaar card");
       }
  
-      const storedLast4 = (user as any).aadhaarNumber.slice(-4);
+      const storedLast4 = user.aadhaarNumber!.slice(-4);
       if (dto.aadhaarLast4 !== storedLast4) {
         throw new UnauthorizedException("Aadhaar verification failed: the digits you entered do not match");
       }
     }
 
-    // 6. Portal-Specific Access Enforcement
-    // If logging in via the main Administrative portal, ensure the user is indeed a Society Admin.
     if (dto.portalSource === 'ADMIN') {
       const extras = await this.getUserExtraFields(user.id);
       
-      // We check both the Prisma-fetched property and the manual extra fields query for maximum reliability
-      const isSocietyAdmin = (user as any).isSocietyAdmin === true || extras.isSocietyAdmin === true;
+      const isSocietyAdmin = user.isSocietyAdmin === true || extras.isSocietyAdmin === true;
       const isPlatformAdmin = user.role === UserRole.SUPER_ADMIN;
 
       if (!isSocietyAdmin && !isPlatformAdmin) {
@@ -396,7 +387,6 @@ export class AuthService {
     try {
       const societyCode = await this.resolveAvailableSocietyCode(dto.societyCode, dto.societyName);
 
-      // Autogenerate username from society code if not provided or to ensure consistent naming
       const autoUsername = this.createInitialSocietyAdminUsername(dto.fullName, societyCode);
       const usernameToUse = dto.username?.trim() || autoUsername;
 
@@ -473,7 +463,7 @@ export class AuthService {
 
       return this.buildLoginResponse(created);
     } catch (error) {
-      console.error('[AuthService.registerSociety] error', error);
+      this.logger.error('Society registration failed', error instanceof Error ? error.stack : String(error));
       throw error;
     }
   }
@@ -512,21 +502,7 @@ export class AuthService {
 
   async updateMyProfile(
     currentUser: RequestUser,
-    dto: {
-      fullName?: string;
-      avatarUrl?: string;
-      phone?: string;
-      email?: string;
-      address?: string;
-      fatherName?: string;
-      motherName?: string;
-      dateOfBirth?: string;
-      gender?: string;
-      panNumber?: string;
-      nomineeFullName?: string;
-      nomineeRelation?: string;
-      nomineeContactNumber?: string;
-    }
+    dto: UpdateProfileDto
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: currentUser.sub },
@@ -552,7 +528,6 @@ export class AuthService {
       });
     }
 
-    // Update the linked Customer profile record if it exists
     if (user.customerId) {
       const customerUpdate: Record<string, unknown> = {};
       if (dto.phone !== undefined) customerUpdate.phone = dto.phone.trim() || null;
@@ -581,7 +556,6 @@ export class AuthService {
 
     return this.me(currentUser);
   }
-
 
   async changePassword(currentUser: RequestUser, dto: { currentPassword: string; newPassword: string }) {
     const user = await this.prisma.user.findUnique({
@@ -703,7 +677,7 @@ export class AuthService {
       id: user.id,
       username: user.username,
       fullName: user.fullName,
-      avatarUrl: (user as any).avatarUrl,
+      avatarUrl: user.avatarUrl,
       aadhaarNumber: extras.aadhaarNumber,
       role: user.role,
       isSocietyAdmin: extras.isSocietyAdmin,
@@ -713,7 +687,7 @@ export class AuthService {
             id: user.society.id,
             code: user.society.code,
             name: user.society.name,
-            status: (user.society as any).status ?? SocietyStatus.ACTIVE,
+            status: user.society.status ?? SocietyStatus.ACTIVE,
             imageUrl: user.society.imageUrl,
             logoUrl: user.society.logoUrl,
             faviconUrl: user.society.faviconUrl,

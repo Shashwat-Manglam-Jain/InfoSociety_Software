@@ -103,8 +103,11 @@ export default function LoginPage() {
         setSocieties([...response].sort((a, b) => a.name.localeCompare(b.name)));
         setCachedPublicSocieties(response);
       } catch (err) {
-        console.error("Failed to load societies", err);
-        if (active) setSocietyLookupError(copy.lookupError);
+        console.error("Failed to load societies:", err);
+        if (active) {
+          setSocietyLookupError(copy.lookupError);
+          toast.error(copy.lookupError);
+        }
       } finally {
         if (active) setSocietiesLoading(false);
       }
